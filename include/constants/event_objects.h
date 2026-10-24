@@ -193,6 +193,14 @@
 // Whether Object Event is an OW pokemon
 #define IS_OW_MON_OBJ(obj) ((obj)->graphicsId >= OBJ_EVENT_GFX_MON_BASE)
 
+// If TRUE, OW pokemon (the follower, and wandering wild OW mons) bob up
+// and down during their idle & walking animations.
+#define OW_MON_BOBBING TRUE
+
+// If TRUE, wandering OW pokemon take a walk-in-place step while paused
+// between wander steps, instead of standing motionless.
+#define OW_MON_WANDER_WALK TRUE
+
 #define SHADOW_SIZE_S   0
 #define SHADOW_SIZE_M   1
 #define SHADOW_SIZE_L   2

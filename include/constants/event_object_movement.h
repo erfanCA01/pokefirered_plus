@@ -83,7 +83,22 @@
 #define MOVEMENT_TYPE_RAISE_HAND_AND_JUMP              0x4E
 #define MOVEMENT_TYPE_RAISE_HAND_AND_SWIM              0x4F
 #define MOVEMENT_TYPE_WANDER_AROUND_SLOWER             0x50
-#define MOVEMENT_TYPES_COUNT                           0x51
+#define MOVEMENT_TYPE_FOLLOW_PLAYER                    0x51
+#define MOVEMENT_TYPES_COUNT                           0x52
+
+// Indices into gCopyPlayerMovementFuncs / gFollowPlayerMovementFuncs,
+// mirroring struct ObjectEvent's own playerCopyableMovement enum.
+#define COPY_MOVE_NONE           0
+#define COPY_MOVE_FACE           1
+#define COPY_MOVE_WALK           2
+#define COPY_MOVE_WALK_FAST      3
+#define COPY_MOVE_WALK_FASTER    4
+#define COPY_MOVE_SLIDE          5
+#define COPY_MOVE_JUMP_IN_PLACE  6
+#define COPY_MOVE_JUMP           7
+#define COPY_MOVE_JUMP2          8
+#define COPY_MOVE_EMPTY_1        9
+#define COPY_MOVE_EMPTY_2        10
 
 #define MOVEMENT_ACTION_FACE_DOWN                       0x0
 #define MOVEMENT_ACTION_FACE_UP                         0x1

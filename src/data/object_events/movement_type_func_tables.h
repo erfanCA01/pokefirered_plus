@@ -1,7 +1,7 @@
 static bool8 MovementType_WanderAround_Step0(struct ObjectEvent *objectEvent, struct Sprite *sprite);
 static bool8 MovementType_WanderAround_Step1(struct ObjectEvent *objectEvent, struct Sprite *sprite);
 static bool8 MovementType_WanderAround_Step2(struct ObjectEvent *objectEvent, struct Sprite *sprite);
-static bool8 MovementType_WanderAround_Step3(struct ObjectEvent *objectEvent, struct Sprite *sprite);
+static bool8 MovementType_Wander_Step3(struct ObjectEvent *objectEvent, struct Sprite *sprite);
 static bool8 MovementType_WanderAround_Step4(struct ObjectEvent *objectEvent, struct Sprite *sprite);
 static bool8 MovementType_WanderAround_Step5(struct ObjectEvent *objectEvent, struct Sprite *sprite);
 static bool8 MovementType_WanderAround_Step5Slower(struct ObjectEvent *objectEvent, struct Sprite *sprite);
@@ -14,14 +14,12 @@ static bool8 MovementType_LookAround_Step4(struct ObjectEvent *objectEvent, stru
 static bool8 MovementType_WanderUpAndDown_Step0(struct ObjectEvent *objectEvent, struct Sprite *sprite);
 static bool8 MovementType_WanderUpAndDown_Step1(struct ObjectEvent *objectEvent, struct Sprite *sprite);
 static bool8 MovementType_WanderUpAndDown_Step2(struct ObjectEvent *objectEvent, struct Sprite *sprite);
-static bool8 MovementType_WanderUpAndDown_Step3(struct ObjectEvent *objectEvent, struct Sprite *sprite);
 static bool8 MovementType_WanderUpAndDown_Step4(struct ObjectEvent *objectEvent, struct Sprite *sprite);
 static bool8 MovementType_WanderUpAndDown_Step5(struct ObjectEvent *objectEvent, struct Sprite *sprite);
 static bool8 MovementType_WanderUpAndDown_Step6(struct ObjectEvent *objectEvent, struct Sprite *sprite);
 static bool8 MovementType_WanderLeftAndRight_Step0(struct ObjectEvent *objectEvent, struct Sprite *sprite);
 static bool8 MovementType_WanderLeftAndRight_Step1(struct ObjectEvent *objectEvent, struct Sprite *sprite);
 static bool8 MovementType_WanderLeftAndRight_Step2(struct ObjectEvent *objectEvent, struct Sprite *sprite);
-static bool8 MovementType_WanderLeftAndRight_Step3(struct ObjectEvent *objectEvent, struct Sprite *sprite);
 static bool8 MovementType_WanderLeftAndRight_Step4(struct ObjectEvent *objectEvent, struct Sprite *sprite);
 static bool8 MovementType_WanderLeftAndRight_Step5(struct ObjectEvent *objectEvent, struct Sprite *sprite);
 static bool8 MovementType_WanderLeftAndRight_Step6(struct ObjectEvent *objectEvent, struct Sprite *sprite);
@@ -128,6 +126,16 @@ static bool8 CopyablePlayerMovement_Slide(struct ObjectEvent *objectEvent, struc
 static bool8 cph_IM_DIFFERENT(struct ObjectEvent *objectEvent, struct Sprite *sprite, u8 playerDirection, bool8 tileCallback(u8));
 static bool8 CopyablePlayerMovement_GoSpeed4(struct ObjectEvent *objectEvent, struct Sprite *sprite, u8 playerDirection, bool8 tileCallback(u8));
 static bool8 CopyablePlayerMovement_Jump(struct ObjectEvent *objectEvent, struct Sprite *sprite, u8 playerDirection, bool8 tileCallback(u8));
+static bool8 MovementType_FollowPlayer_Shadow(struct ObjectEvent *objectEvent, struct Sprite *sprite);
+static bool8 MovementType_FollowPlayer_Active(struct ObjectEvent *objectEvent, struct Sprite *sprite);
+static bool8 MovementType_FollowPlayer_Moving(struct ObjectEvent *objectEvent, struct Sprite *sprite);
+static bool8 FollowablePlayerMovement_Idle(struct ObjectEvent *objectEvent, struct Sprite *sprite, u8 playerDirection, bool8 tileCallback(u8));
+static bool8 FollowablePlayerMovement_Step(struct ObjectEvent *objectEvent, struct Sprite *sprite, u8 playerDirection, bool8 tileCallback(u8));
+static bool8 FollowablePlayerMovement_GoSpeed1(struct ObjectEvent *objectEvent, struct Sprite *sprite, u8 playerDirection, bool8 tileCallback(u8));
+static bool8 FollowablePlayerMovement_GoSpeed2(struct ObjectEvent *objectEvent, struct Sprite *sprite, u8 playerDirection, bool8 tileCallback(u8));
+static bool8 FollowablePlayerMovement_Slide(struct ObjectEvent *objectEvent, struct Sprite *sprite, u8 playerDirection, bool8 tileCallback(u8));
+static bool8 FollowablePlayerMovement_JumpInPlace(struct ObjectEvent *objectEvent, struct Sprite *sprite, u8 playerDirection, bool8 tileCallback(u8));
+static bool8 FollowablePlayerMovement_GoSpeed4(struct ObjectEvent *objectEvent, struct Sprite *sprite, u8 playerDirection, bool8 tileCallback(u8));
 static bool8 MovementType_CopyPlayer_Step0(struct ObjectEvent *objectEvent, struct Sprite *sprite);
 static bool8 MovementType_CopyPlayerInGrass_Step1(struct ObjectEvent *objectEvent, struct Sprite *sprite);
 static bool8 MovementType_CopyPlayer_Step2(struct ObjectEvent *objectEvent, struct Sprite *sprite);
@@ -164,7 +172,7 @@ u8 (*const gMovementTypeFuncs_WanderAround[])(struct ObjectEvent *, struct Sprit
     MovementType_WanderAround_Step0,
     MovementType_WanderAround_Step1,
     MovementType_WanderAround_Step2,
-    MovementType_WanderAround_Step3,
+    MovementType_Wander_Step3,
     MovementType_WanderAround_Step4,
     MovementType_WanderAround_Step5,
     MovementType_WanderAround_Step6,
@@ -174,7 +182,7 @@ u8 (*const gMovementTypeFuncs_WanderAroundSlower[])(struct ObjectEvent *, struct
     MovementType_WanderAround_Step0,
     MovementType_WanderAround_Step1,
     MovementType_WanderAround_Step2,
-    MovementType_WanderAround_Step3,
+    MovementType_Wander_Step3,
     MovementType_WanderAround_Step4,
     MovementType_WanderAround_Step5Slower,
     MovementType_WanderAround_Step6,
@@ -208,7 +216,7 @@ u8 (*const gMovementTypeFuncs_WanderUpAndDown[])(struct ObjectEvent *, struct Sp
     MovementType_WanderUpAndDown_Step0,
     MovementType_WanderUpAndDown_Step1,
     MovementType_WanderUpAndDown_Step2,
-    MovementType_WanderUpAndDown_Step3,
+    MovementType_Wander_Step3,
     MovementType_WanderUpAndDown_Step4,
     MovementType_WanderUpAndDown_Step5,
     MovementType_WanderUpAndDown_Step6,
@@ -220,7 +228,7 @@ u8 (*const gMovementTypeFuncs_WanderLeftAndRight[])(struct ObjectEvent *, struct
     MovementType_WanderLeftAndRight_Step0,
     MovementType_WanderLeftAndRight_Step1,
     MovementType_WanderLeftAndRight_Step2,
-    MovementType_WanderLeftAndRight_Step3,
+    MovementType_Wander_Step3,
     MovementType_WanderLeftAndRight_Step4,
     MovementType_WanderLeftAndRight_Step5,
     MovementType_WanderLeftAndRight_Step6,
@@ -563,6 +571,26 @@ bool8 (*const gCopyPlayerMovementFuncs[])(struct ObjectEvent *, struct Sprite *,
     CopyablePlayerMovement_Jump,
     CopyablePlayerMovement_None,
     CopyablePlayerMovement_None,
+};
+
+u8 (*const gMovementTypeFuncs_FollowPlayer[])(struct ObjectEvent *, struct Sprite *) = {
+    MovementType_FollowPlayer_Shadow,
+    MovementType_FollowPlayer_Active,
+    MovementType_FollowPlayer_Moving,
+};
+
+bool8 (*const gFollowPlayerMovementFuncs[])(struct ObjectEvent *, struct Sprite *, u8, bool8(u8)) = {
+    [COPY_MOVE_NONE]          = FollowablePlayerMovement_Idle,
+    [COPY_MOVE_FACE]          = FollowablePlayerMovement_Idle,
+    [COPY_MOVE_WALK]          = FollowablePlayerMovement_Step,
+    [COPY_MOVE_WALK_FAST]     = FollowablePlayerMovement_GoSpeed1,
+    [COPY_MOVE_WALK_FASTER]   = FollowablePlayerMovement_GoSpeed2,
+    [COPY_MOVE_SLIDE]         = FollowablePlayerMovement_Slide,
+    [COPY_MOVE_JUMP_IN_PLACE] = FollowablePlayerMovement_JumpInPlace,
+    [COPY_MOVE_JUMP]          = FollowablePlayerMovement_GoSpeed4,
+    [COPY_MOVE_JUMP2]         = FollowablePlayerMovement_Step,
+    [COPY_MOVE_EMPTY_1]       = FollowablePlayerMovement_Idle,
+    [COPY_MOVE_EMPTY_2]       = FollowablePlayerMovement_Idle,
 };
 
 u8 (*const gMovementTypeFuncs_CopyPlayerInGrass[])(struct ObjectEvent *, struct Sprite *) = {

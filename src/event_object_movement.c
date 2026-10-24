@@ -31,6 +31,9 @@ static void UpdateObjectEventSpriteAnimPause(struct ObjectEvent *, struct Sprite
 static bool8 IsCoordOutsideObjectEventMovementRange(struct ObjectEvent *, s16, s16);
 static bool8 IsMetatileDirectionallyImpassable(struct ObjectEvent *, s16, s16, u8);
 static bool8 DoesObjectCollideWithObjectAt(struct ObjectEvent *, s16, s16);
+static bool32 UpdateMonMoveInPlace(struct ObjectEvent *, struct Sprite *);
+static bool32 IsFollowerVisible(void);
+u8 GetDirectionToFace(s16, s16, s16, s16);
 static void CalcWhetherObjectIsOffscreen(struct ObjectEvent *, struct Sprite *);
 static void UpdateObjEventSpriteVisibility(struct ObjectEvent *, struct Sprite *);
 static void ObjectEventUpdateMetatileBehaviors(struct ObjectEvent *);
@@ -142,6 +145,7 @@ static void MovementType_WalkSequenceDownLeftUpRight(struct Sprite *);
 static void MovementType_WalkSequenceLeftUpRightDown(struct Sprite *);
 static void MovementType_WalkSequenceRightDownLeftUp(struct Sprite *);
 static void MovementType_CopyPlayer(struct Sprite *);
+static void MovementType_FollowPlayer(struct Sprite *);
 static void MovementType_TreeDisguise(struct Sprite *);
 static void MovementType_MountainDisguise(struct Sprite *);
 static void MovementType_CopyPlayerInGrass(struct Sprite *);
@@ -309,6 +313,7 @@ static void (*const sMovementTypeCallbacks[MOVEMENT_TYPES_COUNT])(struct Sprite 
     [MOVEMENT_TYPE_RAISE_HAND_AND_JUMP]                   = MovementType_RaiseHandAndJump,
     [MOVEMENT_TYPE_RAISE_HAND_AND_SWIM]                   = MovementType_RaiseHandAndSwim,
     [MOVEMENT_TYPE_WANDER_AROUND_SLOWER]                  = MovementType_WanderAroundSlower,
+    [MOVEMENT_TYPE_FOLLOW_PLAYER]                         = MovementType_FollowPlayer,
 };
 
 static const bool8 gRangedMovementTypes[MOVEMENT_TYPES_COUNT] = {
@@ -438,6 +443,7 @@ static const u8 gInitialMovementTypeFacingDirections[MOVEMENT_TYPES_COUNT] = {
     [MOVEMENT_TYPE_RAISE_HAND_AND_JUMP] = DIR_SOUTH,
     [MOVEMENT_TYPE_RAISE_HAND_AND_SWIM] = DIR_SOUTH,
     [MOVEMENT_TYPE_WANDER_AROUND_SLOWER] = DIR_SOUTH,
+    [MOVEMENT_TYPE_FOLLOW_PLAYER] = DIR_SOUTH,
 };
 
 #define OBJ_EVENT_PAL_TAG_PLAYER_RED                  0x1100
@@ -2718,12 +2724,17 @@ static bool8 MovementType_WanderAround_Step2(struct ObjectEvent *objectEvent, st
     return TRUE;
 }
 
-static bool8 MovementType_WanderAround_Step3(struct ObjectEvent *objectEvent, struct Sprite *sprite)
+// Shared by MovementType_WanderAround/WanderUpAndDown/WanderLeftAndRight's Step3.
+static bool8 MovementType_Wander_Step3(struct ObjectEvent *objectEvent, struct Sprite *sprite)
 {
     if (WaitForMovementDelay(sprite))
     {
         sprite->data[1] = 4;
         return TRUE;
+    }
+    else if (OW_MON_WANDER_WALK == TRUE && IS_OW_MON_OBJ(objectEvent))
+    {
+        UpdateMonMoveInPlace(objectEvent, sprite);
     }
     return FALSE;
 }
@@ -3092,16 +3103,6 @@ static bool8 MovementType_WanderUpAndDown_Step2(struct ObjectEvent *objectEvent,
     return TRUE;
 }
 
-static bool8 MovementType_WanderUpAndDown_Step3(struct ObjectEvent *objectEvent, struct Sprite *sprite)
-{
-    if (WaitForMovementDelay(sprite))
-    {
-        sprite->data[1] = 4;
-        return TRUE;
-    }
-    return FALSE;
-}
-
 static bool8 MovementType_WanderUpAndDown_Step4(struct ObjectEvent *objectEvent, struct Sprite *sprite)
 {
     u8 direction;
@@ -3159,16 +3160,6 @@ static bool8 MovementType_WanderLeftAndRight_Step2(struct ObjectEvent *objectEve
     SetMovementDelay(sprite, gMovementDelaysMedium[Random() & 3]);
     sprite->data[1] = 3;
     return TRUE;
-}
-
-static bool8 MovementType_WanderLeftAndRight_Step3(struct ObjectEvent *objectEvent, struct Sprite *sprite)
-{
-    if (WaitForMovementDelay(sprite))
-    {
-        sprite->data[1] = 4;
-        return TRUE;
-    }
-    return FALSE;
 }
 
 static bool8 MovementType_WanderLeftAndRight_Step4(struct ObjectEvent *objectEvent, struct Sprite *sprite)
@@ -4429,6 +4420,270 @@ static bool8 CopyablePlayerMovement_Jump(struct ObjectEvent *objectEvent, struct
     return TRUE;
 }
 
+// Determine whether the following Pokemon should currently be visible
+// (as opposed to shadowing the player's position inside its pokeball).
+static bool32 IsFollowerVisible(void)
+{
+    return !(TestPlayerAvatarFlags(FOLLOWER_INVISIBLE_FLAGS)
+          || MetatileBehavior_IsForcedMovementTile(gObjectEvents[gPlayerAvatar.objectEventId].currentMetatileBehavior));
+}
+
+// Shared walk-in-place update for idling OW pokemon (the follower, and wandering wild OW mons).
+static bool32 UpdateMonMoveInPlace(struct ObjectEvent *objectEvent, struct Sprite *sprite)
+{
+    if (!objectEvent->singleMovementActive)
+    {
+        ObjectEventSetSingleMovement(objectEvent, sprite, GetWalkInPlaceNormalMovementAction(objectEvent->facingDirection));
+        objectEvent->singleMovementActive = TRUE;
+        return TRUE;
+    }
+    else if (ObjectEventExecSingleMovementAction(objectEvent, sprite))
+    {
+        objectEvent->singleMovementActive = FALSE;
+    }
+    else if (OW_MON_BOBBING == TRUE && (sprite->data[3] & 7) == 2)
+    {
+        sprite->y2 ^= -1;
+    }
+    return FALSE;
+}
+
+movement_type_def(MovementType_FollowPlayer, gMovementTypeFuncs_FollowPlayer)
+
+static bool8 MovementType_FollowPlayer_Shadow(struct ObjectEvent *objectEvent, struct Sprite *sprite)
+{
+    ClearObjectEventMovement(objectEvent, sprite);
+    if (!IsFollowerVisible())
+    {
+        // Shadow the player's position while hidden
+        objectEvent->invisible = TRUE;
+        MoveObjectEventToMapCoords(objectEvent, gObjectEvents[gPlayerAvatar.objectEventId].currentCoords.x, gObjectEvents[gPlayerAvatar.objectEventId].currentCoords.y);
+        objectEvent->triggerGroundEffectsOnMove = FALSE; // stop endless reflection spawning
+        return FALSE;
+    }
+    // Snap to the player's position before appearing, so the player can't
+    // talk to the invisible follower before it becomes visible.
+    if (objectEvent->invisible)
+    {
+        MoveObjectEventToMapCoords(objectEvent, gObjectEvents[gPlayerAvatar.objectEventId].currentCoords.x, gObjectEvents[gPlayerAvatar.objectEventId].currentCoords.y);
+        objectEvent->triggerGroundEffectsOnMove = FALSE;
+    }
+    sprite->data[1] = 1; // enter active state
+    return TRUE;
+}
+
+static bool8 MovementType_FollowPlayer_Active(struct ObjectEvent *objectEvent, struct Sprite *sprite)
+{
+    if (!IsFollowerVisible())
+    {
+        if (objectEvent->invisible)
+        {
+            sprite->data[1] = 0; // return to shadowing state
+            return FALSE;
+        }
+        // TODO(Phase 5): recall into its pokeball via a field effect instead of hiding instantly
+        ClearObjectEventMovement(objectEvent, sprite);
+        objectEvent->invisible = TRUE;
+        sprite->data[1] = 0;
+        return FALSE;
+    }
+    return gFollowPlayerMovementFuncs[PlayerGetCopyableMovement()](objectEvent, sprite, GetPlayerMovementDirection(), NULL);
+}
+
+static bool8 MovementType_FollowPlayer_Moving(struct ObjectEvent *objectEvent, struct Sprite *sprite)
+{
+    if (ObjectEventExecSingleMovementAction(objectEvent, sprite))
+    {
+        objectEvent->singleMovementActive = FALSE;
+        objectEvent->facingDirectionLocked = FALSE;
+        if (sprite->data[1])
+            sprite->data[1] = 1; // restore active state
+    }
+    else if (OW_MON_BOBBING == TRUE && (sprite->data[5] & 7) == 2)
+    {
+        sprite->y2 ^= -1;
+    }
+    return FALSE;
+}
+
+static bool8 FollowablePlayerMovement_Idle(struct ObjectEvent *objectEvent, struct Sprite *sprite, u8 playerDirection, bool8 tileCallback(u8))
+{
+    if (UpdateMonMoveInPlace(objectEvent, sprite))
+    {
+        sprite->data[1] = 1;
+        return TRUE;
+    }
+    return FALSE;
+}
+
+static bool8 FollowablePlayerMovement_Step(struct ObjectEvent *objectEvent, struct Sprite *sprite, u8 playerDirection, bool8 tileCallback(u8))
+{
+    u32 direction;
+    s16 x;
+    s16 y;
+    s16 targetX;
+    s16 targetY;
+    u32 playerAction = gObjectEvents[gPlayerAvatar.objectEventId].movementActionId;
+
+    targetX = gObjectEvents[gPlayerAvatar.objectEventId].previousCoords.x;
+    targetY = gObjectEvents[gPlayerAvatar.objectEventId].previousCoords.y;
+    x = gObjectEvents[gPlayerAvatar.objectEventId].currentCoords.x;
+    y = gObjectEvents[gPlayerAvatar.objectEventId].currentCoords.y;
+
+    if ((x == targetX && y == targetY) || !IsFollowerVisible()) // don't move on player collision, or if not visible
+        return FALSE;
+
+    x = objectEvent->currentCoords.x;
+    y = objectEvent->currentCoords.y;
+    ClearObjectEventMovement(objectEvent, sprite);
+
+    if (objectEvent->invisible)
+    {
+        // TODO(Phase 5): emerge from its pokeball via a field effect instead of appearing instantly
+        // don't emerge if the player is ledge-jumping or moving via a script
+        if (PlayerGetCopyableMovement() == COPY_MOVE_JUMP2 || ArePlayerFieldControlsLocked())
+        {
+            sprite->data[1] = 0; // return to shadowing state
+            return FALSE;
+        }
+        MoveObjectEventToMapCoords(objectEvent, targetX, targetY);
+        objectEvent->invisible = FALSE;
+        sprite->data[1] = 1;
+        return FALSE;
+    }
+    else if (x == targetX && y == targetY)
+    {
+        // don't move if already in the player's last position
+        return FALSE;
+    }
+
+    // Follow the player, stepping into the tile it just vacated
+    direction = GetDirectionToFace(x, y, targetX, targetY);
+    // During a script, if the player sidesteps or backsteps, mirror its
+    // movement direction instead of the direction it's facing
+    if (ArePlayerFieldControlsLocked()
+        && gObjectEvents[gPlayerAvatar.objectEventId].facingDirection != gObjectEvents[gPlayerAvatar.objectEventId].movementDirection)
+    {
+        direction = gObjectEvents[gPlayerAvatar.objectEventId].movementDirection;
+        objectEvent->facingDirectionLocked = TRUE;
+    }
+
+    MoveCoords(direction, &x, &y);
+    if (GetLedgeJumpDirection(x, y, direction) != DIR_NONE)
+    {
+        ObjectEventSetSingleMovement(objectEvent, sprite, GetJump2MovementAction(direction));
+    }
+    else if (playerAction >= MOVEMENT_ACTION_WALK_SLOW_DOWN && playerAction <= MOVEMENT_ACTION_WALK_SLOW_RIGHT)
+    {
+        ObjectEventSetSingleMovement(objectEvent, sprite, GetWalkSlowMovementAction(direction));
+    }
+    else if (PlayerGetCopyableMovement() == COPY_MOVE_JUMP2)
+    {
+        ObjectEventSetSingleMovement(objectEvent, sprite, GetWalkSlowMovementAction(direction));
+    }
+    else if (gSprites[gPlayerAvatar.spriteId].data[4] == MOVE_SPEED_FAST_1)
+    {
+        objectEvent->movementActionId = GetWalkFastMovementAction(direction);
+        sprite->data[2] = 0;
+    }
+    else
+    {
+        objectEvent->movementActionId = GetWalkNormalMovementAction(direction);
+        sprite->data[2] = 0;
+        if (OW_MON_BOBBING == TRUE)
+            sprite->y2 = -1;
+    }
+    objectEvent->singleMovementActive = TRUE;
+    sprite->data[1] = 2;
+    return TRUE;
+}
+
+// playerDirection is used directly (not run through GetCopyDirection) because the
+// follower always mirrors the player's own movement 1:1 -- it has no directionSequenceIndex
+// of its own (unlike MOVEMENT_TYPE_COPY_PLAYER_OPPOSITE/CLOCKWISE/etc NPCs).
+static bool8 FollowablePlayerMovement_GoSpeed1(struct ObjectEvent *objectEvent, struct Sprite *sprite, u8 playerDirection, bool8 tileCallback(u8))
+{
+    u32 direction;
+    s16 x;
+    s16 y;
+
+    direction = playerDirection;
+    ObjectEventMoveDestCoords(objectEvent, direction, &x, &y);
+    ObjectEventSetSingleMovement(objectEvent, sprite, GetWalkFastMovementAction(direction));
+    if (GetCollisionAtCoords(objectEvent, x, y, direction) || (tileCallback != NULL && !tileCallback(MapGridGetMetatileBehaviorAt(x, y))))
+    {
+        ObjectEventSetSingleMovement(objectEvent, sprite, GetFaceDirectionMovementAction(direction));
+    }
+    objectEvent->singleMovementActive = TRUE;
+    sprite->data[1] = 2;
+    return TRUE;
+}
+
+static bool8 FollowablePlayerMovement_GoSpeed2(struct ObjectEvent *objectEvent, struct Sprite *sprite, u8 playerDirection, bool8 tileCallback(u8))
+{
+    u32 direction;
+    s16 x;
+    s16 y;
+
+    direction = playerDirection;
+    ObjectEventMoveDestCoords(objectEvent, direction, &x, &y);
+    ObjectEventSetSingleMovement(objectEvent, sprite, GetWalkFasterMovementAction(direction));
+    if (GetCollisionAtCoords(objectEvent, x, y, direction) || (tileCallback != NULL && !tileCallback(MapGridGetMetatileBehaviorAt(x, y))))
+    {
+        ObjectEventSetSingleMovement(objectEvent, sprite, GetFaceDirectionMovementAction(direction));
+    }
+    objectEvent->singleMovementActive = TRUE;
+    sprite->data[1] = 2;
+    return TRUE;
+}
+
+static bool8 FollowablePlayerMovement_Slide(struct ObjectEvent *objectEvent, struct Sprite *sprite, u8 playerDirection, bool8 tileCallback(u8))
+{
+    u32 direction;
+    s16 x;
+    s16 y;
+
+    direction = playerDirection;
+    ObjectEventMoveDestCoords(objectEvent, direction, &x, &y);
+    ObjectEventSetSingleMovement(objectEvent, sprite, GetSlideMovementAction(direction));
+    if (GetCollisionAtCoords(objectEvent, x, y, direction) || (tileCallback != NULL && !tileCallback(MapGridGetMetatileBehaviorAt(x, y))))
+    {
+        ObjectEventSetSingleMovement(objectEvent, sprite, GetFaceDirectionMovementAction(direction));
+    }
+    objectEvent->singleMovementActive = TRUE;
+    sprite->data[1] = 2;
+    return TRUE;
+}
+
+static bool8 FollowablePlayerMovement_JumpInPlace(struct ObjectEvent *objectEvent, struct Sprite *sprite, u8 playerDirection, bool8 tileCallback(u8))
+{
+    u32 direction;
+
+    direction = playerDirection;
+    ObjectEventSetSingleMovement(objectEvent, sprite, GetJumpInPlaceMovementAction(direction));
+    objectEvent->singleMovementActive = TRUE;
+    sprite->data[1] = 2;
+    return TRUE;
+}
+
+static bool8 FollowablePlayerMovement_GoSpeed4(struct ObjectEvent *objectEvent, struct Sprite *sprite, u8 playerDirection, bool8 tileCallback(u8))
+{
+    u32 direction;
+    s16 x;
+    s16 y;
+
+    direction = playerDirection;
+    ObjectEventMoveDestCoords(objectEvent, direction, &x, &y);
+    ObjectEventSetSingleMovement(objectEvent, sprite, GetJumpMovementAction(direction));
+    if (GetCollisionAtCoords(objectEvent, x, y, direction) || (tileCallback != NULL && !tileCallback(MapGridGetMetatileBehaviorAt(x, y))))
+    {
+        ObjectEventSetSingleMovement(objectEvent, sprite, GetFaceDirectionMovementAction(direction));
+    }
+    objectEvent->singleMovementActive = TRUE;
+    sprite->data[1] = 2;
+    return TRUE;
+}
+
 movement_type_def(MovementType_CopyPlayerInGrass, gMovementTypeFuncs_CopyPlayerInGrass)
 
 static bool8 MovementType_CopyPlayerInGrass_Step1(struct ObjectEvent *objectEvent, struct Sprite *sprite)
@@ -4896,24 +5151,43 @@ static bool8 IsMetatileDirectionallyImpassable(struct ObjectEvent *objectEvent, 
     return FALSE;
 }
 
-static bool8 DoesObjectCollideWithObjectAt(struct ObjectEvent *objectEvent, s16 x, s16 y)
+// Returns the index of the object event at (x, y) that objectEvent collides with,
+// or OBJECT_EVENTS_COUNT if there is none. If addCoords, (x, y) is treated as an
+// offset from objectEvent's current position rather than an absolute coordinate.
+u32 GetObjectObjectCollidesWith(struct ObjectEvent *objectEvent, s16 x, s16 y, bool32 addCoords)
 {
     u8 i;
     struct ObjectEvent *curObject;
 
+    if (objectEvent->localId == OBJ_EVENT_ID_FOLLOWER)
+        return OBJECT_EVENTS_COUNT; // follower cannot collide with other objects, but they can collide with it
+
+    if (addCoords)
+    {
+        x += objectEvent->currentCoords.x;
+        y += objectEvent->currentCoords.y;
+    }
+
     for (i = 0; i < OBJECT_EVENTS_COUNT; i++)
     {
         curObject = &gObjectEvents[i];
-        if (curObject->active && curObject != objectEvent)
+        if (curObject->active
+            && (curObject->movementType != MOVEMENT_TYPE_FOLLOW_PLAYER || objectEvent != &gObjectEvents[gPlayerAvatar.objectEventId])
+            && curObject != objectEvent)
         {
             if ((curObject->currentCoords.x == x && curObject->currentCoords.y == y) || (curObject->previousCoords.x == x && curObject->previousCoords.y == y))
             {
                 if (AreElevationsCompatible(objectEvent->currentElevation, curObject->currentElevation))
-                    return TRUE;
+                    return i;
             }
         }
     }
-    return FALSE;
+    return OBJECT_EVENTS_COUNT;
+}
+
+static bool8 DoesObjectCollideWithObjectAt(struct ObjectEvent *objectEvent, s16 x, s16 y)
+{
+    return GetObjectObjectCollidesWith(objectEvent, x, y, FALSE) < OBJECT_EVENTS_COUNT;
 }
 
 bool8 IsBerryTreeSparkling(u8 localId, u8 mapNum, u8 mapGroup)
