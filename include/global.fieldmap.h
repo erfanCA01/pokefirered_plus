@@ -107,10 +107,10 @@ struct BackupMapLayout
     u16 *map;
 };
 
-struct ObjectEventTemplate
+struct __attribute__((packed, aligned(4))) ObjectEventTemplate
 {
     u8 localId;
-    u8 graphicsId;
+    u16 graphicsId;
     u8 kind; // The "kind" field determines how to access objUnion union below.
     s16 x, y;
     union {
@@ -131,6 +131,7 @@ struct ObjectEventTemplate
     } objUnion;
     const u8 *script;
     u16 flagId;
+    u16 filler;
 };  /*size = 0x18*/
 
 struct WarpEvent
@@ -239,8 +240,9 @@ struct ObjectEvent
              /*25*/ u32 disableJumpLandingGroundEffect:1;
              /*26*/ u32 fixedPriority:1;
              /*27*/ u32 hideReflection:1;
-    /*0x04*/        u8 spriteId;
-    /*0x05*/        u8 graphicsId;
+             /*28*/ u32 shiny:1; // OW mon shininess
+             /*29*/ u32 padding:3;
+    /*0x04*/        u16 graphicsId; // 11 bits for species; high 5 bits for form
     /*0x06*/        u8 movementType;
     /*0x07*/        u8 trainerType;
     /*0x08*/        u8 localId;
@@ -264,8 +266,20 @@ struct ObjectEvent
     /*0x20*/        u8 previousMovementDirection;
     /*0x21*/        u8 directionSequenceIndex;
     /*0x22*/        u8 playerCopyableMovement;
+    /*0x23*/        u8 spriteId;
     /*size = 0x24*/
 };
+
+STATIC_ASSERT(sizeof(struct ObjectEventTemplate) == 0x18, ObjectEventTemplate_Size)
+STATIC_ASSERT(offsetof(struct ObjectEventTemplate, graphicsId) == 0x01, ObjectEventTemplate_GraphicsId_Offset)
+STATIC_ASSERT(offsetof(struct ObjectEventTemplate, kind) == 0x03, ObjectEventTemplate_Kind_Offset)
+STATIC_ASSERT(offsetof(struct ObjectEventTemplate, x) == 0x04, ObjectEventTemplate_X_Offset)
+STATIC_ASSERT(offsetof(struct ObjectEventTemplate, script) == 0x10, ObjectEventTemplate_Script_Offset)
+STATIC_ASSERT(offsetof(struct ObjectEventTemplate, flagId) == 0x14, ObjectEventTemplate_FlagId_Offset)
+
+STATIC_ASSERT(sizeof(struct ObjectEvent) == 0x24, ObjectEvent_Size)
+STATIC_ASSERT(offsetof(struct ObjectEvent, graphicsId) == 0x04, ObjectEvent_GraphicsId_Offset)
+STATIC_ASSERT(offsetof(struct ObjectEvent, spriteId) == 0x23, ObjectEvent_SpriteId_Offset)
 
 struct ObjectEventGraphicsInfo
 {
@@ -278,7 +292,7 @@ struct ObjectEventGraphicsInfo
     /*0x0C*/ u8 paletteSlot:4;
              u8 shadowSize:2;
              u8 inanimate:1;
-             u8 disableReflectionPaletteLoad:1;
+             u8 compressed:1;
     /*0x0D*/ u8 tracks;
     /*0x10*/ const struct OamData *oam;
     /*0x14*/ const struct SubspriteTable *subspriteTables;
@@ -306,6 +320,11 @@ enum {
 #define PLAYER_AVATAR_FLAG_CONTROLLABLE (1 << PLAYER_AVATAR_STATE_CONTROLLABLE)
 #define PLAYER_AVATAR_FLAG_FORCED       (1 << PLAYER_AVATAR_STATE_FORCED)
 #define PLAYER_AVATAR_FLAG_DASH         (1 << PLAYER_AVATAR_STATE_DASH)
+
+#define PLAYER_AVATAR_FLAG_BIKE        (PLAYER_AVATAR_FLAG_MACH_BIKE | PLAYER_AVATAR_FLAG_ACRO_BIKE)
+// Player avatar flags for which follower pokemon are hidden
+#define FOLLOWER_INVISIBLE_FLAGS       (PLAYER_AVATAR_FLAG_SURFING | PLAYER_AVATAR_FLAG_UNDERWATER | \
+                                        PLAYER_AVATAR_FLAG_BIKE | PLAYER_AVATAR_FLAG_FORCED)
 
 enum {
     PLAYER_AVATAR_GFX_NORMAL,

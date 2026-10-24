@@ -63,7 +63,10 @@ static void LoadObjectReflectionPalette(struct ObjectEvent * objectEvent, struct
     u8 bridgeType;
     u16 bridgeReflectionVerticalOffsets[] = { 12, 28, 44 };
     sprite->data[2] = 0;
-    if (!GetObjectEventGraphicsInfo(objectEvent->graphicsId)->disableReflectionPaletteLoad && ((bridgeType = MetatileBehavior_GetBridgeType(objectEvent->previousMetatileBehavior)) || (bridgeType = MetatileBehavior_GetBridgeType(objectEvent->currentMetatileBehavior))))
+    // RedSurf/GreenSurf used to set disableReflectionPaletteLoad (now repurposed as `compressed`)
+    // to suppress the high-bridge reflection offset for the surfing player avatar specifically.
+    if (objectEvent->graphicsId != OBJ_EVENT_GFX_RED_SURF && objectEvent->graphicsId != OBJ_EVENT_GFX_GREEN_SURF
+        && ((bridgeType = MetatileBehavior_GetBridgeType(objectEvent->previousMetatileBehavior)) || (bridgeType = MetatileBehavior_GetBridgeType(objectEvent->currentMetatileBehavior))))
     {
         sprite->data[2] = bridgeReflectionVerticalOffsets[bridgeType - 1];
         LoadObjectHighBridgeReflectionPalette(objectEvent, sprite->oam.paletteNum);
