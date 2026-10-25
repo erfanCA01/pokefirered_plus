@@ -192,7 +192,7 @@ void SaveObjectEvents(void)
         // place vanilla's u8 graphicsId field used to be.
         graphicsId = gObjectEvents[i].graphicsId;
         gSaveBlock1Ptr->objectEvents[i].graphicsId = (graphicsId >> 8) | (graphicsId << 8);
-        gSaveBlock1Ptr->objectEvents[i].spriteId = 127; // marks this as an expanded (non-vanilla) save
+        gSaveBlock1Ptr->objectEvents[i].spriteId = 0;
         // Avoid a vanilla-load crash: save the follower object event as inactive.
         // It is rebuilt from party data on map load, never trusted from the save.
         if (gObjectEvents[i].localId == OBJ_EVENT_ID_FOLLOWER)
@@ -208,11 +208,23 @@ void LoadObjectEvents(void)
     for (i = 0; i < OBJECT_EVENTS_COUNT; i++)
     {
         gObjectEvents[i] = gSaveBlock1Ptr->objectEvents[i];
-        // Swap graphicsId bytes back. If the expanded-save marker is absent,
-        // this is a vanilla save; mask graphicsId to the vanilla u8 range.
+        // Swap graphicsId bytes back.
         graphicsId = gObjectEvents[i].graphicsId;
         gObjectEvents[i].graphicsId = (graphicsId >> 8) | (graphicsId << 8);
-        if (gObjectEvents[i].spriteId != 127)
+        // Bug caught, not ported as-is (present upstream in pokeemerald too): the old gate here
+        // was a per-slot marker byte (spriteId == 127, written to *every* slot on save), meant to
+        // signal "this graphicsId is in swapped/widened format, trust the high byte." It cannot
+        // survive a save round-tripping through an intervening vanilla session: vanilla leaves
+        // that marker byte untouched forever (it's unused padding in vanilla's struct), but it
+        // *does* actively reassign its own spriteId byte for real NPCs during normal play --
+        // which lands at the post-swap *high* byte here. A [modified ROM save] -> [load+resave in
+        // vanilla] -> [load in modified ROM] round-trip would then trust that leftover vanilla
+        // spriteId as a real graphicsId high byte, pushing ordinary NPCs into the follower/
+        // species-encoded range (>= OBJ_EVENT_GFX_MON_BASE) and rendering them as Pokémon sprites
+        // until the map next respawns them fresh from the ROM template (confirmed via manual
+        // mGBA testing). The only object event that ever legitimately needs a graphicsId >= 0x100
+        // is the follower's own slot -- gate on that directly instead of the fragile marker.
+        if (gObjectEvents[i].localId != OBJ_EVENT_ID_FOLLOWER)
             gObjectEvents[i].graphicsId &= 0xFF;
         gObjectEvents[i].spriteId = 0;
         // Try to restore a saved inactive follower.

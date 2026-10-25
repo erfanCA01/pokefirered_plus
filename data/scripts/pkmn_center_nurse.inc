@@ -19,14 +19,20 @@ EventScript_PkmnCenterNurse_HealPkmn::
 	end
 
 EventScript_PkmnCenterNurse_TakeAndHealPkmn::
-	applymovement VAR_LAST_TALKED, Common_Movement_WalkInPlaceFasterLeft
+	hidefollower 0
+	applymovement VAR_LAST_TALKED, Movement_PkmnCenterNurse_Turn
 	waitmovement 0
 	dofieldeffect FLDEFF_POKECENTER_HEAL
 	waitfieldeffect FLDEFF_POKECENTER_HEAL
 	applymovement VAR_LAST_TALKED, Common_Movement_WalkInPlaceFasterDown
 	waitmovement 0
 	special HealPlayerParty
+	callnative UpdateFollowingPokemon
 	return
+
+Movement_PkmnCenterNurse_Turn:
+	walk_in_place_faster_left
+	step_end
 
 EventScript_PkmnCenterNurse_CheckTrainerTowerAndUnionRoom::
 	specialvar VAR_RESULT, IsPlayerNotInTrainerTowerLobby

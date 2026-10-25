@@ -44,6 +44,13 @@ static void SpriteCB_TrainerIcons(struct Sprite *sprite);
 static void SetIconSpriteData(struct Sprite *sprite, u16 fldEffId, u8 spriteAnimNum);
 
 static const u16 sGfx_Emoticons[] = INCBIN_U16("graphics/misc/emoticons.4bpp");
+// followers-expanded-id: full-color follower mood-bubble icons (happy/sad/angry/etc).
+// Credit: https://www.spriters-resource.com/ds_dsi/pokemonheartgoldsoulsilver/sheet/30497/
+// Unlike sGfx_Emoticons (vanilla exclamation/question/etc, paletteNum hardcoded to slot 0 --
+// reuses whatever's already loaded there), these need real distinct colors, so they get their
+// own dedicated SpritePalette loaded by tag below.
+static const u16 sGfx_Emotes[] = INCBIN_U16("graphics/misc/emotes.4bpp");
+static const u16 sPal_Emotes[] = INCBIN_U16("graphics/misc/emotes.gbapal");
 
 // u8 func(struct ObjectEvent * trainerObj, s16 range, s16 x, s16 y)
 // range is the maximum distance the trainer can see
@@ -654,6 +661,67 @@ static const struct SpriteTemplate sSpriteTemplate_Emoticons = {
     .callback = SpriteCB_TrainerIcons
 };
 
+// followers-expanded-id: follower mood-bubble icon, reusing FLDEFF_QUESTION_MARK_ICON's slot
+// (see FldEff_QuestionMarkIcon below). Same 16x16 OAM shape as the vanilla emoticons, but with
+// its own dedicated palette (loaded by tag, not hardcoded to slot 0 like sSpriteTemplate_Emoticons).
+static const struct SpriteFrameImage sSpriteImages_Emotes[] =
+{
+    overworld_frame(sGfx_Emotes, 2, 2, 0),  // FOLLOWER_EMOTION_HAPPY
+    overworld_frame(sGfx_Emotes, 2, 2, 1),  // FOLLOWER_EMOTION_HAPPY
+    overworld_frame(sGfx_Emotes, 2, 2, 2),  // FOLLOWER_EMOTION_NEUTRAL
+    overworld_frame(sGfx_Emotes, 2, 2, 3),  // FOLLOWER_EMOTION_NEUTRAL
+    overworld_frame(sGfx_Emotes, 2, 2, 4),  // FOLLOWER_EMOTION_SAD
+    overworld_frame(sGfx_Emotes, 2, 2, 5),  // FOLLOWER_EMOTION_SAD
+    overworld_frame(sGfx_Emotes, 2, 2, 6),  // FOLLOWER_EMOTION_UPSET
+    overworld_frame(sGfx_Emotes, 2, 2, 7),  // FOLLOWER_EMOTION_UPSET
+    overworld_frame(sGfx_Emotes, 2, 2, 8),  // FOLLOWER_EMOTION_ANGRY
+    overworld_frame(sGfx_Emotes, 2, 2, 9),  // FOLLOWER_EMOTION_ANGRY
+    overworld_frame(sGfx_Emotes, 2, 2, 10), // FOLLOWER_EMOTION_PENSIVE
+    overworld_frame(sGfx_Emotes, 2, 2, 11), // FOLLOWER_EMOTION_PENSIVE
+    overworld_frame(sGfx_Emotes, 2, 2, 12), // FOLLOWER_EMOTION_LOVE
+    overworld_frame(sGfx_Emotes, 2, 2, 13), // FOLLOWER_EMOTION_LOVE
+    overworld_frame(sGfx_Emotes, 2, 2, 14), // FOLLOWER_EMOTION_SURPRISE
+    overworld_frame(sGfx_Emotes, 2, 2, 15), // FOLLOWER_EMOTION_SURPRISE
+    overworld_frame(sGfx_Emotes, 2, 2, 16), // FOLLOWER_EMOTION_CURIOUS
+    overworld_frame(sGfx_Emotes, 2, 2, 17), // FOLLOWER_EMOTION_CURIOUS
+    overworld_frame(sGfx_Emotes, 2, 2, 18), // FOLLOWER_EMOTION_MUSIC
+    overworld_frame(sGfx_Emotes, 2, 2, 19), // FOLLOWER_EMOTION_MUSIC
+    overworld_frame(sGfx_Emotes, 2, 2, 20), // FOLLOWER_EMOTION_POISONED
+    overworld_frame(sGfx_Emotes, 2, 2, 21), // FOLLOWER_EMOTION_POISONED
+};
+
+static const union AnimCmd sAnimCmd_Emote0[] = { ANIMCMD_FRAME(0*2, 30), ANIMCMD_FRAME(0*2+1, 25), ANIMCMD_FRAME(0*2, 30), ANIMCMD_END };
+static const union AnimCmd sAnimCmd_Emote1[] = { ANIMCMD_FRAME(1*2, 30), ANIMCMD_FRAME(1*2+1, 25), ANIMCMD_FRAME(1*2, 30), ANIMCMD_END };
+static const union AnimCmd sAnimCmd_Emote2[] = { ANIMCMD_FRAME(2*2, 30), ANIMCMD_FRAME(2*2+1, 25), ANIMCMD_FRAME(2*2, 30), ANIMCMD_END };
+static const union AnimCmd sAnimCmd_Emote3[] = { ANIMCMD_FRAME(3*2, 30), ANIMCMD_FRAME(3*2+1, 25), ANIMCMD_FRAME(3*2, 30), ANIMCMD_END };
+static const union AnimCmd sAnimCmd_Emote4[] = { ANIMCMD_FRAME(4*2, 30), ANIMCMD_FRAME(4*2+1, 25), ANIMCMD_FRAME(4*2, 30), ANIMCMD_END };
+static const union AnimCmd sAnimCmd_Emote5[] = { ANIMCMD_FRAME(5*2, 30), ANIMCMD_FRAME(5*2+1, 25), ANIMCMD_FRAME(5*2, 30), ANIMCMD_END };
+static const union AnimCmd sAnimCmd_Emote6[] = { ANIMCMD_FRAME(6*2, 30), ANIMCMD_FRAME(6*2+1, 25), ANIMCMD_FRAME(6*2, 30), ANIMCMD_END };
+static const union AnimCmd sAnimCmd_Emote7[] = { ANIMCMD_FRAME(7*2, 30), ANIMCMD_FRAME(7*2+1, 25), ANIMCMD_FRAME(7*2, 30), ANIMCMD_END };
+static const union AnimCmd sAnimCmd_Emote8[] = { ANIMCMD_FRAME(8*2, 30), ANIMCMD_FRAME(8*2+1, 25), ANIMCMD_FRAME(8*2, 30), ANIMCMD_END };
+static const union AnimCmd sAnimCmd_Emote9[] = { ANIMCMD_FRAME(9*2, 30), ANIMCMD_FRAME(9*2+1, 25), ANIMCMD_FRAME(9*2, 30), ANIMCMD_END };
+static const union AnimCmd sAnimCmd_Emote10[] = { ANIMCMD_FRAME(10*2, 30), ANIMCMD_FRAME(10*2+1, 25), ANIMCMD_FRAME(10*2, 30), ANIMCMD_END };
+
+// Indexed directly by the FOLLOWER_EMOTION_* enum (follower_helper.h)
+static const union AnimCmd *const sSpriteAnimTable_Emotes[] =
+{
+    sAnimCmd_Emote0, sAnimCmd_Emote1, sAnimCmd_Emote2, sAnimCmd_Emote3, sAnimCmd_Emote4,
+    sAnimCmd_Emote5, sAnimCmd_Emote6, sAnimCmd_Emote7, sAnimCmd_Emote8, sAnimCmd_Emote9,
+    sAnimCmd_Emote10,
+};
+
+static const struct SpritePalette sSpritePalette_Emotes = {.data = sPal_Emotes, .tag = FLDEFF_PAL_TAG_FOLLOWER_EMOTE};
+
+static const struct SpriteTemplate sSpriteTemplate_Emote = {
+    .tileTag = 0xFFFF,
+    .paletteTag = FLDEFF_PAL_TAG_FOLLOWER_EMOTE,
+    .oam = &sOamData_Emoticons,
+    .anims = sSpriteAnimTable_Emotes,
+    .images = sSpriteImages_Emotes,
+    .affineAnims = gDummySpriteAffineAnimTable,
+    .callback = SpriteCB_TrainerIcons
+};
+
 u8 FldEff_ExclamationMarkIcon1(void)
 {
     u8 spriteId = CreateSpriteAtEnd(&sSpriteTemplate_Emoticons, 0, 0, 0x53);
@@ -696,7 +764,24 @@ u8 FldEff_SmileyFaceIcon(void)
 
 u8 FldEff_QuestionMarkIcon(void)
 {
-    u8 spriteId = CreateSpriteAtEnd(&sSpriteTemplate_Emoticons, 0, 0, 0x52);
+    u8 spriteId;
+
+    // followers-expanded-id: gFieldEffectArguments[7] selects a follower emote bubble instead of
+    // the vanilla question mark when non-negative. Bug caught, not ported as-is: Emerald's
+    // gFieldEffectArguments is s32 and compares this slot directly against 0, but FireRed's is
+    // u32 (include/field_effect.h) -- an unsigned >= 0 comparison is always true, so the sentinel
+    // -1 written by MovementAction_EmoteQuestionMark_Step0 must be read back through a signed cast.
+    if ((s32)gFieldEffectArguments[7] >= 0)
+    {
+        u8 emotion = (u8)gFieldEffectArguments[7];
+        LoadSpritePalette(&sSpritePalette_Emotes);
+        spriteId = CreateSpriteAtEnd(&sSpriteTemplate_Emote, 0, 0, 0x52);
+        if (spriteId != MAX_SPRITES)
+            SetIconSpriteData(&gSprites[spriteId], FLDEFF_EMOTE, emotion);
+        return 0;
+    }
+
+    spriteId = CreateSpriteAtEnd(&sSpriteTemplate_Emoticons, 0, 0, 0x52);
 
     if (spriteId != MAX_SPRITES)
         SetIconSpriteData(&gSprites[spriteId], FLDEFF_QUESTION_MARK_ICON, 4);

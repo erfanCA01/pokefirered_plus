@@ -1,3 +1,7 @@
+@ followers-expanded-id: starting here, these movements are considered 'safe' (won't
+@ trigger ScrCmd_applymovement's guard that hides the follower into its Pokeball --
+@ see ScrCmd_applymovement in src/scrcmd.c). Matches pokeemerald's bracketed set.
+Common_Movement_FollowerSafeStart::
 Common_Movement_QuestionMark::
 	emote_question_mark
 	step_end
@@ -45,8 +49,32 @@ Common_Movement_FaceRight::
 	face_right
 	step_end
 
+Common_Movement_FaceLeft::
+	face_left
+	step_end
+
 Common_Movement_FaceDown::
 	face_down
+	step_end
+
+Common_Movement_FaceUp::
+	face_up
+	step_end
+
+Common_Movement_WalkInPlaceDown::
+	walk_in_place_down
+	step_end
+
+Common_Movement_WalkInPlaceLeft::
+	walk_in_place_left
+	step_end
+
+Common_Movement_WalkInPlaceRight::
+	walk_in_place_right
+	step_end
+
+@ End of follower-safe movements
+Common_Movement_FollowerSafeEnd::
 	step_end
 
 Common_Movement_WalkUp5::

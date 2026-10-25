@@ -1124,6 +1124,7 @@ EventScript_HandOverItem::
 
 	.include "data/scripts/pokemon_league.inc"
 	.include "data/scripts/movement.inc"
+	.include "data/scripts/follower.inc"
 	.include "data/scripts/flavor_text.inc"
 	.include "data/scripts/questionnaire.inc"
 

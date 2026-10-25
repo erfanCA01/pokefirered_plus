@@ -264,6 +264,20 @@
 	.4byte \func
 	.endm
 
+	@ Calls the native C function stored at func, passing ctx through and honoring its
+	@ bool8 return value (unlike callnative, which is fire-and-forget with no return).
+	.macro callfunc func:req
+	.byte 0xd5
+	.4byte \func
+	.endm
+
+	@ followers-expanded-id: hide any follower Pokémon if present, putting them into their
+	@ Pokeball; by default waits for their movement to finish.
+	.macro hidefollower wait=1
+	callfunc ScrFunc_hidefollower
+	.2byte \wait
+	.endm
+
 	@ Replaces the script with the function stored at func. Execution returns to the bytecode script when func returns TRUE.
 	.macro gotonative func:req
 	.byte 0x24
