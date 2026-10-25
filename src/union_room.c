@@ -10,6 +10,7 @@
 #include "easy_chat.h"
 #include "event_data.h"
 #include "event_object_lock.h"
+#include "event_object_movement.h"
 #include "fieldmap.h"
 #include "field_control_avatar.h"
 #include "field_fadetransition.h"
@@ -2662,6 +2663,11 @@ static void Task_RunUnionRoom(u8 taskId)
         ClearRfuPlayerList(uroom->playerList->players, MAX_UNION_ROOM_LEADERS);
         sPlayerCurrActivity = IN_UNION_ROOM;
         uroom->searchTaskId = CreateTask_SearchForChildOrParent(uroom->incomingParentList, uroom->incomingChildList, LINK_GROUP_UNION_ROOM_RESUME);
+        // followers-expanded-id (gotcha #3): free the follower's object event slot before
+        // InitUnionRoomPlayerObjects claims up to MAX_UNION_ROOM_LEADERS (8) slots for remote
+        // player avatars -- gObjectEvents[] only has OBJECT_EVENTS_COUNT (16) slots total, and
+        // the follower must never contend with (or be mistaken for) a remote avatar.
+        RemoveFollowingPokemon();
         InitUnionRoomPlayerObjects(uroom->objects);
         MakeGroupAssemblyAreasPassable();
         uroom->state = UR_STATE_INIT_OBJECTS;

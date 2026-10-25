@@ -14,14 +14,17 @@
 #include "graphics.h"
 #include "metatile_behavior.h"
 #include "overworld.h"
+#include "pokemon.h"
 #include "quest_log.h"
 #include "random.h"
 #include "script.h"
 #include "trainer_see.h"
 #include "trig.h"
+#include "wild_encounter.h"
 #include "constants/maps.h"
 #include "constants/event_object_movement.h"
 #include "constants/event_objects.h"
+#include "constants/songs.h"
 #include "constants/trainer_types.h"
 #include "constants/union_room.h"
 #include "constants/weather.h"
@@ -38,6 +41,15 @@ static bool8 IsMetatileDirectionallyImpassable(struct ObjectEvent *, s16, s16, u
 static bool8 DoesObjectCollideWithObjectAt(struct ObjectEvent *, s16, s16);
 static bool32 UpdateMonMoveInPlace(struct ObjectEvent *, struct Sprite *);
 static bool32 IsFollowerVisible(void);
+static void ObjectEventSetGraphics(struct ObjectEvent *, const struct ObjectEventGraphicsInfo *);
+static bool8 GetMonInfo(struct Pokemon *, u16 *, u8 *, u8 *);
+static bool8 GetFollowerInfo(u16 *, u8 *, u8 *);
+static u8 GetOverworldCastformForm(void);
+static void FollowerSetGraphics(struct ObjectEvent *, u16, u8, bool8);
+static void RefreshFollowerGraphics(struct ObjectEvent *);
+static bool32 TryStartFollowerTransformEffect(struct ObjectEvent *, struct Sprite *);
+static bool32 EndFollowerTransformEffect(struct ObjectEvent *, struct Sprite *);
+static bool8 UpdateFollowerTransformEffect(struct ObjectEvent *, struct Sprite *);
 u8 GetDirectionToFace(s16, s16, s16, s16);
 static void CalcWhetherObjectIsOffscreen(struct ObjectEvent *, struct Sprite *);
 static void UpdateObjEventSpriteVisibility(struct ObjectEvent *, struct Sprite *);
@@ -2220,6 +2232,39 @@ void PlayerObjectTurn(struct PlayerAvatar *playerAvatar, u8 direction)
     ObjectEventTurn(&gObjectEvents[playerAvatar->objectEventId], direction);
 }
 
+// followers-expanded-id: return the first conscious, non-egg party mon allowed
+// to follow (subject to the OW_MON_ALLOWED_* restriction toggles), or NULL.
+struct Pokemon *GetFirstLiveFollowMon(void)
+{
+    u32 i;
+    for (i = 0; i < PARTY_SIZE; i++)
+    {
+        struct Pokemon *mon = &gPlayerParty[i];
+        if ((OW_MON_ALLOWED_SPECIES && GetMonData(mon, MON_DATA_SPECIES_OR_EGG) != VarGet(OW_MON_ALLOWED_SPECIES))
+            || (OW_MON_ALLOWED_MET_LVL && GetMonData(mon, MON_DATA_MET_LEVEL) != VarGet(OW_MON_ALLOWED_MET_LVL))
+            || (OW_MON_ALLOWED_MET_LOC != MAPSEC_COUNT && GetMonData(mon, MON_DATA_MET_LOCATION) != VarGet(OW_MON_ALLOWED_MET_LOC)))
+        {
+            continue;
+        }
+
+        if (gPlayerParty[i].hp > 0 && !(gPlayerParty[i].box.isEgg || gPlayerParty[i].box.isBadEgg))
+            return &gPlayerParty[i];
+    }
+    return NULL;
+}
+
+// followers-expanded-id: return the active follower ObjectEvent, or NULL.
+struct ObjectEvent *GetFollowerObject(void)
+{
+    u32 i;
+    for (i = 0; i < OBJECT_EVENTS_COUNT; i++)
+    {
+        if (gObjectEvents[i].localId == OBJ_EVENT_ID_FOLLOWER && gObjectEvents[i].active)
+            return &gObjectEvents[i];
+    }
+    return NULL;
+}
+
 // Followers-expanded-id: species-indexed override for graphicsId >= OBJ_EVENT_GFX_MON_BASE.
 // Unown/Castform use dedicated per-form tables; everything else indexes gPokemonObjectGraphics
 // directly. tileTag == 0 (an unported/placeholder species entry) falls back to SPECIES_NONE.
@@ -2449,9 +2494,257 @@ static u8 LoadDynamicFollowerPalette(u16 species, u8 form, bool32 shiny)
     }
 
     paletteNum = LoadSpritePalette(&spritePalette);
+    // Bug caught, not ported as-is: upstream never calls ApplyGlobalFieldPaletteTint here,
+    // unlike every other sprite-palette load path in this file (e.g. PatchObjectPalette,
+    // FieldEffectScript_LoadFadedPal/_LoadPal). That function does double duty under
+    // QL_TINT_BACKUP_GRAYSCALE (the mode active while returning from the Quest Log's final
+    // "Previously on your quest..." recap): it backs up this slot's true color into
+    // quest_log.c's sPalettesBackup *and* applies the grayscale tint. Skipping it meant the
+    // follower's slot was never backed up (sPalettesBackup is zero-initialized) -- so when
+    // the recap ends and QuestLog_EndPlaybackLast's wholesale restore-from-backup runs, the
+    // follower's slot got overwritten with zero (solid black), while every other palette
+    // correctly restored its true color. Confirmed via live mGBA debugging (2026-10-24):
+    // the follower rendered with no grayscale tint at all during the recap (this call being
+    // missing), then turned solid black the instant the tint-removal restore fired.
+    ApplyGlobalFieldPaletteTint(paletteNum);
     if (gWeatherPtr->currWeather != WEATHER_FOG_HORIZONTAL)
         UpdateSpritePaletteWithWeather(paletteNum);
     return paletteNum;
+}
+
+// followers-expanded-id: like ObjectEventSetGraphicsId, but takes a graphicsInfo pointer
+// directly instead of a graphicsId (so FollowerSetGraphics can assign objectEvent->graphicsId
+// its own packed species|form value afterward) and wires up OW_GFX_COMPRESS/DOWP the same way
+// Phase 3's TrySetupObjectEventSprite/SpawnObjectEventOnReturnToField patches do for a fresh
+// spawn. Used only by follower code -- FireRed's own ObjectEventSetGraphicsId (used for vanilla
+// NPCs) is untouched.
+static void ObjectEventSetGraphics(struct ObjectEvent *objectEvent, const struct ObjectEventGraphicsInfo *graphicsInfo)
+{
+    struct Sprite *sprite = &gSprites[objectEvent->spriteId];
+
+    if (LARGE_OW_SUPPORT && !OW_GFX_COMPRESS && graphicsInfo->oam->size != sprite->oam.size)
+        ReallocSpriteTiles(sprite, graphicsInfo->images->size);
+
+#if OW_GFX_COMPRESS
+    LoadSheetGraphicsInfo(graphicsInfo, objectEvent->graphicsId, sprite);
+#endif
+
+    sprite->oam.shape = graphicsInfo->oam->shape;
+    sprite->oam.size = graphicsInfo->oam->size;
+    sprite->images = graphicsInfo->images;
+    sprite->anims = graphicsInfo->anims;
+    sprite->subspriteTables = graphicsInfo->subspriteTables;
+    objectEvent->inanimate = graphicsInfo->inanimate;
+    SetSpritePosToMapCoords(objectEvent->currentCoords.x, objectEvent->currentCoords.y, &sprite->x, &sprite->y);
+    sprite->centerToCornerVecX = -(graphicsInfo->width >> 1);
+    sprite->centerToCornerVecY = -(graphicsInfo->height >> 1);
+    sprite->x += 8;
+    sprite->y += 16 + sprite->centerToCornerVecY;
+    if (objectEvent->trackedByCamera)
+        CameraObjectReset1();
+}
+
+// followers-expanded-id: set graphics & sprite for a follower object event by species/form/shininess.
+static void FollowerSetGraphics(struct ObjectEvent *objEvent, u16 species, u8 form, bool8 shiny)
+{
+    const struct ObjectEventGraphicsInfo *graphicsInfo = SpeciesToGraphicsInfo(species, form);
+    // Bug caught, not ported as-is: upstream Emerald (and our initial port) called
+    // ObjectEventSetGraphics() *before* updating objEvent->graphicsId. But under
+    // OW_GFX_COMPRESS, ObjectEventSetGraphics -> LoadSheetGraphicsInfo uses
+    // objEvent->graphicsId as the shared-tile-sheet cache key (COMP_OW_TILE_TAG_BASE
+    // + graphicsId). Passing the stale *old* species' graphicsId makes it find that
+    // species' sheet "already loaded" (from the object event's last full respawn,
+    // e.g. SpawnObjectEventOnReturnToField re-creating every object event's sprite
+    // on return-to-field *before* this runs) and skip loading the new species' tiles
+    // entirely -- the palette updates correctly, but the old species' pixels stay on
+    // screen under the new palette until a full respawn forces a real reload.
+    // Confirmed via live mGBA debugging (2026-10-24): the palette buffer held the
+    // exact correct colors immediately after load, but VRAM tile data at the
+    // sprite's tile address was still the previous species'. Update graphicsId/shiny
+    // first so the cache key is already correct when the sheet lookup happens.
+    objEvent->graphicsId = (OBJ_EVENT_GFX_MON_BASE + species) & OBJ_EVENT_GFX_SPECIES_MASK;
+    objEvent->graphicsId |= form << OBJ_EVENT_GFX_SPECIES_BITS;
+    objEvent->shiny = shiny;
+    ObjectEventSetGraphics(objEvent, graphicsInfo);
+    if (graphicsInfo->paletteTag == OBJ_EVENT_PAL_TAG_DYNAMIC)
+    {
+        struct Sprite *sprite = &gSprites[objEvent->spriteId];
+        // Free the old dynamic palette if nothing else is using it, before loading the new one
+        sprite->inUse = FALSE;
+        FieldEffectFreePaletteIfUnused(sprite->oam.paletteNum);
+        sprite->inUse = TRUE;
+        sprite->oam.paletteNum = LoadDynamicFollowerPalette(species, form, shiny);
+    }
+    else if (gWeatherPtr->currWeather != WEATHER_FOG_HORIZONTAL)
+        UpdateSpritePaletteWithWeather(gSprites[objEvent->spriteId].oam.paletteNum);
+}
+
+// Like FollowerSetGraphics, but does not recenter the sprite on a metatile.
+// Intended for mid-movement form changes (Castform weather / Mew-Ditto transform).
+static void RefreshFollowerGraphics(struct ObjectEvent *objEvent)
+{
+    u32 species = OW_SPECIES(objEvent);
+    u32 form = OW_FORM(objEvent);
+    u32 shiny = objEvent->shiny;
+    const struct ObjectEventGraphicsInfo *graphicsInfo = SpeciesToGraphicsInfo(species, form);
+    struct Sprite *sprite = &gSprites[objEvent->spriteId];
+
+    if (graphicsInfo->oam->size != sprite->oam.size)
+    {
+        if (LARGE_OW_SUPPORT && !OW_GFX_COMPRESS)
+            ReallocSpriteTiles(sprite, graphicsInfo->images->size);
+        sprite->y += -(graphicsInfo->height >> 1) - sprite->centerToCornerVecY;
+    }
+
+#if OW_GFX_COMPRESS
+    LoadSheetGraphicsInfo(graphicsInfo, objEvent->graphicsId, sprite);
+#endif
+
+    sprite->oam.shape = graphicsInfo->oam->shape;
+    sprite->oam.size = graphicsInfo->oam->size;
+    sprite->images = graphicsInfo->images;
+    sprite->anims = graphicsInfo->anims;
+    sprite->subspriteTables = graphicsInfo->subspriteTables;
+    objEvent->inanimate = graphicsInfo->inanimate;
+    sprite->centerToCornerVecX = -(graphicsInfo->width >> 1);
+    sprite->centerToCornerVecY = -(graphicsInfo->height >> 1);
+
+    if (graphicsInfo->paletteTag == OBJ_EVENT_PAL_TAG_DYNAMIC)
+    {
+        sprite->inUse = FALSE;
+        FieldEffectFreePaletteIfUnused(sprite->oam.paletteNum);
+        sprite->inUse = TRUE;
+        sprite->oam.paletteNum = LoadDynamicFollowerPalette(species, form, shiny);
+    }
+    else
+    {
+        // Static (non-DOWP) fallback, e.g. the SPECIES_NONE placeholder entry
+        PatchObjectPalette(graphicsInfo->paletteTag, graphicsInfo->paletteSlot);
+        sprite->oam.paletteNum = graphicsInfo->paletteSlot;
+        if (gWeatherPtr->currWeather != WEATHER_FOG_HORIZONTAL)
+            UpdateSpritePaletteWithWeather(sprite->oam.paletteNum);
+    }
+}
+
+// Like CastformDataTypeChange (battle), but for overworld weather.
+static u8 GetOverworldCastformForm(void)
+{
+    switch (GetCurrentWeather())
+    {
+    case WEATHER_SUNNY_CLOUDS:
+    case WEATHER_DROUGHT:
+        return CASTFORM_FIRE;
+    case WEATHER_RAIN:
+    case WEATHER_RAIN_THUNDERSTORM:
+    case WEATHER_DOWNPOUR:
+        return CASTFORM_WATER;
+    case WEATHER_SNOW:
+        return CASTFORM_ICE;
+    }
+    return CASTFORM_NORMAL;
+}
+
+static bool8 GetMonInfo(struct Pokemon *mon, u16 *species, u8 *form, u8 *shiny)
+{
+    if (!mon)
+    {
+        *species = SPECIES_NONE;
+        *form = 0;
+        *shiny = 0;
+        return FALSE;
+    }
+    *species = GetMonData(mon, MON_DATA_SPECIES);
+    *shiny = IsMonShiny(mon);
+    *form = 0;
+    switch (*species)
+    {
+    case SPECIES_UNOWN:
+        *form = GET_UNOWN_LETTER(mon->box.personality);
+        break;
+    case SPECIES_CASTFORM:
+        *form = GetOverworldCastformForm();
+        break;
+    }
+    return TRUE;
+}
+
+// followers-expanded-id: retrieve graphic information about the following pokemon, if any.
+static bool8 GetFollowerInfo(u16 *species, u8 *form, u8 *shiny)
+{
+    return GetMonInfo(GetFirstLiveFollowMon(), species, form, shiny);
+}
+
+// followers-expanded-id: update (spawning if necessary) the following pokemon object event.
+// No-op while the Quest Log is replaying a recorded scene (gotcha #2) -- the follower is never
+// part of that recorded state (see QL_RecordObjects/QL_LoadObjects in quest_log_objects.c, which
+// deliberately skip the follower's object event slot) and must only ever be rebuilt from live
+// party data during real field play. Note this checks QL_STATE_PLAYBACK specifically, not
+// QL_STATE_PLAYBACK_LAST: by the time the Quest Log reaches its "final scene", LoadGameSave()
+// has already restored the real save (real party data) and the game is genuinely returning to
+// live play (see QuestLog_StartFinalScene/CB2_EnterFieldFromQuestLog) -- the follower must spawn
+// normally there, even though gQuestLogState doesn't clear to 0 until the player dismisses the
+// end-of-Quest-Log recap screen afterward.
+void UpdateFollowingPokemon(void)
+{
+    struct ObjectEvent *objEvent;
+    struct Sprite *sprite;
+    u16 species;
+    bool8 shiny;
+    u8 form;
+
+    if (gQuestLogState == QL_STATE_PLAYBACK)
+        return;
+
+    objEvent = GetFollowerObject();
+    // Don't spawn follower if:
+    // 1. GetFollowerInfo returns FALSE (no eligible party mon)
+    // 2. Map is indoors and gfx is larger than 32x32
+    // 3. FLAG_TEMP_HIDE_FOLLOWER is set
+    if (!GetFollowerInfo(&species, &form, &shiny)
+        || (gMapHeader.mapType == MAP_TYPE_INDOOR && SpeciesToGraphicsInfo(species, 0)->oam->size > ST_OAM_SIZE_2)
+        || FlagGet(FLAG_TEMP_HIDE_FOLLOWER))
+    {
+        RemoveFollowingPokemon();
+        return;
+    }
+
+    if (objEvent == NULL)
+    {
+        u32 objId = gPlayerAvatar.objectEventId;
+        struct ObjectEventTemplate template = {0};
+        template.localId = OBJ_EVENT_ID_FOLLOWER;
+        template.graphicsId = OBJ_EVENT_GFX_MON_BASE + species;
+        template.kind = OBJ_KIND_NORMAL;
+        template.x = gSaveBlock1Ptr->pos.x;
+        template.y = gSaveBlock1Ptr->pos.y;
+        // If player active, copy player elevation
+        template.objUnion.normal.elevation = gObjectEvents[objId].active ? gObjectEvents[objId].currentElevation : 3;
+        template.objUnion.normal.movementType = MOVEMENT_TYPE_FOLLOW_PLAYER;
+        // Store form info in the (otherwise-unused, for this movement type) trainerRange_berryTreeId slot
+        template.objUnion.normal.trainerRange_berryTreeId = (form & 0x1F) | (shiny << 5);
+        if ((objId = SpawnSpecialObjectEvent(&template)) >= OBJECT_EVENTS_COUNT)
+            return;
+        objEvent = &gObjectEvents[objId];
+        objEvent->invisible = TRUE;
+    }
+    sprite = &gSprites[objEvent->spriteId];
+    // Follower appearance changed; move to player and set invisible
+    if (species != OW_SPECIES(objEvent) || shiny != objEvent->shiny || form != OW_FORM(objEvent))
+    {
+        MoveObjectEventToMapCoords(objEvent, gObjectEvents[gPlayerAvatar.objectEventId].currentCoords.x, gObjectEvents[gPlayerAvatar.objectEventId].currentCoords.y);
+        FollowerSetGraphics(objEvent, species, form, shiny);
+        objEvent->invisible = TRUE;
+    }
+    sprite->data[5] = 0; // reset idle/bob animation data
+}
+
+// followers-expanded-id: remove the follower object event. Idempotent.
+void RemoveFollowingPokemon(void)
+{
+    struct ObjectEvent *objectEvent = GetFollowerObject();
+    if (objectEvent == NULL)
+        return;
+    RemoveObjectEvent(objectEvent);
 }
 
 void LoadPlayerObjectReflectionPalette(u16 tag, u8 slot)
@@ -4696,6 +4989,93 @@ static bool32 UpdateMonMoveInPlace(struct ObjectEvent *objectEvent, struct Sprit
     return FALSE;
 }
 
+// followers-expanded-id: cosmetic transform effects for the follower's sprite --
+// Castform's weather-dependent form, and Mew/Ditto briefly mimicking a local wild mon.
+// Uses a mosaic stretch-in/out around the midpoint (frame 8) where the graphics actually swap.
+static bool32 EndFollowerTransformEffect(struct ObjectEvent *objectEvent, struct Sprite *sprite)
+{
+    if (!sprite)
+        return FALSE;
+    SetGpuReg(REG_OFFSET_MOSAIC, 0);
+    if (!sprite->data[7])
+        return FALSE;
+    sprite->oam.mosaic = FALSE;
+    sprite->data[7] = 0;
+    return FALSE;
+}
+
+static bool32 TryStartFollowerTransformEffect(struct ObjectEvent *objectEvent, struct Sprite *sprite)
+{
+    u32 multi;
+    bool8 isWaterMon;
+
+    if (OW_SPECIES(objectEvent) == SPECIES_CASTFORM && OW_FORM(objectEvent) != (multi = GetOverworldCastformForm()))
+    {
+        sprite->data[7] = TRANSFORM_TYPE_PERMANENT << 8;
+        objectEvent->graphicsId &= OBJ_EVENT_GFX_SPECIES_MASK;
+        objectEvent->graphicsId |= multi << OBJ_EVENT_GFX_SPECIES_BITS;
+        return TRUE;
+    }
+    // Bug caught, not ported as-is: upstream passes a literal FALSE (i.e. NULL) here for
+    // isWaterMon, but GetLocalWildMon unconditionally writes *isWaterMon = FALSE at its very
+    // start (no NULL check) -- a real NULL-deref in the ~0.03%-per-tick case this fires. Pass a
+    // real local instead; the result isn't needed here.
+    else if ((Random() & 0xFFFF) < 18 && GetLocalWildMon(&isWaterMon)
+            && (OW_SPECIES(objectEvent) == SPECIES_MEW || OW_SPECIES(objectEvent) == SPECIES_DITTO))
+    {
+        sprite->data[7] = TRANSFORM_TYPE_RANDOM_WILD << 8;
+        PlaySE(SE_M_MINIMIZE);
+        return TRUE;
+    }
+    return FALSE;
+}
+
+static bool8 UpdateFollowerTransformEffect(struct ObjectEvent *objectEvent, struct Sprite *sprite)
+{
+    u8 type = sprite->data[7] >> 8;
+    u8 frames = sprite->data[7] & 0xFF;
+    u8 stretch;
+    u32 multi;
+    bool8 isWaterMon;
+
+    if (!type)
+        return TryStartFollowerTransformEffect(objectEvent, sprite);
+    sprite->oam.mosaic = TRUE;
+    if (frames < 8)
+        stretch = frames >> 1;
+    else if (frames < 16)
+        stretch = (16 - frames) >> 1;
+    else
+        return EndFollowerTransformEffect(objectEvent, sprite);
+
+    if (frames == 8)
+    {
+        switch (type)
+        {
+        case TRANSFORM_TYPE_PERMANENT:
+            RefreshFollowerGraphics(objectEvent);
+            break;
+        case TRANSFORM_TYPE_RANDOM_WILD:
+            multi = objectEvent->graphicsId;
+            objectEvent->graphicsId = GetLocalWildMon(&isWaterMon);
+            if (!objectEvent->graphicsId)
+            {
+                objectEvent->graphicsId = multi;
+                break;
+            }
+            objectEvent->graphicsId += OBJ_EVENT_GFX_MON_BASE;
+            RefreshFollowerGraphics(objectEvent);
+            objectEvent->graphicsId = multi;
+            break;
+        }
+    }
+
+    SetGpuReg(REG_OFFSET_MOSAIC, (stretch << 12) | (stretch << 8));
+    frames++;
+    sprite->data[7] = (sprite->data[7] & 0xFF00) | frames;
+    return TRUE;
+}
+
 movement_type_def(MovementType_FollowPlayer, gMovementTypeFuncs_FollowPlayer)
 
 static bool8 MovementType_FollowPlayer_Shadow(struct ObjectEvent *objectEvent, struct Sprite *sprite)
@@ -4747,9 +5127,11 @@ static bool8 MovementType_FollowPlayer_Moving(struct ObjectEvent *objectEvent, s
         if (sprite->data[1])
             sprite->data[1] = 1; // restore active state
     }
-    else if (OW_MON_BOBBING == TRUE && (sprite->data[5] & 7) == 2)
+    else
     {
-        sprite->y2 ^= -1;
+        UpdateFollowerTransformEffect(objectEvent, sprite);
+        if (OW_MON_BOBBING == TRUE && (sprite->data[5] & 7) == 2)
+            sprite->y2 ^= -1;
     }
     return FALSE;
 }
@@ -4761,6 +5143,7 @@ static bool8 FollowablePlayerMovement_Idle(struct ObjectEvent *objectEvent, stru
         sprite->data[1] = 1;
         return TRUE;
     }
+    UpdateFollowerTransformEffect(objectEvent, sprite);
     return FALSE;
 }
 

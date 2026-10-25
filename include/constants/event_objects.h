@@ -2,6 +2,7 @@
 #define GUARD_CONSTANTS_EVENT_OBJECTS_H
 
 #include "constants/map_event_ids.h"
+#include "constants/region_map_sections.h"
 
 #define OBJ_EVENT_GFX_RED_NORMAL 0
 #define OBJ_EVENT_GFX_RED_BIKE 1
@@ -239,5 +240,26 @@
 // followers-expanded-id: support for 48x48/64x64 OW sprites (shadow offset math,
 // elevation/under-bridge handling). Always on, same as upstream.
 #define LARGE_OW_SUPPORT TRUE
+
+// Followers will emerge from the pokeball they are stored in, instead of a
+// normal pokeball. (Phase 5 scope; the graphics-info block it needs is not
+// ported yet, so this stays FALSE until then.)
+#define OW_MON_POKEBALLS FALSE
+
+// New/old handling for followers during scripts;
+// TRUE: Script collisions hide follower, FLAG_SAFE_FOLLOWER_MOVEMENT on by default
+// (scripted player movement moves follower too!)
+// FALSE: Script collisions unhandled, FLAG_SAFE_FOLLOWER_MOVEMENT off by default
+// Deferred to a dedicated follow-up pass (touches scrcmd.c/script.c/script_movement.c's
+// applymovement/lock handling) -- see progress_docs deferred-items list. Stays FALSE
+// (upstream's own "unhandled" default) until that pass lands.
+#define OW_MON_SCRIPT_MOVEMENT FALSE
+
+// If set, the only pokemon allowed to follow you will be those matching
+// species, met location, and/or met level; these accept vars too (VAR_TEMP_1, etc).
+// Default (all zero/MAPSEC_COUNT) means no restriction.
+#define OW_MON_ALLOWED_SPECIES (0)
+#define OW_MON_ALLOWED_MET_LVL (0)
+#define OW_MON_ALLOWED_MET_LOC (MAPSEC_COUNT)
 
 #endif // GUARD_CONSTANTS_EVENT_OBJECTS_H

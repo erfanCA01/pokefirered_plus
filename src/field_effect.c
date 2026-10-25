@@ -53,7 +53,6 @@ static void FieldEffectScript_LoadTiles(const u8 **script);
 static void FieldEffectScript_LoadFadedPal(const u8 **script);
 static void FieldEffectScript_LoadPal(const u8 **script);
 static void FieldEffectScript_CallNative(const u8 **script, u32 *result);
-static void FieldEffectFreePaletteIfUnused(u8 paletteNum);
 static void Task_PokecenterHeal(u8 taskId);
 static void SpriteCB_PokeballGlow(struct Sprite *sprite);
 static void SpriteCB_PokecenterMonitor(struct Sprite *sprite);
@@ -515,7 +514,7 @@ void FieldEffectFreeTilesIfUnused(u16 tileStart)
     FreeSpriteTilesByTag(tileTag);
 }
 
-static void FieldEffectFreePaletteIfUnused(u8 paletteNum)
+void FieldEffectFreePaletteIfUnused(u8 paletteNum)
 {
     u8 i;
     u16 paletteTag = GetSpritePaletteTagByPaletteNum(paletteNum);
@@ -1058,7 +1057,6 @@ static void SpriteCB_HallOfFameMonitor(struct Sprite *sprite)
         FieldEffectFreeGraphicsResources(sprite);
 }
 
-static void FieldCallback_UseFly(void);
 static void Task_UseFly(u8 taskId);
 static void FieldCallback_FlyIntoMap(void);
 static void Task_FlyIntoMap(u8 taskId);
@@ -1069,7 +1067,7 @@ void ReturnToFieldFromFlyMapSelect(void)
     gFieldCallback = FieldCallback_UseFly;
 }
 
-static void FieldCallback_UseFly(void)
+void FieldCallback_UseFly(void)
 {
     FadeInFromBlack();
     CreateTask(Task_UseFly, 0);

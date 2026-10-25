@@ -1222,7 +1222,9 @@
 #define FLAG_HIDDEN_ITEM_SSANNE_EXTERIOR_LAVA_COOKIE                       (FLAG_HIDDEN_ITEMS_START + 190)
 
 // Unused hidden item flags
-#define FLAG_UNUSED_0x4A7               0x4A7 // Unused Flag
+// FLAG_UNUSED_0x4A7 repurposed by followers-expanded-id: when set, no follower
+// Pokemon will be spawned (see UpdateFollowingPokemon in event_object_movement.c).
+#define FLAG_TEMP_HIDE_FOLLOWER         0x4A7
 #define FLAG_UNUSED_0x4A8               0x4A8 // Unused Flag
 #define FLAG_UNUSED_0x4A9               0x4A9 // Unused Flag
 #define FLAG_UNUSED_0x4AA               0x4AA // Unused Flag
@@ -1529,6 +1531,10 @@
 #define SPECIAL_FLAGS_START           0x4000
 #define FLAG_DONT_SHOW_MAP_NAME_POPUP (SPECIAL_FLAGS_START + 0x0)
 #define FLAG_DONT_TRANSITION_MUSIC    (SPECIAL_FLAGS_START + 0x1)
+// followers-expanded-id: inert while OW_MON_SCRIPT_MOVEMENT (constants/event_objects.h)
+// is FALSE -- see that toggle's comment for why the scripted-movement integration
+// that would read/set this flag is deferred.
+#define FLAG_SAFE_FOLLOWER_MOVEMENT   (SPECIAL_FLAGS_START + 0x5)
 // FLAG_SPECIAL_FLAG_0x4002 - 0x407F also exist and are unused
 #define SPECIAL_FLAGS_END             (SPECIAL_FLAGS_START + 0x7F)
 

@@ -23,6 +23,15 @@ enum {
     // the remaining sprite palette slots (12-15) are used by field effects, the interface, etc.
 };
 
+// followers-expanded-id: cosmetic transform effects (Castform weather-form change,
+// Mew/Ditto mimicking a local wild mon) applied to the follower's sprite.
+enum FollowerTransformTypes
+{
+    TRANSFORM_TYPE_NONE,
+    TRANSFORM_TYPE_PERMANENT,
+    TRANSFORM_TYPE_RANDOM_WILD,
+};
+
 enum SpinnerRunnerFollowPatterns
 {
     RUNFOLLOW_ANY,
@@ -98,6 +107,10 @@ u8 CreateObjectGraphicsSprite(u16 graphicsId, SpriteCallback callback, s16 x, s1
 u8 TrySpawnObjectEvent(u8 localId, u8 mapNum, u8 mapGroup);
 int SpawnSpecialObjectEventParameterized(u16, u8, u8, s16, s16, u8);
 u8 SpawnSpecialObjectEvent(struct ObjectEventTemplate *);
+struct Pokemon *GetFirstLiveFollowMon(void);
+struct ObjectEvent *GetFollowerObject(void);
+void UpdateFollowingPokemon(void);
+void RemoveFollowingPokemon(void);
 void CameraObjectReset1(void);
 void CameraObjectReset2(void);
 void ObjectEventSetGraphicsId(struct ObjectEvent *, u16);

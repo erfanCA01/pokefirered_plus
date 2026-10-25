@@ -3,6 +3,7 @@
 #include "fieldmap.h"
 #include "field_player_avatar.h"
 #include "metatile_behavior.h"
+#include "constants/event_objects.h"
 
 void QL_RecordObjects(struct QuestLogScene * questLog)
 {
@@ -10,6 +11,15 @@ void QL_RecordObjects(struct QuestLogScene * questLog)
 
     for (i = 0; i < OBJECT_EVENTS_COUNT; i++)
     {
+        // followers-expanded-id (gotcha #2): never bake the follower into a Quest Log
+        // scene snapshot -- its u16 graphicsId (>= OBJ_EVENT_GFX_MON_BASE) would silently
+        // truncate into this struct's u8 graphicsId field, and the follower must always be
+        // rebuilt fresh from live party data (via UpdateFollowingPokemon) rather than from a
+        // recorded snapshot. Leaving this slot's entry zeroed (from ClearSavedScene) makes
+        // QL_LoadObjects load it back as a harmless inactive slot.
+        if (gObjectEvents[i].localId == OBJ_EVENT_ID_FOLLOWER)
+            continue;
+
         questLog->objectEvents[i].active                         = gObjectEvents[i].active;
         questLog->objectEvents[i].triggerGroundEffectsOnStop     = gObjectEvents[i].triggerGroundEffectsOnStop;
         questLog->objectEvents[i].disableCoveringGroundEffects   = gObjectEvents[i].disableCoveringGroundEffects;
