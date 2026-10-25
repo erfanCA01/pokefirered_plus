@@ -930,7 +930,13 @@ void BeginAnim(struct Sprite *sprite)
             SetSpriteOamFlipBits(sprite, hFlip, vFlip);
 
         if (sprite->usingSheet)
+        {
+            // followers-expanded-id: convert a logical frame index into a tile
+            // offset within the shared compressed sheet (see sheetSpan in sprite.h)
+            if (OW_GFX_COMPRESS && sprite->sheetSpan)
+                imageValue = (imageValue + 1) << sprite->sheetSpan;
             sprite->oam.tileNum = sprite->sheetTileStart + imageValue;
+        }
         else
             RequestSpriteFrameImageCopy(imageValue, sprite->oam.tileNum, sprite->images);
     }
@@ -982,7 +988,12 @@ void AnimCmd_frame(struct Sprite *sprite)
         SetSpriteOamFlipBits(sprite, hFlip, vFlip);
 
     if (sprite->usingSheet)
+    {
+        // followers-expanded-id: see BeginAnim
+        if (OW_GFX_COMPRESS && sprite->sheetSpan)
+            imageValue = (imageValue + 1) << sprite->sheetSpan;
         sprite->oam.tileNum = sprite->sheetTileStart + imageValue;
+    }
     else
         RequestSpriteFrameImageCopy(imageValue, sprite->oam.tileNum, sprite->images);
 }
@@ -1016,7 +1027,12 @@ void AnimCmd_jump(struct Sprite *sprite)
         SetSpriteOamFlipBits(sprite, hFlip, vFlip);
 
     if (sprite->usingSheet)
+    {
+        // followers-expanded-id: see BeginAnim
+        if (OW_GFX_COMPRESS && sprite->sheetSpan)
+            imageValue = (imageValue + 1) << sprite->sheetSpan;
         sprite->oam.tileNum = sprite->sheetTileStart + imageValue;
+    }
     else
         RequestSpriteFrameImageCopy(imageValue, sprite->oam.tileNum, sprite->images);
 }
@@ -1395,6 +1411,9 @@ void SetSpriteSheetFrameTileNum(struct Sprite *sprite)
     if (sprite->usingSheet)
     {
         s16 tileOffset = sprite->anims[sprite->animNum][sprite->animCmdIndex].frame.imageValue;
+        // followers-expanded-id: see BeginAnim
+        if (OW_GFX_COMPRESS && sprite->sheetSpan)
+            tileOffset = (tileOffset + 1) << sprite->sheetSpan;
         if (tileOffset < 0)
             tileOffset = 0;
         sprite->oam.tileNum = sprite->sheetTileStart + tileOffset;
@@ -1473,7 +1492,13 @@ void SetOamMatrixRotationScaling(u8 matrixNum, s16 xScale, s16 yScale, u16 rotat
     CopyOamMatrix(matrixNum, &matrix);
 }
 
-u16 LoadSpriteSheet(const struct SpriteSheet *sheet)
+// followers-expanded-id: like LoadSpriteSheet, but only copies (sheet->size - offset)
+// bytes starting at (tileStart*TILE_SIZE_4BPP + offset) -- the leading `offset` bytes
+// of the allocation are left as reserved, unwritten padding. Used by compressed OW
+// follower sprites to let multiple animation frames address into a single physical
+// tile sheet via the (frameIdx+1) << sheetSpan tile-offset trick (see sheetSpan in
+// sprite.h), instead of storing one decompressed copy of the sheet per frame.
+static u16 LoadSpriteSheetWithOffset(const struct SpriteSheet *sheet, u32 offset)
 {
     s16 tileStart = AllocSpriteTiles(sheet->size / TILE_SIZE_4BPP);
 
@@ -1484,9 +1509,55 @@ u16 LoadSpriteSheet(const struct SpriteSheet *sheet)
     else
     {
         AllocSpriteTileRange(sheet->tag, (u16)tileStart, sheet->size / TILE_SIZE_4BPP);
-        CpuCopy16(sheet->data, (u8 *)OBJ_VRAM0 + TILE_SIZE_4BPP * tileStart, sheet->size);
+        CpuCopy16(sheet->data, (u8 *)OBJ_VRAM0 + TILE_SIZE_4BPP * tileStart + offset, sheet->size - offset);
         return (u16)tileStart;
     }
+}
+
+u16 LoadSpriteSheet(const struct SpriteSheet *sheet)
+{
+    return LoadSpriteSheetWithOffset(sheet, 0);
+}
+
+// followers-expanded-id: like LoadSpriteSheet, but checks if a sheet with this tag is
+// already loaded (returning its tile start immediately instead of loading a duplicate),
+// and takes its image data from a SpriteTemplate's frame table instead of a SpriteSheet.
+u16 LoadSpriteSheetByTemplate(const struct SpriteTemplate *template, u32 frame, s32 offset)
+{
+    u16 tileStart;
+    struct SpriteSheet sheet;
+
+    if (!template || template->tileTag == TAG_NONE || !template->images)
+        return TAG_NONE;
+    if ((tileStart = GetSpriteTileStartByTag(template->tileTag)) != TAG_NONE)
+        return tileStart;
+    sheet.data = template->images[frame].data;
+    sheet.size = template->images[frame].size;
+    sheet.tag = template->tileTag;
+    return LoadSpriteSheetWithOffset(&sheet, offset);
+}
+
+// followers-expanded-id: for a given OAM shape & size, returns the value for
+// sheetSpan -- e.g. a 32x32 sprite has span 4, because 1 << 4 == 16 == 4x4 tiles.
+static const u8 sSpanPerImage[4][4] =
+{
+    [ST_OAM_SQUARE] = {
+        [ST_OAM_SIZE_0] = 0, // SPRITE_SIZE_8x8
+        [ST_OAM_SIZE_1] = 2, // SPRITE_SIZE_16x16
+        [ST_OAM_SIZE_2] = 4, // SPRITE_SIZE_32x32
+        [ST_OAM_SIZE_3] = 6, // SPRITE_SIZE_64x64
+    },
+    [ST_OAM_H_RECTANGLE ... ST_OAM_V_RECTANGLE] = {
+        [ST_OAM_SIZE_0] = 1, // SPRITE_SIZE_16x8
+        [ST_OAM_SIZE_1] = 2, // SPRITE_SIZE_32x8
+        [ST_OAM_SIZE_2] = 3, // SPRITE_SIZE_32x16
+        [ST_OAM_SIZE_3] = 5, // SPRITE_SIZE_64x32
+    },
+};
+
+u32 GetSpanPerImage(u32 shape, u32 size)
+{
+    return sSpanPerImage[shape][size];
 }
 
 void LoadSpriteSheets(const struct SpriteSheet *sheets)

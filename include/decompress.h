@@ -31,4 +31,8 @@ void LoadSpecialPokePic_DontHandleDeoxys(const struct CompressedSpriteSheet *src
 
 u32 GetDecompressedDataSize(const u8 *ptr);
 
+// followers-expanded-id: compressed OW sprite sheet support
+u32 IsLZ77Data(const void *ptr, u32 minSize, u32 maxSize);
+u16 LoadCompressedSpriteSheetByTemplate(const struct SpriteTemplate *template, s32 offset);
+
 #endif // GUARD_DECOMPRESS_H

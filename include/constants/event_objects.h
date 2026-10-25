@@ -236,4 +236,8 @@
 #define OBJ_EVENT_ID_PLAYER LOCALID_PLAYER
 #define OBJ_EVENT_ID_FOLLOWER LOCALID_FOLLOWING_POKEMON
 
+// followers-expanded-id: support for 48x48/64x64 OW sprites (shadow offset math,
+// elevation/under-bridge handling). Always on, same as upstream.
+#define LARGE_OW_SUPPORT TRUE
+
 #endif // GUARD_CONSTANTS_EVENT_OBJECTS_H

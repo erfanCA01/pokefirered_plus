@@ -29,6 +29,44 @@ u16 LoadCompressedSpriteSheet(const struct CompressedSpriteSheet *src)
     return LoadSpriteSheet(&dest);
 }
 
+// followers-expanded-id: returns the decompressed size if ptr looks like a valid,
+// word-aligned LZ77 block within [minSize, maxSize]; 0 otherwise (not compressed).
+u32 IsLZ77Data(const void *ptr, u32 minSize, u32 maxSize)
+{
+    const u8 *data = ptr;
+    u32 size;
+
+    if (((u32)ptr) & 3)
+        return 0;
+    if (data[0] != 0x10)
+        return 0;
+    size = data[1] | (data[2] << 8) | (data[3] << 16);
+    if (size >= minSize && size <= maxSize)
+        return size;
+    return 0;
+}
+
+// followers-expanded-id: like LoadSpriteSheetByTemplate, but decompresses the
+// template's image data first if it's LZ77-compressed (used for OW_GFX_COMPRESS
+// follower sprite sheets); falls back to the uncompressed path otherwise.
+u16 LoadCompressedSpriteSheetByTemplate(const struct SpriteTemplate *template, s32 offset)
+{
+    struct SpriteTemplate myTemplate;
+    struct SpriteFrameImage myImage;
+    u32 size;
+
+    size = IsLZ77Data(template->images->data, TILE_SIZE_4BPP, sizeof(gDecompressionBuffer));
+    if (size == 0)
+        return LoadSpriteSheetByTemplate(template, 0, offset);
+
+    LZ77UnCompWram(template->images->data, gDecompressionBuffer);
+    myImage.data = gDecompressionBuffer;
+    myImage.size = size + offset;
+    myTemplate = *template;
+    myTemplate.images = &myImage;
+    return LoadSpriteSheetByTemplate(&myTemplate, 0, offset);
+}
+
 void LoadCompressedSpriteSheetOverrideBuffer(const struct CompressedSpriteSheet *src, void *buffer)
 {
     struct SpriteSheet dest;

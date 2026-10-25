@@ -53,7 +53,6 @@ static void FieldEffectScript_LoadTiles(const u8 **script);
 static void FieldEffectScript_LoadFadedPal(const u8 **script);
 static void FieldEffectScript_LoadPal(const u8 **script);
 static void FieldEffectScript_CallNative(const u8 **script, u32 *result);
-static void FieldEffectFreeTilesIfUnused(u16 tilesTag);
 static void FieldEffectFreePaletteIfUnused(u8 paletteNum);
 static void Task_PokecenterHeal(u8 taskId);
 static void SpriteCB_PokeballGlow(struct Sprite *sprite);
@@ -500,7 +499,9 @@ void FieldEffectStop(struct Sprite *sprite, u8 fldeff)
     FieldEffectActiveListRemove(fldeff);
 }
 
-static void FieldEffectFreeTilesIfUnused(u16 tileStart)
+// followers-expanded-id: no longer static -- needed by LoadSheetGraphicsInfo
+// (event_object_movement.c) to reclaim a follower's old tile sheet on species change.
+void FieldEffectFreeTilesIfUnused(u16 tileStart)
 {
     u8 i;
     u16 tileTag = GetSpriteTileTagByTileStart(tileStart);

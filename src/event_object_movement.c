@@ -1,5 +1,7 @@
 #include "global.h"
 #include "gflib.h"
+#include "data.h"
+#include "decompress.h"
 #include "event_data.h"
 #include "event_object_movement.h"
 #include "field_camera.h"
@@ -7,7 +9,9 @@
 #include "field_effect.h"
 #include "field_effect_helpers.h"
 #include "field_player_avatar.h"
+#include "field_weather.h"
 #include "fieldmap.h"
+#include "graphics.h"
 #include "metatile_behavior.h"
 #include "overworld.h"
 #include "quest_log.h"
@@ -20,6 +24,7 @@
 #include "constants/event_objects.h"
 #include "constants/trainer_types.h"
 #include "constants/union_room.h"
+#include "constants/weather.h"
 
 static void MoveCoordsInDirection(u32, s16 *, s16 *, s16, s16);
 static bool8 ObjectEventExecSingleMovementAction(struct ObjectEvent *, struct Sprite *);
@@ -80,6 +85,7 @@ static void SetPlayerAvatarObjectEventIdAndObjectId(u8, u8);
 static void ResetObjectEventFldEffData(struct ObjectEvent *);
 static u8 TryLoadObjectPalette(const struct SpritePalette *spritePalette);
 static u8 FindObjectEventPaletteIndexByTag(u16);
+static u8 LoadDynamicFollowerPalette(u16 species, u8 form, bool32 shiny);
 static bool8 ObjectEventDoesElevationMatch(struct ObjectEvent *, u8);
 static bool8 IsElevationMismatchAt(u8 elevation, s16 x, s16 y);
 static bool8 AreElevationsCompatible(u8 a, u8 b);
@@ -474,6 +480,12 @@ static const u8 gInitialMovementTypeFacingDirections[MOVEMENT_TYPES_COUNT] = {
 #define OBJ_EVENT_PAL_TAG_RS_GROUDON                  0x1119
 #define OBJ_EVENT_PAL_TAG_RS_GROUDON_REFLECTION       0x111A
 #define OBJ_EVENT_PAL_TAG_RS_SUBMARINE_SHADOW         0x111B
+// followers-expanded-id: dynamic overworld palette (DOWP) + follower-specific tags
+#define OBJ_EVENT_PAL_TAG_DYNAMIC                     0x1124
+#define OBJ_EVENT_PAL_TAG_CASTFORM_SUNNY              0x1125
+#define OBJ_EVENT_PAL_TAG_CASTFORM_RAINY              0x1126
+#define OBJ_EVENT_PAL_TAG_CASTFORM_SNOWY              0x1127
+#define OBJ_EVENT_PAL_TAG_SUBSTITUTE                  0x7611
 #define OBJ_EVENT_PAL_TAG_NONE                        0x11FF
 
 #include "data/object_events/object_event_graphics_info_pointers.h"
@@ -483,6 +495,7 @@ static const u8 gInitialMovementTypeFacingDirections[MOVEMENT_TYPES_COUNT] = {
 #include "data/object_events/base_oam.h"
 #include "data/object_events/object_event_subsprites.h"
 #include "data/object_events/object_event_graphics_info.h"
+#include "data/object_events/object_event_graphics_info_followers.h"
 
 static const struct SpritePalette sObjectEventSpritePalettes[] = {
     {gObjectEventPal_NpcBlue,                 OBJ_EVENT_PAL_TAG_NPC_BLUE},
@@ -503,6 +516,10 @@ static const struct SpritePalette sObjectEventSpritePalettes[] = {
     {gObjectEventPal_Meteorite,               OBJ_EVENT_PAL_TAG_METEORITE},
     {gObjectEventPal_SSAnne,                  OBJ_EVENT_PAL_TAG_SS_ANNE},
     {gObjectEventPal_Seagallop,               OBJ_EVENT_PAL_TAG_SEAGALLOP},
+    {gObjectEventPal_CastformSunny,           OBJ_EVENT_PAL_TAG_CASTFORM_SUNNY},
+    {gObjectEventPal_CastformRainy,           OBJ_EVENT_PAL_TAG_CASTFORM_RAINY},
+    {gObjectEventPal_CastformSnowy,           OBJ_EVENT_PAL_TAG_CASTFORM_SNOWY},
+    {gObjectEventPal_Substitute,              OBJ_EVENT_PAL_TAG_SUBSTITUTE},
     {},
 };
 
@@ -1552,6 +1569,115 @@ void Unref_RemoveAllObjectEventsExceptPlayer(void)
     }
 }
 
+// followers-expanded-id: tag base for a compressed follower sprite sheet, keyed by
+// graphicsId so repeat spawns of the same species/form share one resident tile sheet.
+#define COMP_OW_TILE_TAG_BASE 0xCE00
+
+// followers-expanded-id: free a sprite's current tiles and reallocate with a new size.
+// Used when a follower's graphicsId changes to one with a larger (non-sheet) size.
+static s16 ReallocSpriteTiles(struct Sprite *sprite, u32 byteSize)
+{
+    s16 i;
+    bool32 wasVisible = sprite->invisible;
+    sprite->invisible = TRUE;
+
+    i = CopySprite(sprite, sprite->x, sprite->y, 0xFF);
+    if (i < MAX_SPRITES)
+    {
+        DestroySprite(&gSprites[i]);
+        i = AllocSpriteTiles(byteSize / TILE_SIZE_4BPP);
+        if (i >= 0)
+        {
+            // Fill the allocated area with zeroes to avoid visual glitches if the
+            // frame hasn't been copied in yet
+            CpuFastFill16(0, (u8 *)OBJ_VRAM0 + TILE_SIZE_4BPP * i, byteSize);
+            sprite->oam.tileNum = i;
+        }
+    }
+    else
+    {
+        i = -1;
+    }
+
+    sprite->invisible = wasVisible;
+    return i;
+}
+
+#if OW_GFX_COMPRESS
+// followers-expanded-id: loads (or reuses, if already resident) the compressed tile
+// sheet for a species/form's follower graphics, so that every sprite instance of the
+// same species/form shares one decompressed copy in VRAM instead of each getting its
+// own (gotcha #4 -- VRAM/OAM budget). If `sprite` is given, also repoints it at the
+// (possibly new) sheet and frees its old sheet if no other sprite still uses it.
+static u16 LoadSheetGraphicsInfo(const struct ObjectEventGraphicsInfo *info, u16 uuid, struct Sprite *sprite)
+{
+    u16 tag = info->tileTag;
+
+    if (tag != TAG_NONE || info->compressed)
+    {
+        u32 sheetSpan = GetSpanPerImage(info->oam->shape, info->oam->size);
+        u16 oldTiles = 0;
+        u16 tileStart;
+        bool32 oldInvisible = FALSE;
+
+        if (tag == TAG_NONE)
+            tag = COMP_OW_TILE_TAG_BASE + uuid;
+
+        if (sprite)
+        {
+            oldInvisible = sprite->invisible;
+            oldTiles = sprite->sheetTileStart;
+            sprite->sheetTileStart = 0; // mark unused
+        }
+
+        tileStart = GetSpriteTileStartByTag(tag);
+        if (tileStart == TAG_NONE)
+        {
+            // sheet not loaded; load it. If that fails and we just freed an old
+            // sheet, retry once (hiding the sprite until the retry succeeds).
+            struct SpriteFrameImage image = {.size = info->size, .data = info->images->data};
+            struct SpriteTemplate template = {.tileTag = tag, .images = &image};
+
+            tileStart = LoadCompressedSpriteSheetByTemplate(&template, TILE_SIZE_4BPP << sheetSpan);
+            if (oldTiles)
+            {
+                FieldEffectFreeTilesIfUnused(oldTiles);
+                if (tileStart <= 0)
+                {
+                    if (sprite)
+                        sprite->invisible = TRUE;
+                    tileStart = LoadCompressedSpriteSheetByTemplate(&template, TILE_SIZE_4BPP << sheetSpan);
+                }
+            }
+        }
+        else if (oldTiles && oldTiles != tileStart)
+        {
+            // sheet already loaded; free any *other* sheet this sprite was using
+            FieldEffectFreeTilesIfUnused(oldTiles);
+        }
+
+        if (sprite)
+        {
+            sprite->sheetTileStart = tileStart;
+            sprite->sheetSpan = sheetSpan;
+            sprite->usingSheet = TRUE;
+            sprite->invisible = oldInvisible;
+        }
+    }
+    else if (sprite && sprite->usingSheet)
+    {
+        // going from sheet -> non-sheet gfx; sheet stays loaded, just stop using it
+        sprite->oam.tileNum = sprite->sheetTileStart;
+        sprite->usingSheet = FALSE;
+    }
+    else if (sprite && !sprite->sheetTileStart && sprite->oam.size != info->oam->size)
+    {
+        ReallocSpriteTiles(sprite, info->images->size);
+    }
+    return tag;
+}
+#endif //OW_GFX_COMPRESS
+
 static u8 TrySetupObjectEventSprite(const struct ObjectEventTemplate *objectEventTemplate, struct SpriteTemplate *spriteTemplate, u8 mapNum, u8 mapGroup, s16 cameraX, s16 cameraY)
 {
     u8 spriteId;
@@ -1571,11 +1697,25 @@ static u8 TrySetupObjectEventSprite(const struct ObjectEventTemplate *objectEven
     else if (graphicsInfo->paletteSlot == PALSLOT_NPC_SPECIAL)
         LoadSpecialObjectReflectionPalette(graphicsInfo->paletteTag, graphicsInfo->paletteSlot);
 
+    // followers-expanded-id (DOWP): normalize the shiny tag out of graphicsId into
+    // the shiny bit, same as GetObjectEventGraphicsInfo already does internally for
+    // the table lookup -- this keeps OW_SPECIES/OW_FORM (which don't know about the
+    // shiny tag) correct for any other code that reads objectEvent->graphicsId later.
+    if (objectEvent->graphicsId >= OBJ_EVENT_GFX_MON_BASE + SPECIES_SHINY_TAG)
+    {
+        objectEvent->shiny = TRUE;
+        objectEvent->graphicsId -= SPECIES_SHINY_TAG;
+    }
 
     if (objectEvent->movementType == MOVEMENT_TYPE_INVISIBLE)
         objectEvent->invisible = TRUE;
 
     *(u16 *)&spriteTemplate->paletteTag = TAG_NONE;
+#if OW_GFX_COMPRESS
+    // followers-expanded-id: lets multiple sprites of the same species/form share one
+    // decompressed tile sheet in VRAM instead of each getting their own copy.
+    spriteTemplate->tileTag = LoadSheetGraphicsInfo(graphicsInfo, objectEvent->graphicsId, NULL);
+#endif
     spriteId = CreateSprite(spriteTemplate, 0, 0, 0);
     if (spriteId == MAX_SPRITES)
     {
@@ -1584,12 +1724,31 @@ static u8 TrySetupObjectEventSprite(const struct ObjectEventTemplate *objectEven
     }
 
     sprite = &gSprites[spriteId];
+    if (OW_GFX_COMPRESS && sprite->usingSheet)
+    {
+        sprite->sheetSpan = GetSpanPerImage(sprite->oam.shape, sprite->oam.size);
+        // followers-expanded-id: CreateSpriteAt computes the sprite's initial
+        // oam.tileNum via SetSpriteSheetFrameTileNum *before* sheetSpan (just set
+        // above) exists, so that first computation is always wrong (unshifted).
+        // A sprite that starts actively animating (e.g. a moving follower) self-
+        // corrects on its very next AnimateSprite tick, but a perfectly static
+        // object event (no movement action ever runs) never calls AnimateSprite
+        // again and would show the wrong tiles forever. Recompute now that
+        // sheetSpan is actually set, so the very first rendered frame is correct
+        // either way.
+        SetSpriteSheetFrameTileNum(sprite);
+    }
     GetMapCoordsFromSpritePos(objectEvent->currentCoords.x + cameraX, objectEvent->currentCoords.y + cameraY, &sprite->x, &sprite->y);
     sprite->centerToCornerVecX = -(graphicsInfo->width >> 1);
     sprite->centerToCornerVecY = -(graphicsInfo->height >> 1);
     sprite->x += 8;
     sprite->y += 16 + sprite->centerToCornerVecY;
-    sprite->oam.paletteNum = graphicsInfo->paletteSlot;
+    // followers-expanded-id (DOWP): species-indexed follower graphics use a dynamic,
+    // runtime-loaded palette instead of one of the small fixed OBJ_PALSLOT_* slots.
+    if (graphicsInfo->paletteTag == OBJ_EVENT_PAL_TAG_DYNAMIC)
+        sprite->oam.paletteNum = LoadDynamicFollowerPalette(OW_SPECIES(objectEvent), OW_FORM(objectEvent), objectEvent->shiny);
+    else
+        sprite->oam.paletteNum = graphicsInfo->paletteSlot;
     sprite->coordOffsetEnabled = TRUE;
     sprite->data[0] = objectEventId;
     objectEvent->spriteId = spriteId;
@@ -1907,10 +2066,23 @@ static void SpawnObjectEventOnReturnToField(u8 objectEventId, s16 x, s16 y)
         LoadSpecialObjectReflectionPalette(graphicsInfo->paletteTag, graphicsInfo->paletteSlot);
 
     *(u16 *)&spriteTemplate.paletteTag = TAG_NONE;
+#if OW_GFX_COMPRESS
+    // followers-expanded-id: same compressed-sheet sharing as TrySetupObjectEventSprite
+    // -- this function is a *separate* sprite-creation path (used when returning to a
+    // map, e.g. via warps/stairs) that would otherwise never decompress follower gfx.
+    spriteTemplate.tileTag = LoadSheetGraphicsInfo(graphicsInfo, objectEvent->graphicsId, NULL);
+#endif
     spriteId = CreateSprite(&spriteTemplate, 0, 0, 0);
     if (spriteId != MAX_SPRITES)
     {
         sprite = &gSprites[spriteId];
+        if (OW_GFX_COMPRESS && sprite->usingSheet)
+        {
+            sprite->sheetSpan = GetSpanPerImage(sprite->oam.shape, sprite->oam.size);
+            // followers-expanded-id: see TrySetupObjectEventSprite for why this
+            // recompute (not just relying on the next animation tick) is needed.
+            SetSpriteSheetFrameTileNum(sprite);
+        }
         GetMapCoordsFromSpritePos(x + objectEvent->currentCoords.x, y + objectEvent->currentCoords.y, &sprite->x, &sprite->y);
         sprite->centerToCornerVecX = -(graphicsInfo->width >> 1);
         sprite->centerToCornerVecY = -(graphicsInfo->height >> 1);
@@ -1925,7 +2097,12 @@ static void SpawnObjectEventOnReturnToField(u8 objectEventId, s16 x, s16 y)
         if (subspriteTables != NULL)
             SetSubspriteTables(sprite, subspriteTables);
 
-        sprite->oam.paletteNum = graphicsInfo->paletteSlot;
+        // followers-expanded-id (DOWP): species-indexed follower graphics use a
+        // dynamic, runtime-loaded palette instead of one of the fixed OBJ_PALSLOT_* slots.
+        if (graphicsInfo->paletteTag == OBJ_EVENT_PAL_TAG_DYNAMIC)
+            sprite->oam.paletteNum = LoadDynamicFollowerPalette(OW_SPECIES(objectEvent), OW_FORM(objectEvent), objectEvent->shiny);
+        else
+            sprite->oam.paletteNum = graphicsInfo->paletteSlot;
         sprite->coordOffsetEnabled = TRUE;
         sprite->data[0] = objectEventId;
         objectEvent->spriteId = spriteId;
@@ -2043,20 +2220,63 @@ void PlayerObjectTurn(struct PlayerAvatar *playerAvatar, u8 direction)
     ObjectEventTurn(&gObjectEvents[playerAvatar->objectEventId], direction);
 }
 
+// Followers-expanded-id: species-indexed override for graphicsId >= OBJ_EVENT_GFX_MON_BASE.
+// Unown/Castform use dedicated per-form tables; everything else indexes gPokemonObjectGraphics
+// directly. tileTag == 0 (an unported/placeholder species entry) falls back to SPECIES_NONE.
+static const struct ObjectEventGraphicsInfo *SpeciesToGraphicsInfo(u16 species, u8 form)
+{
+    const struct ObjectEventGraphicsInfo *graphicsInfo;
+    switch (species)
+    {
+    case SPECIES_UNOWN:
+        form %= NUM_UNOWN_FORMS;
+        graphicsInfo = &gPokemonObjectGraphics[form ? SPECIES_UNOWN_B + form - 1 : species];
+        break;
+    case SPECIES_CASTFORM:
+        graphicsInfo = &gCastformObjectGraphics[form % NUM_CASTFORM_FORMS];
+        break;
+    default:
+        graphicsInfo = &gPokemonObjectGraphics[species];
+        break;
+    }
+
+    if (graphicsInfo->tileTag == 0 && species < NUM_SPECIES)
+        return &gPokemonObjectGraphics[SPECIES_NONE];
+    else if (graphicsInfo->tileTag != TAG_NONE && species >= NUM_SPECIES)
+        return &gPokemonObjectGraphics[SPECIES_NONE];
+    else
+        return graphicsInfo;
+}
+
 const struct ObjectEventGraphicsInfo *GetObjectEventGraphicsInfo(u16 graphicsId)
 {
-    if (graphicsId >= OBJ_EVENT_GFX_VARS)
+    u32 form = 0;
+
+    if (graphicsId >= OBJ_EVENT_GFX_VARS && graphicsId <= OBJ_EVENT_GFX_VAR_F)
         graphicsId = VarGetObjectEventGraphicsId(graphicsId - OBJ_EVENT_GFX_VARS);
-    
+
+    // graphicsId may contain mon form info
+    if (graphicsId > OBJ_EVENT_GFX_SPECIES_MASK)
+    {
+        form = graphicsId >> OBJ_EVENT_GFX_SPECIES_BITS;
+        graphicsId = graphicsId & OBJ_EVENT_GFX_SPECIES_MASK;
+    }
+
+    if (graphicsId >= OBJ_EVENT_GFX_MON_BASE + SPECIES_SHINY_TAG)
+        graphicsId -= SPECIES_SHINY_TAG;
+
+    if (graphicsId >= OBJ_EVENT_GFX_MON_BASE)
+        return SpeciesToGraphicsInfo(graphicsId - OBJ_EVENT_GFX_MON_BASE, form);
+
     if (graphicsId >= NUM_OBJ_EVENT_GFX)
         graphicsId = OBJ_EVENT_GFX_LITTLE_BOY;
-    
+
     return gObjectEventGraphicsInfoPointers[graphicsId];
 }
 
 static void SetObjectEventDynamicGraphicsId(struct ObjectEvent *objectEvent)
 {
-    if (objectEvent->graphicsId >= OBJ_EVENT_GFX_VARS)
+    if (objectEvent->graphicsId >= OBJ_EVENT_GFX_VARS && objectEvent->graphicsId <= OBJ_EVENT_GFX_VAR_F)
     {
         objectEvent->graphicsId = VarGetObjectEventGraphicsId(objectEvent->graphicsId - OBJ_EVENT_GFX_VARS);
     }
@@ -2204,6 +2424,34 @@ static u8 FindObjectEventPaletteIndexByTag(u16 tag)
         }
     }
     return 0xFF;
+}
+
+// followers-expanded-id (DOWP): loads a follower's palette from its front-sprite
+// palette table (gMonPaletteTable/gMonShinyPaletteTable), or from gFollowerPalettes
+// if that species has a dedicated override entry. Tag is speciesId (+SPECIES_SHINY_TAG
+// if shiny) so repeat spawns of the same species/shininess reuse the same palette slot.
+static u8 LoadDynamicFollowerPalette(u16 species, u8 form, bool32 shiny)
+{
+    u32 paletteNum;
+    struct SpritePalette spritePalette = {.tag = shiny ? (species + SPECIES_SHINY_TAG) : species};
+
+    if ((paletteNum = IndexOfSpritePaletteTag(spritePalette.tag)) < 16)
+        return paletteNum;
+
+    spritePalette.data = (u16 *)((shiny ? gMonShinyPaletteTable : gMonPaletteTable)[species].data);
+    if (species < ARRAY_COUNT(gFollowerPalettes) && gFollowerPalettes[species][shiny & 1])
+        spritePalette.data = gFollowerPalettes[species][shiny & 1];
+
+    if (IsLZ77Data(spritePalette.data, PLTT_SIZE_4BPP, PLTT_SIZE_4BPP * NUM_CASTFORM_FORMS))
+    {
+        LZ77UnCompWram((u32 *)spritePalette.data, gDecompressionBuffer);
+        spritePalette.data = (void *)gDecompressionBuffer;
+    }
+
+    paletteNum = LoadSpritePalette(&spritePalette);
+    if (gWeatherPtr->currWeather != WEATHER_FOG_HORIZONTAL)
+        UpdateSpritePaletteWithWeather(paletteNum);
+    return paletteNum;
 }
 
 void LoadPlayerObjectReflectionPalette(u16 tag, u8 slot)
@@ -8654,7 +8902,17 @@ static void UpdateObjectEventElevationAndPriority(struct ObjectEvent *objEvent, 
     if (objEvent->fixedPriority)
         return;
 
-    ObjectEventUpdateElevation(objEvent);
+    ObjectEventUpdateElevation(objEvent, sprite);
+    if (objEvent->localId == OBJ_EVENT_ID_FOLLOWER)
+    {
+        // followers-expanded-id: keep subspriteMode synced with the player's, so the
+        // follower disappears under bridges whenever the player does
+        if (LARGE_OW_SUPPORT)
+            sprite->subspriteMode |= gSprites[gPlayerAvatar.spriteId].subspriteMode & SUBSPRITES_IGNORE_PRIORITY;
+        // followers-expanded-id: if transitioning between elevations, use the player's
+        if (!objEvent->currentElevation)
+            objEvent = &gObjectEvents[gPlayerAvatar.objectEventId];
+    }
 
     sprite->subspriteTableNum = sElevationToSubspriteTableNum[objEvent->previousElevation];
     sprite->oam.priority = sElevationToPriority[objEvent->previousElevation];
@@ -8671,13 +8929,23 @@ u8 ElevationToPriority(u8 elevation)
     return sElevationToPriority[elevation];
 }
 
-void ObjectEventUpdateElevation(struct ObjectEvent *objEvent)
+void ObjectEventUpdateElevation(struct ObjectEvent *objEvent, struct Sprite *sprite)
 {
     u8 curElevation = MapGridGetElevationAt(objEvent->currentCoords.x, objEvent->currentCoords.y);
     u8 prevElevation = MapGridGetElevationAt(objEvent->previousCoords.x, objEvent->previousCoords.y);
 
     if (curElevation == 15 || prevElevation == 15)
+    {
+        // followers-expanded-id: ignore subsprite priorities under bridges so all
+        // subsprites (needed for large OW sprites) display below it. `sprite` is
+        // NULL at the two link-player call sites in overworld.c (spriteId isn't
+        // assigned yet there) -- guard against that rather than port Emerald's
+        // unconditional dereference, which would crash if a link player's position
+        // ever resolves to a bridge tile through that path.
+        if (LARGE_OW_SUPPORT && sprite)
+            sprite->subspriteMode = SUBSPRITES_IGNORE_PRIORITY;
         return;
+    }
 
     objEvent->currentElevation = curElevation;
 

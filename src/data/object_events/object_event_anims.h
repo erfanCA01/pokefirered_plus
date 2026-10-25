@@ -1302,3 +1302,158 @@ static const struct StepAnimTable sStepAnimTables[] = {
     },
     {}
 };
+
+// --- followers-expanded-id: species-indexed follower walk-cycle anims ---
+// 2-frame ("2F") walk-cycle variants used by all follower OW sprites (6 frames
+// per species: idle+2 walk frames each for south/north/west, east mirrored).
+static const union AnimCmd sAnim_FaceNorth2F[] = {
+    ANIMCMD_FRAME(2, 16),
+    ANIMCMD_JUMP(0),
+};
+
+static const union AnimCmd sAnim_FaceWest2F[] = {
+    ANIMCMD_FRAME(4, 16),
+    ANIMCMD_JUMP(0),
+};
+
+static const union AnimCmd sAnim_FaceEast2F[] = {
+    ANIMCMD_FRAME(4, 16, .hFlip = TRUE),
+    ANIMCMD_JUMP(0),
+};
+
+// Asymmetric species (e.g. Krabby/Kingler) have separate frames for facing right
+static const union AnimCmd sAnim_FaceEast2F_Asym[] = {
+    ANIMCMD_FRAME(6, 16),
+    ANIMCMD_JUMP(0),
+};
+
+static const union AnimCmd sAnim_GoSouth2F[] = {
+    ANIMCMD_FRAME(0, 6),
+    ANIMCMD_FRAME(1, 6),
+    ANIMCMD_FRAME(1, 6),
+    ANIMCMD_FRAME(0, 6),
+    ANIMCMD_JUMP(0),
+};
+
+static const union AnimCmd sAnim_GoNorth2F[] = {
+    ANIMCMD_FRAME(2, 6),
+    ANIMCMD_FRAME(3, 6),
+    ANIMCMD_FRAME(3, 6),
+    ANIMCMD_FRAME(2, 6),
+    ANIMCMD_JUMP(0),
+};
+
+static const union AnimCmd sAnim_GoWest2F[] = {
+    ANIMCMD_FRAME(4, 6),
+    ANIMCMD_FRAME(5, 6),
+    ANIMCMD_FRAME(5, 6),
+    ANIMCMD_FRAME(4, 6),
+    ANIMCMD_JUMP(0),
+};
+
+static const union AnimCmd sAnim_GoEast2F[] = {
+    ANIMCMD_FRAME(4, 6, .hFlip = TRUE),
+    ANIMCMD_FRAME(5, 6, .hFlip = TRUE),
+    ANIMCMD_FRAME(5, 6, .hFlip = TRUE),
+    ANIMCMD_FRAME(4, 6, .hFlip = TRUE),
+    ANIMCMD_JUMP(0),
+};
+
+static const union AnimCmd sAnim_GoEast2F_Asym[] = {
+    ANIMCMD_FRAME(6, 6),
+    ANIMCMD_FRAME(7, 6),
+    ANIMCMD_FRAME(7, 6),
+    ANIMCMD_FRAME(6, 6),
+    ANIMCMD_JUMP(0),
+};
+
+static const union AnimCmd sAnim_GoFastSouth2F[] = {
+    ANIMCMD_FRAME(0, 4),
+    ANIMCMD_FRAME(1, 4),
+    ANIMCMD_FRAME(1, 4),
+    ANIMCMD_FRAME(0, 4),
+    ANIMCMD_JUMP(0),
+};
+
+static const union AnimCmd sAnim_GoFastNorth2F[] = {
+    ANIMCMD_FRAME(2, 4),
+    ANIMCMD_FRAME(3, 4),
+    ANIMCMD_FRAME(3, 4),
+    ANIMCMD_FRAME(2, 4),
+    ANIMCMD_JUMP(0),
+};
+
+static const union AnimCmd sAnim_GoFastWest2F[] = {
+    ANIMCMD_FRAME(4, 4),
+    ANIMCMD_FRAME(5, 4),
+    ANIMCMD_FRAME(5, 4),
+    ANIMCMD_FRAME(4, 4),
+    ANIMCMD_JUMP(0),
+};
+
+static const union AnimCmd sAnim_GoFastEast2F[] = {
+    ANIMCMD_FRAME(4, 4, .hFlip = TRUE),
+    ANIMCMD_FRAME(5, 4, .hFlip = TRUE),
+    ANIMCMD_FRAME(5, 4, .hFlip = TRUE),
+    ANIMCMD_FRAME(4, 4, .hFlip = TRUE),
+    ANIMCMD_JUMP(0),
+};
+
+static const union AnimCmd sAnim_GoFastEast2F_Asym[] = {
+    ANIMCMD_FRAME(6, 4),
+    ANIMCMD_FRAME(7, 4),
+    ANIMCMD_FRAME(7, 4),
+    ANIMCMD_FRAME(6, 4),
+    ANIMCMD_JUMP(0),
+};
+
+// GO_FASTER_*/GO_FASTEST_* slots are used for pokeball enter/exit animations in
+// the full feature (Phase 5, not yet implemented here); reuse the GO_FAST_*
+// walk-cycle in the meantime so no sprite ever indexes a NULL AnimCmd pointer.
+// TODO(Phase 5): replace with real ENTER_POKEBALL/EXIT_POKEBALL animations.
+static const union AnimCmd *const sAnimTable_Following[] = {
+    [ANIM_STD_FACE_SOUTH] = sAnim_FaceSouth,
+    [ANIM_STD_FACE_NORTH] = sAnim_FaceNorth2F,
+    [ANIM_STD_FACE_WEST] = sAnim_FaceWest2F,
+    [ANIM_STD_FACE_EAST] = sAnim_FaceEast2F,
+    [ANIM_STD_GO_SOUTH] = sAnim_GoSouth2F,
+    [ANIM_STD_GO_NORTH] = sAnim_GoNorth2F,
+    [ANIM_STD_GO_WEST] = sAnim_GoWest2F,
+    [ANIM_STD_GO_EAST] = sAnim_GoEast2F,
+    [ANIM_STD_GO_FAST_SOUTH] = sAnim_GoFastSouth2F,
+    [ANIM_STD_GO_FAST_NORTH] = sAnim_GoFastNorth2F,
+    [ANIM_STD_GO_FAST_WEST] = sAnim_GoFastWest2F,
+    [ANIM_STD_GO_FAST_EAST] = sAnim_GoFastEast2F,
+    [ANIM_STD_GO_FASTER_SOUTH] = sAnim_GoFastSouth2F,
+    [ANIM_STD_GO_FASTER_NORTH] = sAnim_GoFastNorth2F,
+    [ANIM_STD_GO_FASTER_WEST] = sAnim_GoFastWest2F,
+    [ANIM_STD_GO_FASTER_EAST] = sAnim_GoFastEast2F,
+    [ANIM_STD_GO_FASTEST_SOUTH] = sAnim_GoFastSouth2F,
+    [ANIM_STD_GO_FASTEST_NORTH] = sAnim_GoFastNorth2F,
+    [ANIM_STD_GO_FASTEST_WEST] = sAnim_GoFastWest2F,
+    [ANIM_STD_GO_FASTEST_EAST] = sAnim_GoFastEast2F,
+};
+
+// Like the above, but has separate frames for facing right (asymmetric species)
+static const union AnimCmd *const sAnimTable_Following_Asym[] = {
+    [ANIM_STD_FACE_SOUTH] = sAnim_FaceSouth,
+    [ANIM_STD_FACE_NORTH] = sAnim_FaceNorth2F,
+    [ANIM_STD_FACE_WEST] = sAnim_FaceWest2F,
+    [ANIM_STD_FACE_EAST] = sAnim_FaceEast2F_Asym,
+    [ANIM_STD_GO_SOUTH] = sAnim_GoSouth2F,
+    [ANIM_STD_GO_NORTH] = sAnim_GoNorth2F,
+    [ANIM_STD_GO_WEST] = sAnim_GoWest2F,
+    [ANIM_STD_GO_EAST] = sAnim_GoEast2F_Asym,
+    [ANIM_STD_GO_FAST_SOUTH] = sAnim_GoFastSouth2F,
+    [ANIM_STD_GO_FAST_NORTH] = sAnim_GoFastNorth2F,
+    [ANIM_STD_GO_FAST_WEST] = sAnim_GoFastWest2F,
+    [ANIM_STD_GO_FAST_EAST] = sAnim_GoFastEast2F_Asym,
+    [ANIM_STD_GO_FASTER_SOUTH] = sAnim_GoFastSouth2F,
+    [ANIM_STD_GO_FASTER_NORTH] = sAnim_GoFastNorth2F,
+    [ANIM_STD_GO_FASTER_WEST] = sAnim_GoFastWest2F,
+    [ANIM_STD_GO_FASTER_EAST] = sAnim_GoFastEast2F_Asym,
+    [ANIM_STD_GO_FASTEST_SOUTH] = sAnim_GoFastSouth2F,
+    [ANIM_STD_GO_FASTEST_NORTH] = sAnim_GoFastNorth2F,
+    [ANIM_STD_GO_FASTEST_WEST] = sAnim_GoFastWest2F,
+    [ANIM_STD_GO_FASTEST_EAST] = sAnim_GoFastEast2F_Asym,
+};
