@@ -274,6 +274,12 @@
 #define MOVEMENT_ACTION_JUMP_SPECIAL_WITH_EFFECT_LEFT   0xA8
 #define MOVEMENT_ACTION_JUMP_SPECIAL_WITH_EFFECT_RIGHT  0xA9
 
+// followers-expanded-id: Emerald uses 0x9E/0x9F for these, but those values already
+// mean MOVEMENT_ACTION_WALK_SLOWEST_RIGHT / MOVEMENT_ACTION_SHAKE_HEAD_OR_WALK_IN_PLACE
+// in FireRed -- use the next free slots after FireRed's own range instead.
+#define MOVEMENT_ACTION_EXIT_POKEBALL                   0xAA
+#define MOVEMENT_ACTION_ENTER_POKEBALL                  0xAB
+
 #define MOVEMENT_ACTION_STEP_END 0xFE
 #define MOVEMENT_ACTION_NONE     0xFF
 
@@ -298,6 +304,15 @@
 #define ANIM_STD_GO_FASTEST_WEST  18
 #define ANIM_STD_GO_FASTEST_EAST  19
 #define ANIM_STD_COUNT            20
+
+// followers-expanded-id (OW_MON_POKEBALLS): used only within sAnimTable_Following/_Asym
+// (the follower's own anim table) -- the same raw indices as ANIM_RUN_*/ANIM_GET_ON_OFF_POKEMON_*
+// below are reused there for an unrelated purpose, which is fine since a sprite only ever
+// indexes into the one `anims` table it's actually assigned.
+#define ANIM_EXIT_POKEBALL_FAST_SOUTH (ANIM_STD_COUNT + 0)
+#define ANIM_EXIT_POKEBALL_FAST_NORTH (ANIM_STD_COUNT + 1)
+#define ANIM_EXIT_POKEBALL_FAST_WEST  (ANIM_STD_COUNT + 2)
+#define ANIM_EXIT_POKEBALL_FAST_EAST  (ANIM_STD_COUNT + 3)
 
 #define ANIM_RUN_SOUTH                   (ANIM_STD_COUNT + 0)
 #define ANIM_RUN_NORTH                   (ANIM_STD_COUNT + 1)

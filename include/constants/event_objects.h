@@ -242,9 +242,11 @@
 #define LARGE_OW_SUPPORT TRUE
 
 // Followers will emerge from the pokeball they are stored in, instead of a
-// normal pokeball. (Phase 5 scope; the graphics-info block it needs is not
-// ported yet, so this stays FALSE until then.)
-#define OW_MON_POKEBALLS FALSE
+// normal pokeball.
+#define OW_MON_POKEBALLS TRUE
+
+// Used to call a specific species' follower graphics. Useful for static encounters.
+#define OBJ_EVENT_GFX_POKE_BALL OBJ_EVENT_GFX_ITEM_BALL // replaces ITEM_BALL
 
 // New/old handling for followers during scripts;
 // TRUE: Script collisions hide follower, FLAG_SAFE_FOLLOWER_MOVEMENT on by default

@@ -31,6 +31,13 @@ static bool8 MovementAction_WalkNormalLeft_Step0(struct ObjectEvent *, struct Sp
 static bool8 MovementAction_WalkNormalLeft_Step1(struct ObjectEvent *, struct Sprite *);
 static bool8 MovementAction_WalkNormalRight_Step0(struct ObjectEvent *, struct Sprite *);
 static bool8 MovementAction_WalkNormalRight_Step1(struct ObjectEvent *, struct Sprite *);
+// followers-expanded-id (OW_MON_POKEBALLS)
+bool8 MovementAction_ExitPokeball_Step0(struct ObjectEvent *, struct Sprite *);
+bool8 MovementAction_ExitPokeball_Step1(struct ObjectEvent *, struct Sprite *);
+bool8 MovementAction_EnterPokeball_Step0(struct ObjectEvent *, struct Sprite *);
+bool8 MovementAction_EnterPokeball_Step1(struct ObjectEvent *, struct Sprite *);
+bool8 MovementAction_EnterPokeball_Step2(struct ObjectEvent *, struct Sprite *);
+
 static bool8 MovementAction_WalkInPlaceSlowDown_Step0(struct ObjectEvent *, struct Sprite *);
 static bool8 MovementAction_WalkInPlaceSlowUp_Step0(struct ObjectEvent *, struct Sprite *);
 static bool8 MovementAction_WalkInPlaceSlowLeft_Step0(struct ObjectEvent *, struct Sprite *);
@@ -457,6 +464,9 @@ static bool8 (*const sMovementActionFuncs_JumpSpecialWithEffectDown[])(struct Ob
 static bool8 (*const sMovementActionFuncs_JumpSpecialWithEffectUp[])(struct ObjectEvent *, struct Sprite *);
 static bool8 (*const sMovementActionFuncs_JumpSpecialWithEffectLeft[])(struct ObjectEvent *, struct Sprite *);
 static bool8 (*const sMovementActionFuncs_JumpSpecialWithEffectRight[])(struct ObjectEvent *, struct Sprite *);
+// followers-expanded-id (OW_MON_POKEBALLS)
+static bool8 (*const sMovementActionFuncs_ExitPokeball[])(struct ObjectEvent *, struct Sprite *);
+static bool8 (*const sMovementActionFuncs_EnterPokeball[])(struct ObjectEvent *, struct Sprite *);
 
 static u8 GetMoveDirectionFastAnimNum(u8 direction);
 static u8 GetMoveDirectionFasterAnimNum(u8 direction);
@@ -633,6 +643,8 @@ static bool8 (*const *const sMovementActionFuncs[])(struct ObjectEvent *, struct
     [MOVEMENT_ACTION_JUMP_SPECIAL_WITH_EFFECT_UP]        = sMovementActionFuncs_JumpSpecialWithEffectUp,
     [MOVEMENT_ACTION_JUMP_SPECIAL_WITH_EFFECT_LEFT]      = sMovementActionFuncs_JumpSpecialWithEffectLeft,
     [MOVEMENT_ACTION_JUMP_SPECIAL_WITH_EFFECT_RIGHT]     = sMovementActionFuncs_JumpSpecialWithEffectRight,
+    [MOVEMENT_ACTION_EXIT_POKEBALL]                      = sMovementActionFuncs_ExitPokeball,
+    [MOVEMENT_ACTION_ENTER_POKEBALL]                     = sMovementActionFuncs_EnterPokeball,
 };
 
 static bool8 (*const sMovementActionFuncs_FaceDown[])(struct ObjectEvent *, struct Sprite *) = {
@@ -1651,6 +1663,19 @@ static bool8 (*const sMovementActionFuncs_RaiseHandAndSwim[])(struct ObjectEvent
 static bool8 (*const sMovementActionFuncs_ShakeHeadOrWalkInPlace[])(struct ObjectEvent *, struct Sprite *) = {
     MovementAction_ShakeHeadOrWalkInPlace_Step0,
     MovementAction_ShakeHeadOrWalkInPlace_Step1,
+};
+
+// followers-expanded-id (OW_MON_POKEBALLS)
+static bool8 (*const sMovementActionFuncs_ExitPokeball[])(struct ObjectEvent *, struct Sprite *) = {
+    MovementAction_ExitPokeball_Step0,
+    MovementAction_ExitPokeball_Step1,
+    MovementAction_PauseSpriteAnim,
+};
+
+static bool8 (*const sMovementActionFuncs_EnterPokeball[])(struct ObjectEvent *, struct Sprite *) = {
+    MovementAction_EnterPokeball_Step0,
+    MovementAction_EnterPokeball_Step1,
+    MovementAction_EnterPokeball_Step2,
 };
 
 static bool8 (*const sMovementActionFuncs_FlyUp[])(struct ObjectEvent *, struct Sprite *) = {

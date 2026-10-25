@@ -1319,6 +1319,18 @@ static bool8 (*const sEscalatorWarpFieldEffectFuncs[])(struct Task *task) = {
     EscalatorWarpEffect_6
 };
 
+// followers-expanded-id: force the follower into its pokeball immediately, before a
+// field-effect transition (escalator, escape rope, surf) where it shouldn't be visible
+// mid-animation. Idempotent (no-op if there's no follower, or it's already hidden).
+static void HideFollowerForFieldEffect(void)
+{
+    struct ObjectEvent *followerObj = GetFollowerObject();
+    if (!followerObj || followerObj->invisible)
+        return;
+    ClearObjectEventMovement(followerObj, &gSprites[followerObj->spriteId]);
+    ObjectEventSetHeldMovement(followerObj, MOVEMENT_ACTION_ENTER_POKEBALL);
+}
+
 void StartEscalatorWarp(u8 metatileBehavior, u8 priority)
 {
     u8 taskId = CreateTask(Task_EscalatorWarpFieldEffect, priority);
@@ -1340,6 +1352,7 @@ static bool8 EscalatorWarpEffect_1(struct Task *task)
     CameraObjectReset2();
     StartEscalator(task->data[1]);
     QuestLog_OnEscalatorWarp(QL_ESCALATOR_OUT);
+    HideFollowerForFieldEffect(); // Hide follower before warping
     task->data[0]++;
     return FALSE;
 }
@@ -2086,6 +2099,7 @@ void StartEscapeRopeFieldEffect(void)
 {
     LockPlayerFieldControls();
     FreezeObjectEvents();
+    HideFollowerForFieldEffect(); // hide follower before warping
     CreateTask(Task_EscapeRopeWarpOut, 80);
 }
 
@@ -2997,6 +3011,7 @@ static void UseSurfEffect_1(struct Task *task)
 {
     LockPlayerFieldControls();
     FreezeObjectEvents();
+    HideFollowerForFieldEffect(); // Put follower into pokeball before using Surf
     gPlayerAvatar.preventStep = TRUE;
     SetPlayerAvatarStateMask(PLAYER_AVATAR_FLAG_SURFING);
     PlayerGetDestCoords(&task->data[1], &task->data[2]);

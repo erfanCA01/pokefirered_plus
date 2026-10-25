@@ -1,5 +1,6 @@
 #include "global.h"
 #include "gflib.h"
+#include "battle_anim.h"
 #include "data.h"
 #include "decompress.h"
 #include "event_data.h"
@@ -14,6 +15,7 @@
 #include "graphics.h"
 #include "metatile_behavior.h"
 #include "overworld.h"
+#include "pokeball.h"
 #include "pokemon.h"
 #include "quest_log.h"
 #include "random.h"
@@ -50,6 +52,9 @@ static void RefreshFollowerGraphics(struct ObjectEvent *);
 static bool32 TryStartFollowerTransformEffect(struct ObjectEvent *, struct Sprite *);
 static bool32 EndFollowerTransformEffect(struct ObjectEvent *, struct Sprite *);
 static bool8 UpdateFollowerTransformEffect(struct ObjectEvent *, struct Sprite *);
+static u8 LoadFillColorPalette(u16, u16, struct Sprite *);
+static void ObjectEventSetPokeballGfx(struct ObjectEvent *);
+void StartSpriteAnimInDirection(struct ObjectEvent *, struct Sprite *, u8, u8);
 u8 GetDirectionToFace(s16, s16, s16, s16);
 static void CalcWhetherObjectIsOffscreen(struct ObjectEvent *, struct Sprite *);
 static void UpdateObjEventSpriteVisibility(struct ObjectEvent *, struct Sprite *);
@@ -106,7 +111,7 @@ static void CameraObject_0(struct Sprite *);
 static void CameraObject_1(struct Sprite *);
 static void CameraObject_2(struct Sprite *);
 static const struct ObjectEventTemplate *FindObjectEventTemplateByLocalId(u8 localId, const struct ObjectEventTemplate *templates, u8 count);
-static void ClearObjectEventMovement(struct ObjectEvent *, struct Sprite *);
+void ClearObjectEventMovement(struct ObjectEvent *, struct Sprite *);
 static void ObjectEventSetSingleMovement(struct ObjectEvent *, struct Sprite *, u8);
 static bool8 ShouldInitObjectEventStateFromTemplate(const struct ObjectEventTemplate *, u8, s16, s16);
 static bool8 TemplateIsObstacleAndWithinView(const struct ObjectEventTemplate *, s16, s16);
@@ -497,6 +502,22 @@ static const u8 gInitialMovementTypeFacingDirections[MOVEMENT_TYPES_COUNT] = {
 #define OBJ_EVENT_PAL_TAG_CASTFORM_SUNNY              0x1125
 #define OBJ_EVENT_PAL_TAG_CASTFORM_RAINY              0x1126
 #define OBJ_EVENT_PAL_TAG_CASTFORM_SNOWY              0x1127
+#define OBJ_EVENT_PAL_TAG_WHITE                       0x1140
+#if OW_MON_POKEBALLS
+// followers-expanded-id (OW_MON_POKEBALLS): custom follower pokeball sprite tags
+#define OBJ_EVENT_PAL_TAG_BALL_MASTER                 0x1150
+#define OBJ_EVENT_PAL_TAG_BALL_ULTRA                  0x1151
+#define OBJ_EVENT_PAL_TAG_BALL_GREAT                  0x1152
+#define OBJ_EVENT_PAL_TAG_BALL_SAFARI                 0x1153
+#define OBJ_EVENT_PAL_TAG_BALL_NET                    0x1154
+#define OBJ_EVENT_PAL_TAG_BALL_DIVE                   0x1155
+#define OBJ_EVENT_PAL_TAG_BALL_NEST                   0x1156
+#define OBJ_EVENT_PAL_TAG_BALL_REPEAT                 0x1157
+#define OBJ_EVENT_PAL_TAG_BALL_TIMER                  0x1158
+#define OBJ_EVENT_PAL_TAG_BALL_LUXURY                 0x1159
+#define OBJ_EVENT_PAL_TAG_BALL_PREMIER                0x115A
+#define OBJ_EVENT_PAL_TAG_BALL_POKE                   0x115B
+#endif //OW_MON_POKEBALLS
 #define OBJ_EVENT_PAL_TAG_SUBSTITUTE                  0x7611
 #define OBJ_EVENT_PAL_TAG_NONE                        0x11FF
 
@@ -532,7 +553,31 @@ static const struct SpritePalette sObjectEventSpritePalettes[] = {
     {gObjectEventPal_CastformRainy,           OBJ_EVENT_PAL_TAG_CASTFORM_RAINY},
     {gObjectEventPal_CastformSnowy,           OBJ_EVENT_PAL_TAG_CASTFORM_SNOWY},
     {gObjectEventPal_Substitute,              OBJ_EVENT_PAL_TAG_SUBSTITUTE},
-    {},
+#if OW_MON_POKEBALLS
+    {gObjectEventPal_MasterBall,              OBJ_EVENT_PAL_TAG_BALL_MASTER},
+    {gObjectEventPal_UltraBall,               OBJ_EVENT_PAL_TAG_BALL_ULTRA},
+    {gObjectEventPal_GreatBall,               OBJ_EVENT_PAL_TAG_BALL_GREAT},
+    {gObjectEventPal_SafariBall,              OBJ_EVENT_PAL_TAG_BALL_SAFARI},
+    {gObjectEventPal_NetBall,                 OBJ_EVENT_PAL_TAG_BALL_NET},
+    {gObjectEventPal_DiveBall,                OBJ_EVENT_PAL_TAG_BALL_DIVE},
+    {gObjectEventPal_NestBall,                OBJ_EVENT_PAL_TAG_BALL_NEST},
+    {gObjectEventPal_RepeatBall,              OBJ_EVENT_PAL_TAG_BALL_REPEAT},
+    {gObjectEventPal_TimerBall,               OBJ_EVENT_PAL_TAG_BALL_TIMER},
+    {gObjectEventPal_LuxuryBall,              OBJ_EVENT_PAL_TAG_BALL_LUXURY},
+    {gObjectEventPal_PremierBall,             OBJ_EVENT_PAL_TAG_BALL_PREMIER},
+    {gObjectEventPal_PokeBall,                OBJ_EVENT_PAL_TAG_BALL_POKE},
+#endif //OW_MON_POKEBALLS
+    // Bug caught, not ported as-is: this terminator used to be a bare `{}`, which
+    // zero-initializes .tag to 0 -- but FindObjectEventPaletteIndexByTag's scan loop
+    // only stops at .tag == OBJ_EVENT_PAL_TAG_NONE (0x11FF), never checks for 0. Every
+    // existing caller always searched for a tag that matched a real entry above, so the
+    // loop never actually reached this terminator before. Phase 5 added the first call
+    // site (ObjectEventSetGraphics, for OBJ_EVENT_PAL_TAG_DYNAMIC) that's guaranteed to
+    // miss every real entry and rely on the terminator -- exposing an effectively
+    // infinite scan into whatever ROM data follows this array (confirmed: froze the
+    // game, sound kept playing, consistent with a tight CPU loop). Terminator must
+    // explicitly carry OBJ_EVENT_PAL_TAG_NONE.
+    {NULL, OBJ_EVENT_PAL_TAG_NONE},
 };
 
 static const u16 sPlayerReflectionPaletteTags[] = {
@@ -2521,6 +2566,22 @@ static u8 LoadDynamicFollowerPalette(u16 species, u8 form, bool32 shiny)
 static void ObjectEventSetGraphics(struct ObjectEvent *objectEvent, const struct ObjectEventGraphicsInfo *graphicsInfo)
 {
     struct Sprite *sprite = &gSprites[objectEvent->spriteId];
+    u32 i = FindObjectEventPaletteIndexByTag(graphicsInfo->paletteTag);
+
+    // followers-expanded-id: handles a real (non-DYNAMIC) static palette tag registered in
+    // sObjectEventSpritePalettes -- e.g. the OW_MON_POKEBALLS ball sprites. Uses the same
+    // global dynamic 16-slot palette pool as DOWP (free-if-unused, then load+assign), *not*
+    // FireRed's small fixed PALSLOT_* NPC-palette system, so a ball's distinct color doesn't
+    // risk stomping on some unrelated nearby NPC sharing one of those few fixed slots.
+    // OBJ_EVENT_PAL_TAG_DYNAMIC itself is never registered in sObjectEventSpritePalettes, so
+    // this is a no-op for ordinary species entries (FollowerSetGraphics handles those itself).
+    if (i != 0xFF)
+    {
+        sprite->inUse = FALSE;
+        FieldEffectFreePaletteIfUnused(sprite->oam.paletteNum);
+        sprite->inUse = TRUE;
+        sprite->oam.paletteNum = LoadSpritePalette(&sObjectEventSpritePalettes[i]);
+    }
 
     if (LARGE_OW_SUPPORT && !OW_GFX_COMPRESS && graphicsInfo->oam->size != sprite->oam.size)
         ReallocSpriteTiles(sprite, graphicsInfo->images->size);
@@ -2745,6 +2806,63 @@ void RemoveFollowingPokemon(void)
     if (objectEvent == NULL)
         return;
     RemoveObjectEvent(objectEvent);
+}
+
+// followers-expanded-id: load a palette filled with a single solid color onto a sprite
+// (the brief white flash during the pokeball emerge/recall animation). FireRed has no
+// UpdateSpritePalette helper (unlike Emerald) -- inlines the same free-if-unused,
+// load-fresh, assign-paletteNum sequence already used by FollowerSetGraphics's DOWP path.
+static u8 LoadFillColorPalette(u16 color, u16 paletteTag, struct Sprite *sprite)
+{
+    u16 paletteData[16];
+    struct SpritePalette dynamicPalette = {.tag = paletteTag, .data = paletteData};
+    CpuFill16(color, paletteData, PLTT_SIZE_4BPP);
+    sprite->inUse = FALSE;
+    FieldEffectFreePaletteIfUnused(sprite->oam.paletteNum);
+    sprite->inUse = TRUE;
+    return sprite->oam.paletteNum = LoadSpritePalette(&dynamicPalette);
+}
+
+// followers-expanded-id (OW_MON_POKEBALLS): set the follower's sprite to the pokeball it's
+// actually stored in (falls back to the generic OBJ_EVENT_GFX_POKE_BALL if that ball has no
+// custom follower sprite, or if OW_MON_POKEBALLS is off). Does not touch objEvent->graphicsId
+// for the custom-ball case -- callers are expected to save/restore it around this call (see
+// MovementAction_ExitPokeball_Step0 / MovementAction_EnterPokeball_Step1) so OW_SPECIES/
+// OW_FORM keep resolving to the real mon throughout the animation.
+static void ObjectEventSetPokeballGfx(struct ObjectEvent *objEvent)
+{
+#if OW_MON_POKEBALLS
+    // Bug caught, not ported as-is: upstream falls back to OBJ_EVENT_GFX_POKE_BALL (an alias
+    // of the vanilla OBJ_EVENT_GFX_ITEM_BALL, the hidden-item-ball graphic) for BALL_POKE, by
+    // actually *overwriting* that vanilla graphics-info slot with its own 16x32/sAnimTable_
+    // Following-compatible ball graphic -- which this project's "original assets unharmed"
+    // constraint rules out (see progress_docs' Phase 1 deferred-items note on
+    // OBJ_EVENT_GFX_POKE_BALL/OBJ_EVENT_GFX_OW_MON). Reusing FireRed's *actual* vanilla
+    // ItemBall entry as-is doesn't work either: it's 16x16 and uses sAnimTable_Inanimate, both
+    // incompatible with the follower sprite's ongoing sAnimTable_Following-based animation
+    // state (confirmed: showed unrelated garbage tile data, not a ball, when tried). Instead,
+    // gPokeballGraphics[BALL_POKE] carries a genuinely separate dedicated plain-ball asset
+    // (ball_poke.png) built with the same sAnimTable_Following/16x32 convention as every other
+    // ball here -- no vanilla slot touched, and no sAnimTable mismatch.
+    u32 ball = BALL_POKE;
+    if (objEvent->localId == OBJ_EVENT_ID_FOLLOWER)
+    {
+        struct Pokemon *mon = GetFirstLiveFollowMon();
+        if (mon)
+            ball = ItemIdToBallId(GetMonData(mon, MON_DATA_POKEBALL));
+    }
+
+    if (ball < POKEBALL_COUNT)
+    {
+        const struct ObjectEventGraphicsInfo *info = &gPokeballGraphics[ball];
+        if (info->tileTag == TAG_NONE)
+        {
+            ObjectEventSetGraphics(objEvent, info);
+            return;
+        }
+    }
+#endif
+    ObjectEventSetGraphicsId(objEvent, OBJ_EVENT_GFX_POKE_BALL);
 }
 
 void LoadPlayerObjectReflectionPalette(u16 tag, u8 slot)
@@ -5109,11 +5227,12 @@ static bool8 MovementType_FollowPlayer_Active(struct ObjectEvent *objectEvent, s
             sprite->data[1] = 0; // return to shadowing state
             return FALSE;
         }
-        // TODO(Phase 5): recall into its pokeball via a field effect instead of hiding instantly
+        // Animate entering pokeball
         ClearObjectEventMovement(objectEvent, sprite);
-        objectEvent->invisible = TRUE;
-        sprite->data[1] = 0;
-        return FALSE;
+        ObjectEventSetSingleMovement(objectEvent, sprite, MOVEMENT_ACTION_ENTER_POKEBALL);
+        objectEvent->singleMovementActive = TRUE;
+        sprite->data[1] = 2; // movement action sets state to 0 when it finishes
+        return TRUE;
     }
     return gFollowPlayerMovementFuncs[PlayerGetCopyableMovement()](objectEvent, sprite, GetPlayerMovementDirection(), NULL);
 }
@@ -5127,7 +5246,11 @@ static bool8 MovementType_FollowPlayer_Moving(struct ObjectEvent *objectEvent, s
         if (sprite->data[1])
             sprite->data[1] = 1; // restore active state
     }
-    else
+    // followers-expanded-id: restored from Phase 4's deferred TODO now that
+    // MOVEMENT_ACTION_EXIT_POKEBALL/ENTER_POKEBALL exist -- the pokeball emerge/recall
+    // animation drives its own palette/affine state and must not also get the idle
+    // transform-effect/bob update stomping on it mid-animation.
+    else if (objectEvent->movementActionId < MOVEMENT_ACTION_EXIT_POKEBALL)
     {
         UpdateFollowerTransformEffect(objectEvent, sprite);
         if (OW_MON_BOBBING == TRUE && (sprite->data[5] & 7) == 2)
@@ -5170,7 +5293,7 @@ static bool8 FollowablePlayerMovement_Step(struct ObjectEvent *objectEvent, stru
 
     if (objectEvent->invisible)
     {
-        // TODO(Phase 5): emerge from its pokeball via a field effect instead of appearing instantly
+        // Animate exiting pokeball
         // don't emerge if the player is ledge-jumping or moving via a script
         if (PlayerGetCopyableMovement() == COPY_MOVE_JUMP2 || ArePlayerFieldControlsLocked())
         {
@@ -5178,9 +5301,12 @@ static bool8 FollowablePlayerMovement_Step(struct ObjectEvent *objectEvent, stru
             return FALSE;
         }
         MoveObjectEventToMapCoords(objectEvent, targetX, targetY);
-        objectEvent->invisible = FALSE;
-        sprite->data[1] = 1;
-        return FALSE;
+        ObjectEventSetSingleMovement(objectEvent, sprite, MOVEMENT_ACTION_EXIT_POKEBALL);
+        objectEvent->singleMovementActive = TRUE;
+        sprite->data[1] = 2;
+        if (OW_MON_BOBBING == TRUE)
+            sprite->y2 = 0;
+        return TRUE;
     }
     else if (x == targetX && y == targetY)
     {
@@ -5530,7 +5656,7 @@ static bool8 MovementType_RaiseHandAndMove_Step1(struct ObjectEvent *objectEvent
     return FALSE;
 }
 
-static void ClearObjectEventMovement(struct ObjectEvent *objectEvent, struct Sprite *sprite)
+void ClearObjectEventMovement(struct ObjectEvent *objectEvent, struct Sprite *sprite)
 {
     objectEvent->singleMovementActive = FALSE;
     objectEvent->heldMovementActive = FALSE;
@@ -7062,6 +7188,177 @@ static bool8 MovementAction_WalkInPlaceSlow_Step1(struct ObjectEvent *objectEven
 
     return MovementAction_WalkInPlace_Step1(objectEvent, sprite);
 }
+
+// followers-expanded-id (OW_MON_POKEBALLS): the follower emerging from / returning to
+// its pokeball. Stretches the sprite in via an affine "squish" animation while swapped to
+// a flat white palette, matching the HGSS-style emerge/recall effect.
+#define sDuration  data[3]
+#define sSpeedFlip data[6]
+
+static const union AffineAnimCmd sAffineAnim_PokeballExit[] =
+{
+    AFFINEANIMCMD_FRAME(0x40, 0x100, 0, 0),
+    AFFINEANIMCMD_FRAME(0x80, 0x100, 0, 0),
+    AFFINEANIMCMD_FRAME(0xC0, 0x100, 0, 0),
+    AFFINEANIMCMD_FRAME(0x100, 0x100, 0, 0),
+    AFFINEANIMCMD_END,
+};
+
+static const union AffineAnimCmd sAffineAnim_PokeballExitEast[] = // sprite is h-flipped when east
+{
+    AFFINEANIMCMD_FRAME(0xFFC0, 0x100, 0, 0),
+    AFFINEANIMCMD_FRAME(0xFF80, 0x100, 0, 0),
+    AFFINEANIMCMD_FRAME(0xFF40, 0x100, 0, 0),
+    AFFINEANIMCMD_FRAME(0xFF00, 0x100, 0, 0),
+    AFFINEANIMCMD_END,
+};
+
+static const union AffineAnimCmd sAffineAnim_PokeballEnter[] =
+{
+    AFFINEANIMCMD_FRAME(0x100, 0x100, 0, 0),
+    AFFINEANIMCMD_FRAME(0xC0, 0x100, 0, 0),
+    AFFINEANIMCMD_FRAME(0x80, 0x100, 0, 0),
+    AFFINEANIMCMD_FRAME(0x40, 0x100, 0, 0),
+    AFFINEANIMCMD_END,
+};
+
+static const union AffineAnimCmd sAffineAnim_PokeballEnterEast[] = // sprite is h-flipped when east
+{
+    AFFINEANIMCMD_FRAME(0xFF00, 0x100, 0, 0),
+    AFFINEANIMCMD_FRAME(0xFF40, 0x100, 0, 0),
+    AFFINEANIMCMD_FRAME(0xFF80, 0x100, 0, 0),
+    AFFINEANIMCMD_FRAME(0xFFC0, 0x100, 0, 0),
+    AFFINEANIMCMD_END,
+};
+
+static const union AffineAnimCmd *const sAffineAnims_PokeballFollower[] =
+{
+    sAffineAnim_PokeballExit,
+    sAffineAnim_PokeballExitEast,
+    sAffineAnim_PokeballEnter,
+    sAffineAnim_PokeballEnterEast,
+};
+
+bool8 MovementAction_ExitPokeball_Step0(struct ObjectEvent *objectEvent, struct Sprite *sprite)
+{
+    u32 direction = gObjectEvents[gPlayerAvatar.objectEventId].facingDirection;
+    u16 graphicsId = objectEvent->graphicsId;
+    objectEvent->invisible = FALSE;
+    if (TestPlayerAvatarFlags(PLAYER_AVATAR_FLAG_DASH)) // If player is dashing, the pokemon must come out faster
+    {
+        StartSpriteAnimInDirection(objectEvent, sprite, direction, GetJumpSpecialDirectionAnimNum(direction));
+        sprite->sDuration = 8;
+        sprite->sSpeedFlip = 0; // fast speed
+    }
+    else
+    {
+        StartSpriteAnimInDirection(objectEvent, sprite, direction, GetMoveDirectionFastestAnimNum(direction));
+        sprite->sDuration = 16;
+        sprite->sSpeedFlip = 1; // normal speed
+    }
+    // If mon's right-facing sprite is h-flipped, we need to use a different affine anim
+    if (direction == DIR_EAST && sprite->anims[ANIM_STD_FACE_EAST]->frame.hFlip)
+        sprite->sSpeedFlip |= 1 << 4;
+    ObjectEventSetPokeballGfx(objectEvent);
+    objectEvent->graphicsId = graphicsId;
+    objectEvent->inanimate = FALSE;
+    return MovementAction_ExitPokeball_Step1(objectEvent, sprite);
+}
+
+bool8 MovementAction_ExitPokeball_Step1(struct ObjectEvent *objectEvent, struct Sprite *sprite)
+{
+    // for different speeds, anim steps occur on different frame #s
+    u32 animStepFrame = (sprite->sSpeedFlip & 1) ? 7 : 3; // 0 -> 3, 1 -> 7
+    if (--sprite->sDuration == 0)
+    {
+        sprite->data[2] = 2; // next single-movement-action step (gMovementActionFuncs_ExitPokeball's PauseSpriteAnim entry); reset to 0 by the generic dispatcher on return TRUE regardless
+        sprite->animCmdIndex = 0;
+        sprite->animPaused = TRUE;
+        return TRUE;
+    // Set graphics, palette, and affine animation
+    }
+    else if (sprite->sDuration == animStepFrame)
+    {
+        FollowerSetGraphics(objectEvent, OW_SPECIES(objectEvent), OW_FORM(objectEvent), objectEvent->shiny);
+        LoadFillColorPalette(RGB_WHITE, OBJ_EVENT_PAL_TAG_WHITE, sprite);
+        // Initialize affine animation
+        if (LARGE_OW_SUPPORT && !IS_POW_OF_TWO(-sprite->centerToCornerVecX))
+            return FALSE;
+        sprite->affineAnims = sAffineAnims_PokeballFollower;
+        sprite->oam.affineMode = ST_OAM_AFFINE_NORMAL;
+        InitSpriteAffineAnim(sprite);
+        StartSpriteAffineAnim(sprite, sprite->sSpeedFlip >> 4);
+    // Restore original palette & disable affine
+    }
+    else if (sprite->sDuration == (animStepFrame >> 1))
+    {
+        sprite->affineAnimEnded = TRUE;
+        FreeSpriteOamMatrix(sprite);
+        sprite->oam.affineMode = ST_OAM_AFFINE_OFF;
+        FollowerSetGraphics(objectEvent, OW_SPECIES(objectEvent), OW_FORM(objectEvent), objectEvent->shiny);
+    }
+    return FALSE;
+}
+
+bool8 MovementAction_EnterPokeball_Step0(struct ObjectEvent *objectEvent, struct Sprite *sprite)
+{
+    u32 direction = objectEvent->facingDirection;
+    StartSpriteAnimInDirection(objectEvent, sprite, direction, GetMoveDirectionFasterAnimNum(direction));
+    sprite->sDuration = 16;
+    // If mon's right-facing sprite is h-flipped, we need to use a different affine anim
+    if (direction == DIR_EAST && sprite->anims[ANIM_STD_FACE_EAST]->frame.hFlip)
+        sprite->sSpeedFlip = 3;
+    else
+        sprite->sSpeedFlip = 2;
+    EndFollowerTransformEffect(objectEvent, sprite);
+    return MovementAction_EnterPokeball_Step1(objectEvent, sprite);
+}
+
+bool8 MovementAction_EnterPokeball_Step1(struct ObjectEvent *objectEvent, struct Sprite *sprite)
+{
+    u16 graphicsId = objectEvent->graphicsId;
+    if (--sprite->sDuration == 0)
+    {
+        sprite->data[2] = 2; // advance to gMovementActionFuncs_EnterPokeball's Step2 entry
+        return FALSE;
+    }
+    else if (sprite->sDuration == 11) // Set palette to white & start affine
+    {
+        LoadFillColorPalette(RGB_WHITE, OBJ_EVENT_PAL_TAG_WHITE, sprite);
+        sprite->subspriteTableNum = 0;
+        // Only do affine if sprite width is power of 2
+        // (effect looks weird on sprites composed of subsprites like 48x48, etc)
+        if (LARGE_OW_SUPPORT && !IS_POW_OF_TWO(-sprite->centerToCornerVecX))
+            return FALSE;
+        sprite->affineAnims = sAffineAnims_PokeballFollower;
+        sprite->oam.affineMode = ST_OAM_AFFINE_NORMAL;
+        InitSpriteAffineAnim(sprite);
+        StartSpriteAffineAnim(sprite, sprite->sSpeedFlip);
+    }
+    else if (sprite->sDuration == 7) // Free white palette and change to pokeball, disable affine
+    {
+        sprite->affineAnimEnded = TRUE;
+        FreeSpriteOamMatrix(sprite);
+        sprite->oam.affineMode = ST_OAM_AFFINE_OFF;
+        ObjectEventSetPokeballGfx(objectEvent);
+        objectEvent->graphicsId = graphicsId;
+        objectEvent->inanimate = FALSE;
+    }
+    return FALSE;
+}
+
+bool8 MovementAction_EnterPokeball_Step2(struct ObjectEvent *objectEvent, struct Sprite *sprite)
+{
+    FollowerSetGraphics(objectEvent, OW_SPECIES(objectEvent), OW_FORM(objectEvent), objectEvent->shiny);
+    objectEvent->invisible = TRUE;
+    sprite->data[1] = 0; // MovementType_FollowPlayer: return to shadowing state
+    sprite->sSpeedFlip = 0;
+    sprite->animPaused = TRUE;
+    return TRUE;
+}
+
+#undef sDuration
+#undef sSpeedFlip
 
 static bool8 MovementAction_WalkInPlaceSlowDown_Step0(struct ObjectEvent *objectEvent, struct Sprite *sprite)
 {

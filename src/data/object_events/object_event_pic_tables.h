@@ -5511,3 +5511,31 @@ static const struct SpriteFrameImage sPicTable_Zubat[] = {
     overworld_frame(gObjectEventPic_Zubat, 4, 4, 5),
 };
 
+// --- followers-expanded-id (OW_MON_POKEBALLS): custom follower pokeball sprites ---
+#if OW_MON_POKEBALLS
+
+#define POKEBALL_PIC_FRAMES(name) \
+    overworld_frame(gObjectEventPic_##name##Ball, 2, 4, 0), \
+    overworld_frame(gObjectEventPic_##name##Ball, 2, 4, 1), \
+    overworld_frame(gObjectEventPic_##name##Ball, 2, 4, 2), \
+    overworld_frame(gObjectEventPic_##name##Ball, 2, 4, 3), \
+    overworld_frame(gObjectEventPic_##name##Ball, 2, 4, 4), \
+    overworld_frame(gObjectEventPic_##name##Ball, 2, 4, 0)
+
+static const struct SpriteFrameImage sPicTable_Ball_MASTER[] = { POKEBALL_PIC_FRAMES(Master) };
+static const struct SpriteFrameImage sPicTable_Ball_ULTRA[] = { POKEBALL_PIC_FRAMES(Ultra) };
+static const struct SpriteFrameImage sPicTable_Ball_GREAT[] = { POKEBALL_PIC_FRAMES(Great) };
+static const struct SpriteFrameImage sPicTable_Ball_SAFARI[] = { POKEBALL_PIC_FRAMES(Safari) };
+static const struct SpriteFrameImage sPicTable_Ball_NET[] = { POKEBALL_PIC_FRAMES(Net) };
+static const struct SpriteFrameImage sPicTable_Ball_DIVE[] = { POKEBALL_PIC_FRAMES(Dive) };
+static const struct SpriteFrameImage sPicTable_Ball_NEST[] = { POKEBALL_PIC_FRAMES(Nest) };
+static const struct SpriteFrameImage sPicTable_Ball_REPEAT[] = { POKEBALL_PIC_FRAMES(Repeat) };
+static const struct SpriteFrameImage sPicTable_Ball_TIMER[] = { POKEBALL_PIC_FRAMES(Timer) };
+static const struct SpriteFrameImage sPicTable_Ball_LUXURY[] = { POKEBALL_PIC_FRAMES(Luxury) };
+static const struct SpriteFrameImage sPicTable_Ball_PREMIER[] = { POKEBALL_PIC_FRAMES(Premier) };
+static const struct SpriteFrameImage sPicTable_Ball_POKE[] = { POKEBALL_PIC_FRAMES(Poke) };
+
+#undef POKEBALL_PIC_FRAMES
+
+#endif //OW_MON_POKEBALLS
+

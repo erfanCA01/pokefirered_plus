@@ -431,6 +431,31 @@ const struct ObjectEventGraphicsInfo gCastformObjectGraphics[] =
     {TAG_NONE, OBJ_EVENT_PAL_TAG_CASTFORM_SNOWY, OBJ_EVENT_PAL_TAG_NONE, 512, 32, 32, 2, SHADOW_SIZE_M, FALSE, COMP, TRACKS_NONE, &gObjectEventBaseOam_32x32, gObjectEventSpriteOamTables_32x32, sAnimTable_Following, sPicTable_CastformSnowy, gDummySpriteAffineAnimTable},
 };
 
+// followers-expanded-id (OW_MON_POKEBALLS): custom follower pokeball sprites, shown briefly
+// during the emerge/recall animation instead of the generic OBJ_EVENT_GFX_POKE_BALL. Note
+// tileTag = TAG_NONE and compressed = FALSE (unlike every species entry above) -- these are
+// deliberately uncompressed, raw tiles, so the brief mid-animation graphics swap never touches
+// the OW_GFX_COMPRESS shared-tile-sheet cache (which is keyed by the follower's own species
+// graphicsId and would otherwise be a stale-cache risk for a same-sprite swap like this).
+#if OW_MON_POKEBALLS
+const struct ObjectEventGraphicsInfo gPokeballGraphics[POKEBALL_COUNT] = {
+    // Dedicated plain-ball entry for BALL_POKE -- see the comment on gObjectEventPic_PokeBall
+    // for why this is a separate asset rather than a reuse of the vanilla OBJ_EVENT_GFX_ITEM_BALL.
+    [BALL_POKE] = {TAG_NONE, OBJ_EVENT_PAL_TAG_BALL_POKE, OBJ_EVENT_PAL_TAG_NONE, 256, 16, 32, 2, SHADOW_SIZE_M, TRUE, FALSE, TRACKS_NONE, &gObjectEventBaseOam_16x32, gObjectEventSpriteOamTables_16x32, sAnimTable_Following, sPicTable_Ball_POKE, gDummySpriteAffineAnimTable},
+    [BALL_MASTER] = {TAG_NONE, OBJ_EVENT_PAL_TAG_BALL_MASTER, OBJ_EVENT_PAL_TAG_NONE, 256, 16, 32, 2, SHADOW_SIZE_M, TRUE, FALSE, TRACKS_NONE, &gObjectEventBaseOam_16x32, gObjectEventSpriteOamTables_16x32, sAnimTable_Following, sPicTable_Ball_MASTER, gDummySpriteAffineAnimTable},
+    [BALL_ULTRA] = {TAG_NONE, OBJ_EVENT_PAL_TAG_BALL_ULTRA, OBJ_EVENT_PAL_TAG_NONE, 256, 16, 32, 2, SHADOW_SIZE_M, TRUE, FALSE, TRACKS_NONE, &gObjectEventBaseOam_16x32, gObjectEventSpriteOamTables_16x32, sAnimTable_Following, sPicTable_Ball_ULTRA, gDummySpriteAffineAnimTable},
+    [BALL_GREAT] = {TAG_NONE, OBJ_EVENT_PAL_TAG_BALL_GREAT, OBJ_EVENT_PAL_TAG_NONE, 256, 16, 32, 2, SHADOW_SIZE_M, TRUE, FALSE, TRACKS_NONE, &gObjectEventBaseOam_16x32, gObjectEventSpriteOamTables_16x32, sAnimTable_Following, sPicTable_Ball_GREAT, gDummySpriteAffineAnimTable},
+    [BALL_SAFARI] = {TAG_NONE, OBJ_EVENT_PAL_TAG_BALL_SAFARI, OBJ_EVENT_PAL_TAG_NONE, 256, 16, 32, 2, SHADOW_SIZE_M, TRUE, FALSE, TRACKS_NONE, &gObjectEventBaseOam_16x32, gObjectEventSpriteOamTables_16x32, sAnimTable_Following, sPicTable_Ball_SAFARI, gDummySpriteAffineAnimTable},
+    [BALL_NET] = {TAG_NONE, OBJ_EVENT_PAL_TAG_BALL_NET, OBJ_EVENT_PAL_TAG_NONE, 256, 16, 32, 2, SHADOW_SIZE_M, TRUE, FALSE, TRACKS_NONE, &gObjectEventBaseOam_16x32, gObjectEventSpriteOamTables_16x32, sAnimTable_Following, sPicTable_Ball_NET, gDummySpriteAffineAnimTable},
+    [BALL_DIVE] = {TAG_NONE, OBJ_EVENT_PAL_TAG_BALL_DIVE, OBJ_EVENT_PAL_TAG_NONE, 256, 16, 32, 2, SHADOW_SIZE_M, TRUE, FALSE, TRACKS_NONE, &gObjectEventBaseOam_16x32, gObjectEventSpriteOamTables_16x32, sAnimTable_Following, sPicTable_Ball_DIVE, gDummySpriteAffineAnimTable},
+    [BALL_NEST] = {TAG_NONE, OBJ_EVENT_PAL_TAG_BALL_NEST, OBJ_EVENT_PAL_TAG_NONE, 256, 16, 32, 2, SHADOW_SIZE_M, TRUE, FALSE, TRACKS_NONE, &gObjectEventBaseOam_16x32, gObjectEventSpriteOamTables_16x32, sAnimTable_Following, sPicTable_Ball_NEST, gDummySpriteAffineAnimTable},
+    [BALL_REPEAT] = {TAG_NONE, OBJ_EVENT_PAL_TAG_BALL_REPEAT, OBJ_EVENT_PAL_TAG_NONE, 256, 16, 32, 2, SHADOW_SIZE_M, TRUE, FALSE, TRACKS_NONE, &gObjectEventBaseOam_16x32, gObjectEventSpriteOamTables_16x32, sAnimTable_Following, sPicTable_Ball_REPEAT, gDummySpriteAffineAnimTable},
+    [BALL_TIMER] = {TAG_NONE, OBJ_EVENT_PAL_TAG_BALL_TIMER, OBJ_EVENT_PAL_TAG_NONE, 256, 16, 32, 2, SHADOW_SIZE_M, TRUE, FALSE, TRACKS_NONE, &gObjectEventBaseOam_16x32, gObjectEventSpriteOamTables_16x32, sAnimTable_Following, sPicTable_Ball_TIMER, gDummySpriteAffineAnimTable},
+    [BALL_LUXURY] = {TAG_NONE, OBJ_EVENT_PAL_TAG_BALL_LUXURY, OBJ_EVENT_PAL_TAG_NONE, 256, 16, 32, 2, SHADOW_SIZE_M, TRUE, FALSE, TRACKS_NONE, &gObjectEventBaseOam_16x32, gObjectEventSpriteOamTables_16x32, sAnimTable_Following, sPicTable_Ball_LUXURY, gDummySpriteAffineAnimTable},
+    [BALL_PREMIER] = {TAG_NONE, OBJ_EVENT_PAL_TAG_BALL_PREMIER, OBJ_EVENT_PAL_TAG_NONE, 256, 16, 32, 2, SHADOW_SIZE_M, TRUE, FALSE, TRACKS_NONE, &gObjectEventBaseOam_16x32, gObjectEventSpriteOamTables_16x32, sAnimTable_Following, sPicTable_Ball_PREMIER, gDummySpriteAffineAnimTable},
+};
+#endif //OW_MON_POKEBALLS
+
 // Standalone follower palettes
 // If not NULL, entries here override the front-sprite-based pals
 // used by OBJ_EVENT_PAL_TAG_DYNAMIC

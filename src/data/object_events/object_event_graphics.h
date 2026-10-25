@@ -655,3 +655,40 @@ const u16 gObjectEventPal_CastformSunny[] = INCBIN_U16("graphics/pokemon/castfor
 const u16 gObjectEventPal_CastformRainy[] = INCBIN_U16("graphics/pokemon/castform/rainy/normal.gbapal");
 const u16 gObjectEventPal_CastformSnowy[] = INCBIN_U16("graphics/pokemon/castform/snowy/normal.gbapal");
 const u16 gObjectEventPal_Substitute[] = INCBIN_U16("graphics/object_events/pics/pokemon/substitute.gbapal");
+
+// --- followers-expanded-id (OW_MON_POKEBALLS): custom follower pokeball sprites.
+// Uncompressed (unlike the species sprites above) -- these intentionally skip the
+// OW_GFX_COMPRESS shared-tile-sheet cache so a brief ball-graphics swap mid-animation
+// can never collide with the follower's own cached species sheet tag.
+const u32 gObjectEventPic_MasterBall[] = INCBIN_U32("graphics/object_events/pics/misc/ball_master.4bpp");
+const u32 gObjectEventPic_UltraBall[] = INCBIN_U32("graphics/object_events/pics/misc/ball_ultra.4bpp");
+const u32 gObjectEventPic_GreatBall[] = INCBIN_U32("graphics/object_events/pics/misc/ball_great.4bpp");
+const u32 gObjectEventPic_SafariBall[] = INCBIN_U32("graphics/object_events/pics/misc/ball_safari.4bpp");
+const u32 gObjectEventPic_NetBall[] = INCBIN_U32("graphics/object_events/pics/misc/ball_net.4bpp");
+const u32 gObjectEventPic_DiveBall[] = INCBIN_U32("graphics/object_events/pics/misc/ball_dive.4bpp");
+const u32 gObjectEventPic_NestBall[] = INCBIN_U32("graphics/object_events/pics/misc/ball_nest.4bpp");
+const u32 gObjectEventPic_RepeatBall[] = INCBIN_U32("graphics/object_events/pics/misc/ball_repeat.4bpp");
+const u32 gObjectEventPic_TimerBall[] = INCBIN_U32("graphics/object_events/pics/misc/ball_timer.4bpp");
+const u32 gObjectEventPic_LuxuryBall[] = INCBIN_U32("graphics/object_events/pics/misc/ball_luxury.4bpp");
+const u32 gObjectEventPic_PremierBall[] = INCBIN_U32("graphics/object_events/pics/misc/ball_premier.4bpp");
+// followers-expanded-id: dedicated plain Poke Ball graphic for BALL_POKE -- NOT the vanilla
+// hidden-item-ball asset. Emerald's own equivalent overwrites OBJ_EVENT_GFX_ITEM_BALL's
+// graphics-info slot (a vanilla NPC asset) to get sAnimTable_Following-compatible dimensions;
+// we use a genuinely separate entry instead, per this project's "original assets unharmed"
+// constraint, and because the vanilla item-ball's incompatible 16x16/non-Following anim table
+// caused real corruption when reused mid-animation on the follower's own sprite (confirmed by
+// testing: showed unrelated garbage tile data instead of a ball).
+const u32 gObjectEventPic_PokeBall[] = INCBIN_U32("graphics/object_events/pics/misc/ball_poke.4bpp");
+
+const u16 gObjectEventPal_MasterBall[] = INCBIN_U16("graphics/object_events/pics/misc/ball_master.gbapal");
+const u16 gObjectEventPal_UltraBall[] = INCBIN_U16("graphics/object_events/pics/misc/ball_ultra.gbapal");
+const u16 gObjectEventPal_GreatBall[] = INCBIN_U16("graphics/object_events/pics/misc/ball_great.gbapal");
+const u16 gObjectEventPal_SafariBall[] = INCBIN_U16("graphics/object_events/pics/misc/ball_safari.gbapal");
+const u16 gObjectEventPal_NetBall[] = INCBIN_U16("graphics/object_events/pics/misc/ball_net.gbapal");
+const u16 gObjectEventPal_DiveBall[] = INCBIN_U16("graphics/object_events/pics/misc/ball_dive.gbapal");
+const u16 gObjectEventPal_NestBall[] = INCBIN_U16("graphics/object_events/pics/misc/ball_nest.gbapal");
+const u16 gObjectEventPal_RepeatBall[] = INCBIN_U16("graphics/object_events/pics/misc/ball_repeat.gbapal");
+const u16 gObjectEventPal_TimerBall[] = INCBIN_U16("graphics/object_events/pics/misc/ball_timer.gbapal");
+const u16 gObjectEventPal_LuxuryBall[] = INCBIN_U16("graphics/object_events/pics/misc/ball_luxury.gbapal");
+const u16 gObjectEventPal_PremierBall[] = INCBIN_U16("graphics/object_events/pics/misc/ball_premier.gbapal");
+const u16 gObjectEventPal_PokeBall[] = INCBIN_U16("graphics/object_events/pics/misc/ball_poke.gbapal");

@@ -111,6 +111,7 @@ struct Pokemon *GetFirstLiveFollowMon(void);
 struct ObjectEvent *GetFollowerObject(void);
 void UpdateFollowingPokemon(void);
 void RemoveFollowingPokemon(void);
+void ClearObjectEventMovement(struct ObjectEvent *, struct Sprite *);
 void CameraObjectReset1(void);
 void CameraObjectReset2(void);
 void ObjectEventSetGraphicsId(struct ObjectEvent *, u16);
