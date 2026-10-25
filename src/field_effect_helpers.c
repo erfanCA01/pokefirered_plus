@@ -9,9 +9,34 @@
 #include "metatile_behavior.h"
 #include "constants/field_effects.h"
 #include "constants/event_objects.h"
+#include "constants/rgb.h"
 #include "constants/songs.h"
+#include "constants/weather.h"
 
 #define OBJ_EVENT_PAL_TAG_NONE 0x11FF // duplicate of define in event_object_movement.c
+
+// followers-expanded-id: the follower's palette is allocated dynamically (DOWP, tag = species),
+// so it has no entry in FireRed's fixed slot->reflection-slot map (gReflectionEffectPaletteMap)
+// or pre-made reflection palettes. Its reflection palette is instead built on demand by tinting
+// the follower's own current palette, in a slot tagged paletteTag + PAL_TAG_REFLECTION_OFFSET.
+//
+// The sprite palette pool for non-fixed palettes is tiny (slots OBJ_PALSLOT_COUNT..15), shared with
+// the follower's own palette, the pokeball/flash palettes and field effects. So the reflection
+// palette is strictly lowest priority: the sprite records the tag of the palette it owns in
+// data[3] (so it is always freed correctly, whatever the base tag was), and the follower code may
+// evict it via FreeFollowerReflectionPalettes() when it can't otherwise get a slot.
+#define PAL_TAG_REFLECTION_OFFSET 0x2000
+#define HIGH_BRIDGE_PAL_TAG       0x4010
+#define sOwnedPalTag              data[3] // reflection sprite: tag of the follower-reflection palette it owns, 0 if none
+
+// Preferred home for the follower's reflection palette: the reserved (non-pool) slot vanilla only
+// uses for the reflections of special-palette NPCs, which costs the dynamic pool nothing. The
+// reflection sprite claims it only while no other sprite is using it (writing into it every time
+// the follower's palette changes, never freeing anything), and falls back to a pool palette if a
+// vanilla special-NPC reflection ever needs it.
+#define FOLLOWER_REFLECTION_FIXED_SLOT PALSLOT_NPC_SPECIAL_REFLECTION
+#define FIXED_SLOT_MARKER              0x7FFE // sOwnedPalTag value meaning "owns the fixed slot"
+#define sFixedSlotBaseTag              data[4] // base palette tag the fixed slot's contents were built from
 
 static void UpdateObjectReflectionSprite(struct Sprite *sprite);
 static void LoadObjectReflectionPalette(struct ObjectEvent * objectEvent, struct Sprite *sprite);
@@ -29,6 +54,9 @@ static void SynchroniseSurfPosition(struct ObjectEvent * objectEvent, struct Spr
 static void CreateBobbingEffect(struct ObjectEvent * objectEvent, struct Sprite *linkedSprite, struct Sprite *sprite);
 static void SpriteCB_UnderwaterSurfBlob(struct Sprite *sprite);
 static u32 ShowDisguiseFieldEffect(u8 fldEff, u8 templateIdx, u8 paletteNum);
+static void LoadFollowerReflectionPalette(struct Sprite *reflectionSprite, struct Sprite *mainSprite);
+static void LoadFollowerHighBridgeReflectionPalette(struct Sprite *reflectionSprite);
+static void FreeFollowerReflectionPalette(struct Sprite *reflectionSprite);
 
 void SetUpReflection(struct ObjectEvent * objectEvent, struct Sprite *sprite, bool8 stillReflection)
 {
@@ -46,6 +74,9 @@ void SetUpReflection(struct ObjectEvent * objectEvent, struct Sprite *sprite, bo
     reflectionSprite->subspriteMode = SUBSPRITES_OFF;
     reflectionSprite->data[0] = sprite->data[0];
     reflectionSprite->data[1] = objectEvent->localId;
+    // the sprite was copied, so these still hold the main sprite's data[3]/data[4]
+    reflectionSprite->sOwnedPalTag = 0;
+    reflectionSprite->sFixedSlotBaseTag = 0;
     reflectionSprite->data[7] = stillReflection;
     LoadObjectReflectionPalette(objectEvent, reflectionSprite);
 
@@ -69,11 +100,231 @@ static void LoadObjectReflectionPalette(struct ObjectEvent * objectEvent, struct
         && ((bridgeType = MetatileBehavior_GetBridgeType(objectEvent->previousMetatileBehavior)) || (bridgeType = MetatileBehavior_GetBridgeType(objectEvent->currentMetatileBehavior))))
     {
         sprite->data[2] = bridgeReflectionVerticalOffsets[bridgeType - 1];
-        LoadObjectHighBridgeReflectionPalette(objectEvent, sprite->oam.paletteNum);
+        if (IS_OW_MON_OBJ(objectEvent))
+            LoadFollowerHighBridgeReflectionPalette(sprite);
+        else
+            LoadObjectHighBridgeReflectionPalette(objectEvent, sprite->oam.paletteNum);
     }
     else
     {
-        LoadObjectRegularReflectionPalette(objectEvent, sprite->oam.paletteNum);
+        if (IS_OW_MON_OBJ(objectEvent))
+            LoadFollowerReflectionPalette(sprite, &gSprites[objectEvent->spriteId]);
+        else
+            LoadObjectRegularReflectionPalette(objectEvent, sprite->oam.paletteNum);
+    }
+}
+
+// Tint a palette blue for a (moving) water reflection. Color 0 is transparency, copied as-is.
+static void ApplyPondFilter(u8 paletteNum, u16 *dest)
+{
+    u32 i, r, g, b;
+    u16 *src = gPlttBufferUnfaded + OBJ_PLTT_ID(paletteNum);
+
+    *dest++ = *src++;
+    for (i = 0; i < 16 - 1; i++)
+    {
+        r = GET_R(src[i]);
+        g = GET_G(src[i]);
+        b = GET_B(src[i]) + 10;
+        if (b > 31)
+            b = 31;
+        *dest++ = RGB2(r, g, b);
+    }
+}
+
+// Tint a palette icy blue for a still (ice) reflection.
+static void ApplyIceFilter(u8 paletteNum, u16 *dest)
+{
+    u32 i, r, g, b;
+    u16 *src = gPlttBufferUnfaded + OBJ_PLTT_ID(paletteNum);
+
+    *dest++ = *src++;
+    for (i = 0; i < 16 - 1; i++)
+    {
+        r = GET_R(src[i]);
+        r -= 5;
+        if (r > 31) // underflow
+            r = 0;
+        g = GET_G(src[i]) + 3;
+        if (g > 31)
+            g = 31;
+        b = GET_B(src[i]) + 16;
+        if (b > 31)
+            b = 31;
+        *dest++ = RGB2(r, g, b);
+    }
+}
+
+// Points the reflection sprite at a palette that is the follower's current palette run
+// through the pond/ice filter, loading it if it isn't loaded yet. The reflection palette
+// is keyed by the follower's palette tag, so every reflection of the same species/shininess
+// shares one slot, and it is rebuilt whenever the follower's own palette changes.
+// TRUE if some sprite other than a follower reflection that already owns the fixed slot is
+// currently using it (i.e. a vanilla special-NPC reflection), so we must not touch it.
+static bool8 IsFixedReflectionSlotContested(void)
+{
+    u8 i;
+
+    for (i = 0; i < MAX_SPRITES; i++)
+    {
+        struct Sprite *sprite = &gSprites[i];
+
+        if (sprite->inUse && sprite->oam.paletteNum == FOLLOWER_REFLECTION_FIXED_SLOT
+         && !(sprite->callback == UpdateObjectReflectionSprite && sprite->sOwnedPalTag == FIXED_SLOT_MARKER))
+            return TRUE;
+    }
+    return FALSE;
+}
+
+// Builds the filtered (pond/ice-tinted) copy of the main sprite's current palette into dest.
+static void BuildFollowerReflectionPalette(struct Sprite *reflectionSprite, struct Sprite *mainSprite, u16 *dest)
+{
+    if (reflectionSprite->data[7] == FALSE)
+        ApplyPondFilter(mainSprite->oam.paletteNum, dest);
+    else
+        ApplyIceFilter(mainSprite->oam.paletteNum, dest);
+}
+
+static void LoadFollowerReflectionPalette(struct Sprite *reflectionSprite, struct Sprite *mainSprite)
+{
+    u16 baseTag = GetSpritePaletteTagByPaletteNum(mainSprite->oam.paletteNum);
+    u16 paletteTag;
+    u8 paletteNum;
+
+    if (baseTag == TAG_NONE)
+    {
+        // main sprite has no tagged palette; nothing to derive a reflection from
+        FreeFollowerReflectionPalette(reflectionSprite);
+        reflectionSprite->oam.paletteNum = mainSprite->oam.paletteNum;
+        return;
+    }
+
+    // Preferred: the reserved fixed slot (no dynamic pool cost)
+    if (reflectionSprite->sOwnedPalTag == FIXED_SLOT_MARKER && IsFixedReflectionSlotContested())
+    {
+        // a vanilla special-NPC reflection took it over; give it up and fall through to the pool
+        reflectionSprite->sOwnedPalTag = 0;
+        reflectionSprite->sFixedSlotBaseTag = 0;
+    }
+    if (reflectionSprite->sOwnedPalTag == FIXED_SLOT_MARKER || !IsFixedReflectionSlotContested())
+    {
+        if (reflectionSprite->sOwnedPalTag != FIXED_SLOT_MARKER || reflectionSprite->sFixedSlotBaseTag != baseTag)
+        {
+            u16 filteredData[16];
+
+            BuildFollowerReflectionPalette(reflectionSprite, mainSprite, filteredData);
+            LoadPalette(filteredData, OBJ_PLTT_ID(FOLLOWER_REFLECTION_FIXED_SLOT), PLTT_SIZE_4BPP);
+            ApplyGlobalFieldPaletteTint(FOLLOWER_REFLECTION_FIXED_SLOT);
+            if (gWeatherPtr->currWeather != WEATHER_FOG_HORIZONTAL)
+                UpdateSpritePaletteWithWeather(FOLLOWER_REFLECTION_FIXED_SLOT);
+            // any pool palette this sprite owned is no longer needed
+            FreeFollowerReflectionPalette(reflectionSprite);
+            reflectionSprite->sOwnedPalTag = FIXED_SLOT_MARKER;
+            reflectionSprite->sFixedSlotBaseTag = baseTag;
+        }
+        reflectionSprite->oam.paletteNum = FOLLOWER_REFLECTION_FIXED_SLOT;
+        return;
+    }
+
+    // Fallback: a pool palette (lowest priority; may be evicted, see FreeFollowerReflectionPalettes)
+    paletteTag = baseTag + PAL_TAG_REFLECTION_OFFSET;
+    if (reflectionSprite->sOwnedPalTag == paletteTag && IndexOfSpritePaletteTag(paletteTag) < 16)
+        return; // already pointing at the right palette
+    // The reflection sprite's old palette may now be unused (e.g. species changed)
+    FreeFollowerReflectionPalette(reflectionSprite);
+    paletteNum = IndexOfSpritePaletteTag(paletteTag);
+    if (paletteNum >= 16)
+    {
+        u16 filteredData[16];
+        struct SpritePalette filteredPal = {.tag = paletteTag, .data = filteredData};
+
+        BuildFollowerReflectionPalette(reflectionSprite, mainSprite, filteredData);
+        paletteNum = LoadSpritePalette(&filteredPal);
+        if (paletteNum >= 16)
+        {
+            // no free palette slot: fall back to the follower's own colors rather than garbage
+            reflectionSprite->oam.paletteNum = mainSprite->oam.paletteNum;
+            return;
+        }
+        ApplyGlobalFieldPaletteTint(paletteNum);
+        if (gWeatherPtr->currWeather != WEATHER_FOG_HORIZONTAL)
+            UpdateSpritePaletteWithWeather(paletteNum);
+    }
+    reflectionSprite->oam.paletteNum = paletteNum;
+    reflectionSprite->sOwnedPalTag = paletteTag;
+}
+
+// When on a high bridge the reflection is a solid dark blue (see LoadObjectHighBridgeReflectionPalette)
+static void LoadFollowerHighBridgeReflectionPalette(struct Sprite *reflectionSprite)
+{
+    u16 blueData[16];
+    struct SpritePalette bluePalette = {.tag = HIGH_BRIDGE_PAL_TAG, .data = blueData};
+    u8 paletteNum;
+
+    FreeFollowerReflectionPalette(reflectionSprite);
+    CpuFill16(0x55C9, blueData, PLTT_SIZE_4BPP);
+    paletteNum = LoadSpritePalette(&bluePalette);
+    if (paletteNum < 16)
+    {
+        reflectionSprite->oam.paletteNum = paletteNum;
+        reflectionSprite->sOwnedPalTag = HIGH_BRIDGE_PAL_TAG;
+        UpdateSpritePaletteWithWeather(paletteNum);
+    }
+}
+
+// Releases the follower-reflection palette this reflection sprite owns (if any), unless some
+// other sprite is still using it. Never touches a palette the sprite doesn't own.
+static void FreeFollowerReflectionPalette(struct Sprite *reflectionSprite)
+{
+    u16 tag = reflectionSprite->sOwnedPalTag;
+    u8 paletteNum;
+
+    if (tag == 0)
+        return;
+    reflectionSprite->sOwnedPalTag = 0;
+    if (tag == FIXED_SLOT_MARKER)
+    {
+        reflectionSprite->sFixedSlotBaseTag = 0; // fixed slot isn't in the pool; nothing to free
+        return;
+    }
+    paletteNum = IndexOfSpritePaletteTag(tag);
+    if (paletteNum < 16)
+    {
+        bool8 wasInUse = reflectionSprite->inUse;
+
+        reflectionSprite->inUse = FALSE;
+        FieldEffectFreePaletteIfUnused(paletteNum);
+        reflectionSprite->inUse = wasInUse;
+    }
+}
+
+// LoadSpritePalette, but if the (tiny) non-fixed sprite palette pool is full, first evicts the
+// water reflections' follower palettes (lowest priority) and retries. Use for any overworld
+// palette load whose failure would otherwise be silent: a failed load returns 0xFF, which
+// truncates to palette 15 and renders the sprite in whatever colors that slot holds.
+u8 LoadSpritePaletteEvictingReflections(const struct SpritePalette *palette)
+{
+    u8 paletteNum = LoadSpritePalette(palette);
+
+    if (paletteNum >= 16)
+    {
+        FreeFollowerReflectionPalettes();
+        paletteNum = LoadSpritePalette(palette);
+    }
+    return paletteNum;
+}
+
+// Called by follower palette loads that ran out of palette slots: gives up every reflection's
+// palette (they rebuild, or fall back to the follower's own colors, on their next update).
+void FreeFollowerReflectionPalettes(void)
+{
+    u8 i;
+
+    for (i = 0; i < MAX_SPRITES; i++)
+    {
+        if (gSprites[i].inUse && gSprites[i].callback == UpdateObjectReflectionSprite
+         && gSprites[i].sOwnedPalTag != 0 && gSprites[i].sOwnedPalTag != FIXED_SLOT_MARKER)
+            FreeFollowerReflectionPalette(&gSprites[i]);
     }
 }
 
@@ -117,11 +368,22 @@ static void UpdateObjectReflectionSprite(struct Sprite *reflectionSprite)
     mainSprite = &gSprites[objectEvent->spriteId];
     if (!objectEvent->active || !objectEvent->hasReflection || objectEvent->localId != reflectionSprite->data[1])
     {
+        FreeFollowerReflectionPalette(reflectionSprite);
         reflectionSprite->inUse = FALSE;
     }
     else
     {
-        reflectionSprite->oam.paletteNum = gReflectionEffectPaletteMap[mainSprite->oam.paletteNum];
+        if (IS_OW_MON_OBJ(objectEvent))
+        {
+            // Keep the filtered palette in sync with the follower's own (it changes with species/shininess),
+            // unless this is the solid-blue high bridge palette.
+            if (reflectionSprite->sOwnedPalTag != HIGH_BRIDGE_PAL_TAG)
+                LoadFollowerReflectionPalette(reflectionSprite, mainSprite);
+        }
+        else
+        {
+            reflectionSprite->oam.paletteNum = gReflectionEffectPaletteMap[mainSprite->oam.paletteNum];
+        }
         reflectionSprite->oam.shape = mainSprite->oam.shape;
         reflectionSprite->oam.size = mainSprite->oam.size;
         reflectionSprite->oam.matrixNum = mainSprite->oam.matrixNum | ST_OAM_VFLIP;

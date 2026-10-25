@@ -23,7 +23,9 @@ static void StartRockSmashFieldEffect(void);
 
 EWRAM_DATA struct MapPosition gPlayerFacingPosition = {};
 
-bool8 CheckObjectGraphicsInFrontOfPlayer(u8 graphicsId)
+#define tSkipPose data[0]
+
+bool8 CheckObjectGraphicsInFrontOfPlayer(u16 graphicsId)
 {
     u8 mapObjId;
 
@@ -42,6 +44,18 @@ u8 CreateFieldEffectShowMon(void)
     return CreateTask(Task_FieldEffectShowMon_Init, 8);
 }
 
+// followers-expanded-id: same as above, but if skipPose is set the player's field move pose is
+// skipped (the follower is performing the move instead; see EventScript_FollowerFieldMove).
+// Scoped to the task rather than read from gFieldEffectArguments[3] at pose time, since that
+// slot is a general-purpose scratch argument other field effects leave stale values in.
+u8 CreateFieldEffectShowMonSkipPose(bool8 skipPose)
+{
+    u8 taskId = CreateFieldEffectShowMon();
+
+    gTasks[taskId].tSkipPose = skipPose;
+    return taskId;
+}
+
 static void Task_FieldEffectShowMon_Init(u8 taskId)
 {
     u8 mapObjId;
@@ -52,9 +66,10 @@ static void Task_FieldEffectShowMon_Init(u8 taskId)
     if (!ObjectEventIsMovementOverridden(&gObjectEvents[mapObjId])
      || ObjectEventClearHeldMovementIfFinished(&gObjectEvents[mapObjId]))
     {
-        if (gMapHeader.mapType == MAP_TYPE_UNDERWATER)
+        if (gMapHeader.mapType == MAP_TYPE_UNDERWATER || gTasks[taskId].tSkipPose)
         {
             // Leftover from RS, inhibits the player anim while underwater.
+            // Also skipped if the follower is performing the field move.
             FieldEffectStart(FLDEFF_FIELD_MOVE_SHOW_MON_INIT);
             gTasks[taskId].func = Task_FieldEffectShowMon_WaitFldeff;
         }
@@ -122,7 +137,7 @@ static void FieldCallback_UseRockSmash(void)
 
 bool8 FldEff_UseRockSmash(void)
 {
-    u8 taskId = CreateFieldEffectShowMon();
+    u8 taskId = CreateFieldEffectShowMonSkipPose(gFieldEffectArguments[3] != 0);
 
     FLDEFF_SET_FUNC_TO_DATA(StartRockSmashFieldEffect);
     IncrementGameStat(GAME_STAT_USED_ROCK_SMASH);
@@ -135,3 +150,5 @@ static void StartRockSmashFieldEffect(void)
     FieldEffectActiveListRemove(FLDEFF_USE_ROCK_SMASH);
     ScriptContext_Enable();
 }
+
+#undef tSkipPose

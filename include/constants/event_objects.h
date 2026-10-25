@@ -252,10 +252,7 @@
 // TRUE: Script collisions hide follower, FLAG_SAFE_FOLLOWER_MOVEMENT on by default
 // (scripted player movement moves follower too!)
 // FALSE: Script collisions unhandled, FLAG_SAFE_FOLLOWER_MOVEMENT off by default
-// Deferred to a dedicated follow-up pass (touches scrcmd.c/script.c/script_movement.c's
-// applymovement/lock handling) -- see progress_docs deferred-items list. Stays FALSE
-// (upstream's own "unhandled" default) until that pass lands.
-#define OW_MON_SCRIPT_MOVEMENT FALSE
+#define OW_MON_SCRIPT_MOVEMENT TRUE
 
 // If set, the only pokemon allowed to follow you will be those matching
 // species, met location, and/or met level; these accept vars too (VAR_TEMP_1, etc).

@@ -182,7 +182,7 @@ static void FieldCallback_CutTree(void)
 
 bool8 FldEff_UseCutOnTree(void)
 {
-    u8 taskId = CreateFieldEffectShowMon();
+    u8 taskId = CreateFieldEffectShowMonSkipPose(gFieldEffectArguments[3] != 0);
     FLDEFF_SET_FUNC_TO_DATA(FieldMoveCallback_CutTree);
     IncrementGameStat(GAME_STAT_USED_CUT);
     return FALSE;

@@ -1,3 +1,15 @@
+.macro IsFollowerFieldMoveUser var:req
+	callfunc ScrFunc_IsFollowerFieldMoveUser
+	.2byte \var
+.endm
+
+.macro GetDirectionToFace var:req, fromId:req, toId:req
+	callfunc ScrFunc_GetDirectionToFace
+	.2byte \var
+	.byte \fromId
+	.byte \toId
+.endm
+
 EventScript_CutTree::
 	goto_if_questlog EventScript_ReleaseEnd
 	lockall
@@ -11,6 +23,11 @@ EventScript_CutTree::
 	goto_if_eq VAR_RESULT, NO, EventScript_DontCutTree
 	msgbox Text_MonUsedMove
 	closemessage
+EventScript_CutTreeCommon:
+	@ followers-expanded-id: if the follower is the Cut user it performs the move
+	@ instead of the player (arg 3 = skip the player's pose)
+	IsFollowerFieldMoveUser VAR_0x8004
+	setfieldeffectargument 3, VAR_0x8004
 	dofieldeffect FLDEFF_USE_CUT_ON_TREE
 	waitstate
 	goto EventScript_CutTreeDown
@@ -18,12 +35,12 @@ EventScript_CutTree::
 
 EventScript_FldEffCut::
 	lockall
-	dofieldeffect FLDEFF_USE_CUT_ON_TREE
-	waitstate
-	goto EventScript_CutTreeDown
+	goto EventScript_CutTreeCommon
 	end
 
 EventScript_CutTreeDown::
+	setflag FLAG_SAFE_FOLLOWER_MOVEMENT
+	call_if_eq VAR_0x8004, TRUE, EventScript_FollowerFieldMove
 	applymovement VAR_LAST_TALKED, Movement_CutTreeDown
 	waitmovement 0
 	removeobject VAR_LAST_TALKED
@@ -69,6 +86,10 @@ EventScript_RockSmash::
 	goto_if_eq VAR_RESULT, NO, EventScript_DontSmashRock
 	msgbox Text_MonUsedMove
 	closemessage
+EventScript_RockSmashCommon:
+	@ followers-expanded-id: see EventScript_CutTreeCommon
+	IsFollowerFieldMoveUser VAR_0x8004
+	setfieldeffectargument 3, VAR_0x8004
 	dofieldeffect FLDEFF_USE_ROCK_SMASH
 	waitstate
 	goto EventScript_UseRockSmash
@@ -76,12 +97,12 @@ EventScript_RockSmash::
 
 EventScript_FldEffRockSmash::
 	lockall
-	dofieldeffect FLDEFF_USE_ROCK_SMASH
-	waitstate
-	goto EventScript_UseRockSmash
+	goto EventScript_RockSmashCommon
 	end
 
 EventScript_UseRockSmash::
+	setflag FLAG_SAFE_FOLLOWER_MOVEMENT
+	call_if_eq VAR_0x8004, TRUE, EventScript_FollowerFieldMove
 	applymovement VAR_LAST_TALKED, Movement_BreakRock
 	waitmovement 0
 	removeobject VAR_LAST_TALKED
@@ -90,6 +111,112 @@ EventScript_UseRockSmash::
 	waitstate
 	releaseall
 	end
+
+@ followers-expanded-id: the follower performs a field move (Cut / Rock Smash) in the player's
+@ place. The player steps back onto the follower's tile and faces it, then the follower hops
+@ in place toward the target. Expects VAR_0x8004 == TRUE (see IsFollowerFieldMoveUser).
+EventScript_FollowerFieldMove:
+	GetDirectionToFace VAR_0x8005, OBJ_EVENT_ID_FOLLOWER, OBJ_EVENT_ID_PLAYER
+	specialvar VAR_0x8006, GetPlayerFacingDirection
+	goto_if_eq VAR_0x8005, DIR_NONE, EventScript_FollowerFieldMoveEnd
+	@ Swap follower and player
+	call EventScript_FollowerSwap
+	@ Face follower in direction and jump
+	switch VAR_0x8006
+	case DIR_NORTH, EventScript_FollowerJumpNorth
+	case DIR_EAST, EventScript_FollowerJumpEast
+	case DIR_SOUTH, EventScript_FollowerJumpSouth
+	case DIR_WEST, EventScript_FollowerJumpWest
+EventScript_FollowerFieldMoveEnd:
+	return
+
+EventScript_FollowerSwap:
+	switch VAR_0x8005
+	case DIR_NORTH, EventScript_FollowerMoveNorth
+	case DIR_EAST, EventScript_FollowerMoveEast
+	case DIR_SOUTH, EventScript_FollowerMoveSouth
+	case DIR_WEST, EventScript_FollowerMoveWest
+	return
+
+EventScript_FollowerMoveNorth:
+	applymovement OBJ_EVENT_ID_PLAYER, Movement_WalkDown
+	waitmovement 0
+	applymovement OBJ_EVENT_ID_PLAYER, Common_Movement_FaceUp
+	waitmovement 0
+	return
+
+EventScript_FollowerMoveEast:
+	applymovement OBJ_EVENT_ID_PLAYER, Movement_WalkLeft
+	waitmovement 0
+	applymovement OBJ_EVENT_ID_PLAYER, Common_Movement_FaceRight
+	waitmovement 0
+	return
+
+EventScript_FollowerMoveSouth:
+	applymovement OBJ_EVENT_ID_PLAYER, Movement_WalkUp
+	waitmovement 0
+	applymovement OBJ_EVENT_ID_PLAYER, Common_Movement_FaceDown
+	waitmovement 0
+	return
+
+EventScript_FollowerMoveWest:
+	applymovement OBJ_EVENT_ID_PLAYER, Movement_WalkRight
+	waitmovement 0
+	applymovement OBJ_EVENT_ID_PLAYER, Common_Movement_FaceLeft
+	waitmovement 0
+	return
+
+EventScript_FollowerJumpNorth:
+	applymovement OBJ_EVENT_ID_FOLLOWER, Movement_JumpUp
+	waitmovement 0
+	return
+
+EventScript_FollowerJumpEast:
+	applymovement OBJ_EVENT_ID_FOLLOWER, Movement_JumpRight
+	waitmovement 0
+	return
+
+EventScript_FollowerJumpSouth:
+	applymovement OBJ_EVENT_ID_FOLLOWER, Movement_JumpDown
+	waitmovement 0
+	return
+
+EventScript_FollowerJumpWest:
+	applymovement OBJ_EVENT_ID_FOLLOWER, Movement_JumpLeft
+	waitmovement 0
+	return
+
+Movement_WalkUp:
+	walk_up
+	step_end
+
+Movement_JumpUp:
+	jump_in_place_up
+	step_end
+
+Movement_WalkRight:
+	walk_right
+	step_end
+
+Movement_JumpRight:
+	jump_in_place_right
+	step_end
+
+Movement_WalkDown:
+	walk_down
+	step_end
+
+Movement_JumpDown:
+	jump_in_place_down
+	step_end
+
+Movement_WalkLeft:
+	walk_left
+	step_end
+
+Movement_JumpLeft:
+	jump_in_place_left
+	step_end
 
 EventScript_RockSmashNoEncounter::
 	releaseall

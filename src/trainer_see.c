@@ -2,6 +2,7 @@
 #include "battle_setup.h"
 #include "event_object_movement.h"
 #include "field_effect.h"
+#include "field_effect_helpers.h"
 #include "field_player_avatar.h"
 #include "quest_log.h"
 #include "script.h"
@@ -774,7 +775,7 @@ u8 FldEff_QuestionMarkIcon(void)
     if ((s32)gFieldEffectArguments[7] >= 0)
     {
         u8 emotion = (u8)gFieldEffectArguments[7];
-        LoadSpritePalette(&sSpritePalette_Emotes);
+        LoadSpritePaletteEvictingReflections(&sSpritePalette_Emotes);
         spriteId = CreateSpriteAtEnd(&sSpriteTemplate_Emote, 0, 0, 0x52);
         if (spriteId != MAX_SPRITES)
             SetIconSpriteData(&gSprites[spriteId], FLDEFF_EMOTE, emotion);

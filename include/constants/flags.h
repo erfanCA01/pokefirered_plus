@@ -1531,9 +1531,8 @@
 #define SPECIAL_FLAGS_START           0x4000
 #define FLAG_DONT_SHOW_MAP_NAME_POPUP (SPECIAL_FLAGS_START + 0x0)
 #define FLAG_DONT_TRANSITION_MUSIC    (SPECIAL_FLAGS_START + 0x1)
-// followers-expanded-id: inert while OW_MON_SCRIPT_MOVEMENT (constants/event_objects.h)
-// is FALSE -- see that toggle's comment for why the scripted-movement integration
-// that would read/set this flag is deferred.
+// followers-expanded-id: set for the duration of every script when OW_MON_SCRIPT_MOVEMENT
+// (constants/event_objects.h) is TRUE -- scripted player movement then also moves the follower.
 #define FLAG_SAFE_FOLLOWER_MOVEMENT   (SPECIAL_FLAGS_START + 0x5)
 // FLAG_SPECIAL_FLAG_0x4002 - 0x407F also exist and are unused
 #define SPECIAL_FLAGS_END             (SPECIAL_FLAGS_START + 0x7F)

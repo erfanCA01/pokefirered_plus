@@ -22,6 +22,7 @@ bool8 SetUpFieldMove_Teleport(void)
 static void FieldCallback_Teleport(void)
 {
     Overworld_ResetStateAfterTeleport();
+    HideFollowerForFieldEffect(); // recall the follower into its ball (animated) before teleporting
     FieldEffectStart(FLDEFF_USE_TELEPORT);
     gFieldEffectArguments[0] = (u32)GetCursorSelectionMonId();
 }

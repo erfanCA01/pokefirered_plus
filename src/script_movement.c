@@ -2,6 +2,7 @@
 #include "task.h"
 #include "util.h"
 #include "event_object_movement.h"
+#include "event_scripts.h"
 #include "constants/event_objects.h"
 #include "constants/event_object_movement.h"
 
@@ -199,6 +200,10 @@ static void ScriptMovement_MoveObjects(u8 taskId)
     }
 }
 
+// from event_object_movement
+#define sTypeFuncId data[1]
+#define sStepNo     data[5]
+
 static void ScriptMovement_TakeStep(u8 taskId, u8 moveScrId, u8 objEventId, const u8 *movementScript)
 {
     u8 nextMoveActionId;
@@ -207,7 +212,33 @@ static void ScriptMovement_TakeStep(u8 taskId, u8 moveScrId, u8 objEventId, cons
         return;
     if (ObjectEventIsHeldMovementActive(&gObjectEvents[objEventId])
         && !ObjectEventClearHeldMovementIfFinished(&gObjectEvents[objEventId]))
+    {
+        // followers-expanded-id: if, while undergoing scripted movement, a non-player
+        // object collides with an active follower, put that follower into its Pokeball
+        // (sStepNo == 1 limits this relatively expensive check to once per step)
+        if (OW_MON_SCRIPT_MOVEMENT)
+        {
+            struct ObjectEvent *obj = &gObjectEvents[objEventId];
+
+            if (gSprites[obj->spriteId].sStepNo == 1)
+            {
+                u32 collidedId = GetObjectObjectCollidesWith(obj, 0, 0, TRUE);
+
+                if (collidedId < OBJECT_EVENTS_COUNT)
+                {
+                    struct ObjectEvent *follower = &gObjectEvents[collidedId];
+
+                    if (follower->movementType == MOVEMENT_TYPE_FOLLOW_PLAYER
+                     && gSprites[follower->spriteId].sTypeFuncId != 0)
+                    {
+                        ClearObjectEventMovement(follower, &gSprites[follower->spriteId]);
+                        ScriptMovement_StartObjectMovementScript(follower->localId, follower->mapNum, follower->mapGroup, EnterPokeballMovement);
+                    }
+                }
+            }
+        }
         return;
+    }
 
     nextMoveActionId = *movementScript;
     if (nextMoveActionId == MOVEMENT_ACTION_STEP_END)
@@ -224,3 +255,6 @@ static void ScriptMovement_TakeStep(u8 taskId, u8 moveScrId, u8 objEventId, cons
         }
     }
 }
+
+#undef sTypeFuncId
+#undef sStepNo

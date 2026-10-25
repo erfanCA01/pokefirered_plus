@@ -9,8 +9,9 @@ gTasks[taskId].data[9] = (u32)func;
 
 extern struct MapPosition gPlayerFacingPosition;
 
-bool8 CheckObjectGraphicsInFrontOfPlayer(u8 graphicsId);
+bool8 CheckObjectGraphicsInFrontOfPlayer(u16 graphicsId);
 u8 CreateFieldEffectShowMon(void);
+u8 CreateFieldEffectShowMonSkipPose(bool8 skipPose);
 
 // flash
 u8 MapTransitionIsExit(u8 lightLevel, u8 mapType);
