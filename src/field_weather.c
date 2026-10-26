@@ -140,17 +140,41 @@ const u8 gWeatherAshTiles[] = INCBIN_U8("graphics/weather/ash.4bpp");
 const u8 gWeatherRainTiles[] = INCBIN_U8("graphics/weather/rain.4bpp");
 const u8 gWeatherSandstormTiles[] = INCBIN_U8("graphics/weather/sandstorm.4bpp");
 
+// followers-expanded-id: FireRed only has four free sprite palette slots, and the weather system used
+// to claim one on every map even when the weather has no sprites (none, sunny, shade -- 406 of 425
+// maps), leaving three for the follower, the Day Care mons, ball effects and emotes. The palette is now
+// only allocated for weathers that draw sprites (fog, rain, ...), at map start or when such a weather
+// is requested later.
+static bool8 WeatherNeedsSpritePalette(u8 weather)
+{
+    return weather != WEATHER_NONE && weather != WEATHER_SUNNY && weather != WEATHER_SHADE;
+}
+
+static void EnsureWeatherSpritePalette(void)
+{
+    u8 index;
+
+    if (gWeatherPtr->weatherPicSpritePalIndex != 0xFF)
+        return;
+    index = AllocSpritePalette(0x1200);
+    if (index == 0xFF)
+        return;
+    CpuCopy32(gDefaultWeatherSpritePalette, &gPlttBufferUnfaded[OBJ_PLTT_ID(index)], PLTT_SIZE_4BPP);
+    ApplyGlobalFieldPaletteTint(index);
+    gWeatherPtr->altGammaSpritePalIndex = index;
+    gWeatherPtr->weatherPicSpritePalIndex = index;
+}
+
 // code
 void StartWeather(void)
 {
     if (!FuncIsActiveTask(Task_WeatherMain))
     {
-        u8 index = AllocSpritePalette(0x1200);
-        CpuCopy32(gDefaultWeatherSpritePalette, &gPlttBufferUnfaded[OBJ_PLTT_ID(index)], PLTT_SIZE_4BPP);
-        ApplyGlobalFieldPaletteTint(index);
+        gWeatherPtr->altGammaSpritePalIndex = 0xFF;
+        gWeatherPtr->weatherPicSpritePalIndex = 0xFF;
+        if (WeatherNeedsSpritePalette(GetSav1Weather()))
+            EnsureWeatherSpritePalette();
         BuildGammaShiftTables();
-        gWeatherPtr->altGammaSpritePalIndex = index;
-        gWeatherPtr->weatherPicSpritePalIndex = index;
         gWeatherPtr->rainSpriteCount = 0;
         gWeatherPtr->curRainSpriteIndex = 0;
         gWeatherPtr->cloudSpritesCreated = FALSE;
@@ -173,6 +197,8 @@ void StartWeather(void)
 
 void SetNextWeather(u8 weather)
 {
+    if (WeatherNeedsSpritePalette(weather))
+        EnsureWeatherSpritePalette();
     if (weather != WEATHER_RAIN && weather != WEATHER_RAIN_THUNDERSTORM && weather != WEATHER_DOWNPOUR)
     {
         PlayRainStoppingSoundEffect();
@@ -191,6 +217,8 @@ void SetNextWeather(u8 weather)
 
 void SetCurrentAndNextWeather(u8 weather)
 {
+    if (WeatherNeedsSpritePalette(weather))
+        EnsureWeatherSpritePalette();
     PlayRainStoppingSoundEffect();
     gWeatherPtr->currWeather = weather;
     gWeatherPtr->nextWeather = weather;
@@ -198,6 +226,8 @@ void SetCurrentAndNextWeather(u8 weather)
 
 static void SetCurrentAndNextWeatherNoDelay(u8 weather)
 {
+    if (WeatherNeedsSpritePalette(weather))
+        EnsureWeatherSpritePalette();
     PlayRainStoppingSoundEffect();
     gWeatherPtr->currWeather = weather;
     gWeatherPtr->nextWeather = weather;
@@ -883,6 +913,7 @@ static u8 IsWeatherFadingIn(void)
 
 void LoadCustomWeatherSpritePalette(const u16 *palette)
 {
+    EnsureWeatherSpritePalette();
     LoadPalette(palette, OBJ_PLTT_ID(gWeatherPtr->weatherPicSpritePalIndex), PLTT_SIZE_4BPP);
     UpdateSpritePaletteWithWeather(gWeatherPtr->weatherPicSpritePalIndex);
 }

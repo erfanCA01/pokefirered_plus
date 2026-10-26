@@ -775,7 +775,13 @@ u8 FldEff_QuestionMarkIcon(void)
     if ((s32)gFieldEffectArguments[7] >= 0)
     {
         u8 emotion = (u8)gFieldEffectArguments[7];
-        LoadSpritePaletteEvictingReflections(&sSpritePalette_Emotes);
+        if (LoadSpritePaletteEvictingReflections(&sSpritePalette_Emotes) >= 16)
+        {
+            // No free sprite palette slot: skip the bubble rather than draw it in whatever colors
+            // another sprite's palette (the one slot 15 happens to hold) has.
+            FieldEffectActiveListRemove(FLDEFF_EMOTE);
+            return 0;
+        }
         spriteId = CreateSpriteAtEnd(&sSpriteTemplate_Emote, 0, 0, 0x52);
         if (spriteId != MAX_SPRITES)
             SetIconSpriteData(&gSprites[spriteId], FLDEFF_EMOTE, emotion);
