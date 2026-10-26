@@ -24,6 +24,7 @@
 #include "constants/event_object_movement.h"
 #include "constants/event_objects.h"
 #include "constants/field_weather.h"
+#include "constants/map_types.h"
 
 static void ExitWarpFadeInScreen(u8 playerNotMoving);
 static void Task_ExitDoor(u8 taskId);
@@ -532,7 +533,7 @@ bool32 FieldFadeTransitionBackgroundEffectIsFinished(void)
         return FALSE;
 }
 
-void DoWarp(void)
+static void DoWarpNow(void)
 {
     LockPlayerFieldControls();
     TryFadeOutOldMapMusic();
@@ -541,6 +542,47 @@ void DoWarp(void)
     PlaySE(SE_EXIT);
     gFieldCallback = FieldCB_DefaultWarpExit;
     CreateTask(Task_Teleport2Warp, 10);
+}
+
+// followers-expanded-id: walking out of a building (indoor map -> outdoor map) through a plain or
+// arrow warp, i.e. not a door, which already recalls the follower in Task_DoorWarp.
+static bool8 ShouldRecallFollowerOnIndoorExit(void)
+{
+    struct ObjectEvent *followerObject = GetFollowerObject();
+
+    return followerObject != NULL
+        && !followerObject->invisible
+        && GetCurrentMapType() == MAP_TYPE_INDOOR
+        && IsMapTypeOutdoors(GetDestinationWarpMapHeader()->mapType) == TRUE;
+}
+
+#define FOLLOWER_RECALL_TIMEOUT 40
+
+// Give the recall animation (16 frames) time to finish before the screen fades out, the way the
+// door warp gives it time while the door opens. The timeout only guards against a stuck movement.
+static void Task_WarpAfterFollowerRecall(u8 taskId)
+{
+    struct ObjectEvent *followerObject = GetFollowerObject();
+
+    if (followerObject != NULL && !followerObject->invisible && ++gTasks[taskId].data[0] < FOLLOWER_RECALL_TIMEOUT)
+        return;
+    DestroyTask(taskId);
+    DoWarpNow();
+}
+
+void DoWarp(void)
+{
+    if (ShouldRecallFollowerOnIndoorExit())
+    {
+        struct ObjectEvent *followerObject = GetFollowerObject();
+
+        LockPlayerFieldControls();
+        ClearObjectEventMovement(followerObject, &gSprites[followerObject->spriteId]);
+        ObjectEventSetHeldMovement(followerObject, MOVEMENT_ACTION_ENTER_POKEBALL);
+        CreateTask(Task_WarpAfterFollowerRecall, 10);
+        return;
+    }
+    DoWarpNow();
 }
 
 void DoDiveWarp(void)
