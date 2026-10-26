@@ -1087,14 +1087,19 @@ static u32 GetFlyUserPartyIndex(void)
 
 // followers-expanded-id: if the Pokemon using Fly is the one following the player (and it is out),
 // returns its object event, otherwise NULL.
-static struct ObjectEvent *GetFlyUserFollowerObject(void)
+static struct ObjectEvent *GetFollowerObjectIfFieldMoveUser(u32 slot)
 {
     struct ObjectEvent *followerObject = GetFollowerObject();
-    u32 slot = GetFlyUserPartyIndex();
 
-    if (followerObject != NULL && !followerObject->invisible && GetFirstLiveFollowMon() == &gPlayerParty[slot])
+    if (slot < PARTY_SIZE && followerObject != NULL && !followerObject->invisible
+     && GetFirstLiveFollowMon() == &gPlayerParty[slot])
         return followerObject;
     return NULL;
+}
+
+static struct ObjectEvent *GetFlyUserFollowerObject(void)
+{
+    return GetFollowerObjectIfFieldMoveUser(GetFlyUserPartyIndex());
 }
 
 // followers-expanded-id: the follower takes off. It is replaced by the Fly bird sprite, which shoots
@@ -3191,21 +3196,166 @@ u8 FldEff_UseSurf(void)
     return FALSE;
 }
 
+// followers-expanded-id: Task data / states used when the follower is the Surf user. Before the usual
+// sequence (the Pokemon's picture, then the player jumping onto the surf blob) the follower hops in
+// place twice, walks into the player's tile, jumps into the water tile in front of the player and turns
+// into the surf blob there (with a splash). The player's field move pose is skipped.
+#define tSurfWaterX       data[1]
+#define tSurfWaterY       data[2]
+#define tSurfPaletteTag   data[12]
+#define tSurfBlobSpriteId data[13]
+#define tSurfFollowerUser data[14]
+#define tSurfMonPartyId   data[15]
+
+#define SURF_FOLLOWER_HOP_1      10
+#define SURF_FOLLOWER_WAIT_1     11
+#define SURF_FOLLOWER_HOP_2      12
+#define SURF_FOLLOWER_WAIT_2     13
+#define SURF_FOLLOWER_WALK_IN    14
+#define SURF_FOLLOWER_WAIT_WALK  15
+#define SURF_FOLLOWER_JUMP       16
+#define SURF_FOLLOWER_WAIT_JUMP  17
+#define SURF_FOLLOWER_CONVERT    18
+#define SURF_FOLLOWER_CLEANUP    19
+
+// Direction from one tile to an adjacent one, or DIR_NONE if they are not adjacent.
+static u8 GetAdjacentTileDirection(s16 fromX, s16 fromY, s16 toX, s16 toY)
+{
+    if (toX == fromX && toY == fromY + 1)
+        return DIR_SOUTH;
+    if (toX == fromX && toY == fromY - 1)
+        return DIR_NORTH;
+    if (toY == fromY && toX == fromX - 1)
+        return DIR_WEST;
+    if (toY == fromY && toX == fromX + 1)
+        return DIR_EAST;
+    return DIR_NONE;
+}
+
+static void RunSurfFollowerPrelude(struct Task *task)
+{
+    struct ObjectEvent *followerObject = GetFollowerObject();
+    struct ObjectEvent *playerObject = &gObjectEvents[gPlayerAvatar.objectEventId];
+    u8 direction;
+
+    if (followerObject == NULL && task->data[0] != SURF_FOLLOWER_CLEANUP)
+    {
+        // follower vanished: go on with the normal Surf (blob created by the usual step)
+        task->tSurfFollowerUser = FALSE;
+        SetPlayerAvatarStateMask(PLAYER_AVATAR_FLAG_SURFING);
+        task->data[0] = 1;
+        return;
+    }
+
+    switch (task->data[0])
+    {
+    case SURF_FOLLOWER_HOP_1:
+    case SURF_FOLLOWER_HOP_2:
+        ClearObjectEventMovement(followerObject, &gSprites[followerObject->spriteId]);
+        ObjectEventSetHeldMovement(followerObject, GetJumpInPlaceMovementAction(followerObject->facingDirection));
+        task->data[0]++;
+        break;
+    case SURF_FOLLOWER_WAIT_1:
+    case SURF_FOLLOWER_WAIT_2:
+        if (ObjectEventClearHeldMovementIfFinished(followerObject))
+            task->data[0]++;
+        break;
+    case SURF_FOLLOWER_WALK_IN:
+        // Step into the player's tile (they overlap for a moment). If it is not right next to the
+        // player, just put it there.
+        direction = GetAdjacentTileDirection(followerObject->currentCoords.x, followerObject->currentCoords.y,
+                                             playerObject->currentCoords.x, playerObject->currentCoords.y);
+        ClearObjectEventMovement(followerObject, &gSprites[followerObject->spriteId]);
+        if (direction != DIR_NONE)
+        {
+            ObjectEventSetHeldMovement(followerObject, GetWalkNormalMovementAction(direction));
+            task->data[0]++;
+        }
+        else
+        {
+            MoveObjectEventToMapCoords(followerObject, playerObject->currentCoords.x, playerObject->currentCoords.y);
+            task->data[0] = SURF_FOLLOWER_JUMP;
+        }
+        break;
+    case SURF_FOLLOWER_WAIT_WALK:
+        if (ObjectEventClearHeldMovementIfFinished(followerObject))
+            task->data[0]++;
+        break;
+    case SURF_FOLLOWER_JUMP:
+        // Jump from the player's tile into the water tile in front of the player.
+        ClearObjectEventMovement(followerObject, &gSprites[followerObject->spriteId]);
+        ObjectEventSetHeldMovement(followerObject, GetJumpMovementAction(playerObject->movementDirection));
+        task->data[0]++;
+        break;
+    case SURF_FOLLOWER_WAIT_JUMP:
+        if (ObjectEventClearHeldMovementIfFinished(followerObject))
+            task->data[0]++;
+        break;
+    case SURF_FOLLOWER_CONVERT:
+        // Splash, and the follower becomes the surf blob on the water tile it landed on.
+        gFieldEffectArguments[0] = task->tSurfWaterX;
+        gFieldEffectArguments[1] = task->tSurfWaterY;
+        gFieldEffectArguments[2] = followerObject->previousElevation;
+        gFieldEffectArguments[3] = gSprites[followerObject->spriteId].oam.priority;
+        FieldEffectStart(FLDEFF_JUMP_BIG_SPLASH);
+        PlaySE(SE_PUDDLE);
+        gFieldEffectArguments[0] = task->tSurfWaterX;
+        gFieldEffectArguments[1] = task->tSurfWaterY;
+        gFieldEffectArguments[2] = gPlayerAvatar.objectEventId;
+        task->tSurfBlobSpriteId = FieldEffectStart(FLDEFF_SURF_BLOB);
+        // Remove the follower and free its overworld palette (see RemoveFollowerAndFreePalette) so
+        // the "used Surf!" picture can load its own.
+        task->tSurfPaletteTag = RemoveFollowerAndFreePalette(followerObject);
+        task->data[11] = 0;
+        task->data[0]++;
+        break;
+    case SURF_FOLLOWER_CLEANUP:
+        // Give the follower's water reflection a few frames to let go of the palette, then carry on
+        // with the normal sequence (picture, then the player jumps onto the blob).
+        FreePaletteByTagIfUnused(task->tSurfPaletteTag);
+        if (++task->data[11] >= 8)
+        {
+            SetPlayerAvatarStateMask(PLAYER_AVATAR_FLAG_SURFING); // deferred from UseSurfEffect_1
+            task->data[0] = 1;
+        }
+        break;
+    }
+}
+
 static void Task_FldEffUseSurf(u8 taskId)
 {
-    sUseSurfEffectFuncs[gTasks[taskId].data[0]](&gTasks[taskId]);
+    struct Task *task = &gTasks[taskId];
+
+    if (task->data[0] >= SURF_FOLLOWER_HOP_1)
+        RunSurfFollowerPrelude(task);
+    else
+        sUseSurfEffectFuncs[task->data[0]](task);
 }
 
 static void UseSurfEffect_1(struct Task *task)
 {
     LockPlayerFieldControls();
     FreezeObjectEvents();
-    HideFollowerForFieldEffect(); // Put follower into pokeball before using Surf
+    // followers-expanded-id: if the follower is the Surf user it performs the move (see
+    // RunSurfFollowerPrelude); otherwise it goes into its pokeball before using Surf, as before.
+    task->tSurfFollowerUser = GetFollowerObjectIfFieldMoveUser(task->tSurfMonPartyId) != NULL;
+    // Remember whether the follower is the surfer (it is hidden while surfing, being the surf blob), so
+    // battles can slide it in instead of throwing a ball. Saved with the game.
+    VarSet(VAR_FOLLOWER_SURFER_ID, task->tSurfFollowerUser
+        ? (GetMonData(&gPlayerParty[task->tSurfMonPartyId], MON_DATA_PERSONALITY) & 0xFFFF)
+        : 0);
+    if (!task->tSurfFollowerUser)
+        HideFollowerForFieldEffect();
     gPlayerAvatar.preventStep = TRUE;
-    SetPlayerAvatarStateMask(PLAYER_AVATAR_FLAG_SURFING);
+    // While the follower performs the move the player must not count as surfing yet: the follower's
+    // own movement hides it in its ball whenever the player is surfing (see IsFollowerVisible).
+    if (!task->tSurfFollowerUser)
+        SetPlayerAvatarStateMask(PLAYER_AVATAR_FLAG_SURFING);
     PlayerGetDestCoords(&task->data[1], &task->data[2]);
     MoveCoords(gObjectEvents[gPlayerAvatar.objectEventId].movementDirection, &task->data[1], &task->data[2]);
     task->data[0]++;
+    if (task->tSurfFollowerUser)
+        task->data[0] = SURF_FOLLOWER_HOP_1;
 }
 
 static void UseSurfEffect_2(struct Task *task)
@@ -3214,8 +3364,12 @@ static void UseSurfEffect_2(struct Task *task)
     objectEvent = &gObjectEvents[gPlayerAvatar.objectEventId];
     if (!ObjectEventIsMovementOverridden(objectEvent) || ObjectEventClearHeldMovementIfFinished(objectEvent))
     {
-        StartPlayerAvatarSummonMonForFieldMoveAnim();
-        ObjectEventSetHeldMovement(objectEvent, MOVEMENT_ACTION_START_ANIM_IN_DIRECTION);
+        // the player's own field move pose is skipped if the follower did the move
+        if (!task->tSurfFollowerUser)
+        {
+            StartPlayerAvatarSummonMonForFieldMoveAnim();
+            ObjectEventSetHeldMovement(objectEvent, MOVEMENT_ACTION_START_ANIM_IN_DIRECTION);
+        }
         task->data[0]++;
     }
 }
@@ -3244,7 +3398,16 @@ static void UseSurfEffect_4(struct Task *task)
         gFieldEffectArguments[0] = task->data[1];
         gFieldEffectArguments[1] = task->data[2];
         gFieldEffectArguments[2] = gPlayerAvatar.objectEventId;
-        objectEvent->fieldEffectSpriteId = FieldEffectStart(FLDEFF_SURF_BLOB);
+        if (task->tSurfFollowerUser)
+        {
+            objectEvent->fieldEffectSpriteId = task->tSurfBlobSpriteId; // the follower already became it
+            // The follower object was removed when it became the blob (its palette had to go before
+            // the "used Surf!" picture), and no map load follows to bring it back, so respawn it now,
+            // hidden (the player is surfing); it emerges from its ball when the player gets back on land.
+            UpdateFollowingPokemon();
+        }
+        else
+            objectEvent->fieldEffectSpriteId = FieldEffectStart(FLDEFF_SURF_BLOB);
         task->data[0]++;
     }
 }
@@ -3269,6 +3432,13 @@ static void UseSurfEffect_5(struct Task *task)
         SetHelpContext(HELPCONTEXT_SURFING);
     }
 }
+
+#undef tSurfWaterX
+#undef tSurfWaterY
+#undef tSurfPaletteTag
+#undef tSurfBlobSpriteId
+#undef tSurfFollowerUser
+#undef tSurfMonPartyId
 
 static void Task_FldEffUseVsSeeker(u8 taskId);
 static void UseVsSeekerEffect_1(struct Task *task);

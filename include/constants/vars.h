@@ -40,6 +40,9 @@
 #define VAR_OBJ_GFX_ID_C                    0x401C
 #define VAR_OBJ_GFX_ID_D                    0x401D
 #define VAR_OBJ_GFX_ID_E                    0x401E
+// followers-expanded-id: while surfing, the low 16 bits of the personality of the party Pokemon that
+// used Surf if it was the follower (0 otherwise). Reuses a variable that vanilla FireRed never reads.
+#define VAR_FOLLOWER_SURFER_ID              VAR_OBJ_GFX_ID_E
 #define VAR_OBJ_GFX_ID_F                    0x401F
 
 // If nonzero, counts down by one every step.

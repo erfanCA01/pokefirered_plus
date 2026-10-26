@@ -1,6 +1,7 @@
 #include "global.h"
 #include "gflib.h"
 #include "data.h"
+#include "event_data.h"
 #include "event_object_movement.h"
 #include "item.h"
 #include "item_menu.h"
@@ -2107,11 +2108,24 @@ static void PlayerHandleSwitchInAnim(void)
 // being sent out for the first time, it slides in from the left instead of being thrown from a ball
 // (the trainer holds its throwing pose and slides off). Link, double, multi, tutorial and
 // special-controller battles always use the vanilla ball throw, so nothing here is ever link-visible.
+// While surfing, a follower that is the Surf user is hidden because it is the surf blob itself.
+// It counts as "out" then if the lead Pokemon is the one that used Surf (see VAR_FOLLOWER_SURFER_ID).
+static bool8 IsFollowerTheSurfBlob(void)
+{
+    struct Pokemon *lead = GetFirstLiveFollowMon();
+    u16 surferId = VarGet(VAR_FOLLOWER_SURFER_ID);
+
+    return (gPlayerAvatar.flags & PLAYER_AVATAR_FLAG_SURFING)
+        && surferId != 0
+        && lead != NULL
+        && (GetMonData(lead, MON_DATA_PERSONALITY) & 0xFFFF) == surferId;
+}
+
 static bool8 ShouldDoSlideInAnim(void)
 {
     struct ObjectEvent *followerObj = GetFollowerObject();
 
-    if (followerObj == NULL || followerObj->invisible)
+    if ((followerObj == NULL || followerObj->invisible) && !IsFollowerTheSurfBlob())
         return FALSE;
 
     if (gBattleTypeFlags & (BATTLE_TYPE_LINK | BATTLE_TYPE_DOUBLE | BATTLE_TYPE_MULTI
