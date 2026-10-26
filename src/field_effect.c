@@ -1078,6 +1078,176 @@ void FieldCallback_UseFly(void)
     gFieldCallback = NULL;
 }
 
+static u32 GetFlyUserPartyIndex(void)
+{
+    u32 slot = GetCursorSelectionMonId();
+
+    return slot >= PARTY_SIZE ? 0 : slot;
+}
+
+// followers-expanded-id: if the Pokemon using Fly is the one following the player (and it is out),
+// returns its object event, otherwise NULL.
+static struct ObjectEvent *GetFlyUserFollowerObject(void)
+{
+    struct ObjectEvent *followerObject = GetFollowerObject();
+    u32 slot = GetFlyUserPartyIndex();
+
+    if (followerObject != NULL && !followerObject->invisible && GetFirstLiveFollowMon() == &gPlayerParty[slot])
+        return followerObject;
+    return NULL;
+}
+
+// followers-expanded-id: the follower takes off. It is replaced by the Fly bird sprite, which shoots
+// straight up off the top of the screen.
+static void SpriteCB_FollowerFlyUp(struct Sprite *sprite)
+{
+    sprite->y2 -= (sprite->data[1] >> 1) + 2;
+    sprite->data[1]++;
+    if (sprite->y + sprite->y2 < -40)
+        DestroySprite(sprite);
+}
+
+// Removes the follower object and frees its overworld palette right away. RemoveFollowingPokemon alone
+// leaves that palette loaded under the species' tag, and the "used Fly!" Pokemon picture for the same
+// species (shiny or not) loads its palette by the same tag, so it would be drawn in the overworld
+// sprite's colors (a shiny Charizard's belly came out red).
+// Frees the palette with this tag unless a sprite still uses it. Safe to call repeatedly (it looks the
+// palette up by tag, so it never touches a different palette that later took the same slot).
+static void FreePaletteByTagIfUnused(u16 paletteTag)
+{
+    u8 i;
+    u8 paletteNum = IndexOfSpritePaletteTag(paletteTag);
+
+    if (paletteTag == TAG_NONE || paletteNum == 0xFF)
+        return;
+    for (i = 0; i < MAX_SPRITES; i++)
+    {
+        if (gSprites[i].inUse && gSprites[i].oam.paletteNum == paletteNum)
+            return;
+    }
+    FreeSpritePaletteByTag(paletteTag);
+}
+
+// Returns the removed follower's palette tag (to retry the free with FreePaletteByTagIfUnused).
+static u16 RemoveFollowerAndFreePalette(struct ObjectEvent *followerObject)
+{
+    u16 paletteTag;
+
+    if (followerObject == NULL)
+        return TAG_NONE;
+    paletteTag = GetSpritePaletteTagByPaletteNum(gSprites[followerObject->spriteId].oam.paletteNum);
+    RemoveFollowingPokemon();
+    FreePaletteByTagIfUnused(paletteTag);
+    return paletteTag;
+}
+
+static u8 CreateFollowerFlyUpSprite(struct ObjectEvent *followerObject)
+{
+    struct Sprite *followerSprite = &gSprites[followerObject->spriteId];
+    u8 spriteId = CreateSprite(gFieldEffectObjectTemplatePointers[FLDEFFOBJ_BIRD],
+                               followerSprite->x + followerSprite->x2 + gSpriteCoordOffsetX,
+                               followerSprite->y + followerSprite->y2 + gSpriteCoordOffsetY,
+                               1);
+
+    if (spriteId != MAX_SPRITES)
+    {
+        gSprites[spriteId].oam.paletteNum = 0;
+        gSprites[spriteId].oam.priority = 1;
+        gSprites[spriteId].data[1] = 0;
+        gSprites[spriteId].callback = SpriteCB_FollowerFlyUp;
+    }
+    return spriteId;
+}
+
+// followers-expanded-id: Task_UseFly states used while the follower is the Fly user. Before the
+// usual Fly-out effect (the Pokemon's picture, then the bird that carries the player) the follower
+// hops in place twice and takes off as the Fly bird. The player's own field move pose is skipped
+// (gFieldEffectArguments[3]), since the Pokemon is the one doing the move.
+#define FLY_FOLLOWER_HOP_1     10
+#define FLY_FOLLOWER_WAIT_1    11
+#define FLY_FOLLOWER_HOP_2     12
+#define FLY_FOLLOWER_WAIT_2    13
+#define FLY_FOLLOWER_LAUNCH    14
+#define FLY_FOLLOWER_WAIT_BIRD 15
+// The follower is out but is not the Fly user: it goes back into its ball first.
+#define FLY_FOLLOWER_RECALL    20
+#define FLY_FOLLOWER_WAIT_BALL 21
+
+// Returns TRUE once the follower sequence is over and the Fly-out effect has been started.
+static bool8 RunFlyFollowerPrelude(struct Task *task)
+{
+    struct ObjectEvent *followerObject = GetFollowerObject();
+
+    if (followerObject == NULL)
+    {
+        // follower vanished: just go on with Fly (keeping the right pose setting for each case)
+        if (task->data[0] >= FLY_FOLLOWER_RECALL)
+        {
+            task->data[0] = FLY_FOLLOWER_WAIT_BALL;
+        }
+        else if (task->data[0] != FLY_FOLLOWER_WAIT_BIRD)
+        {
+            task->data[1] = MAX_SPRITES;
+            task->data[4] = TAG_NONE;
+            task->data[0] = FLY_FOLLOWER_WAIT_BIRD;
+        }
+    }
+
+    switch (task->data[0])
+    {
+    case FLY_FOLLOWER_HOP_1:
+    case FLY_FOLLOWER_HOP_2:
+        ClearObjectEventMovement(followerObject, &gSprites[followerObject->spriteId]);
+        ObjectEventSetHeldMovement(followerObject, GetJumpInPlaceMovementAction(followerObject->facingDirection));
+        task->data[0]++;
+        break;
+    case FLY_FOLLOWER_WAIT_1:
+    case FLY_FOLLOWER_WAIT_2:
+        if (ObjectEventClearHeldMovementIfFinished(followerObject))
+            task->data[0]++;
+        break;
+    case FLY_FOLLOWER_LAUNCH:
+        task->data[1] = CreateFollowerFlyUpSprite(followerObject);
+        // Remove the follower rather than just hiding it, and free its palette (see above)
+        task->data[4] = RemoveFollowerAndFreePalette(followerObject);
+        PlaySE(SE_M_FLY);
+        task->data[0]++;
+        break;
+    case FLY_FOLLOWER_WAIT_BIRD:
+        FreePaletteByTagIfUnused(task->data[4]); // retry: the follower's reflection may have held it a frame
+        if (task->data[1] >= MAX_SPRITES
+         || !gSprites[task->data[1]].inUse
+         || gSprites[task->data[1]].callback != SpriteCB_FollowerFlyUp)
+        {
+            // The hops and the bird's field effects overwrote the effect arguments (that is what
+            // made the Pokemon's picture show a wrong species), so set them again.
+            gFieldEffectArguments[0] = GetFlyUserPartyIndex();
+            gFieldEffectArguments[3] = TRUE; // skip the player's field move pose
+            FieldEffectStart(FLDEFF_FLY_OUT);
+            task->data[0] = 1; // continue as the normal Fly sequence
+            return TRUE;
+        }
+        break;
+    case FLY_FOLLOWER_RECALL:
+        ClearObjectEventMovement(followerObject, &gSprites[followerObject->spriteId]);
+        ObjectEventSetHeldMovement(followerObject, MOVEMENT_ACTION_ENTER_POKEBALL);
+        task->data[0]++;
+        break;
+    case FLY_FOLLOWER_WAIT_BALL:
+        if (followerObject == NULL || followerObject->invisible || ObjectEventClearHeldMovementIfFinished(followerObject))
+        {
+            RemoveFollowerAndFreePalette(followerObject); // see FLY_FOLLOWER_LAUNCH
+            gFieldEffectArguments[0] = GetFlyUserPartyIndex();
+            gFieldEffectArguments[3] = FALSE;
+            FieldEffectStart(FLDEFF_FLY_OUT);
+            task->data[0] = 1; // continue as the normal Fly sequence
+            return TRUE;
+        }
+        break;
+    }
+    return FALSE;
+}
+
 static void Task_UseFly(u8 taskId)
 {
     struct Task *task;
@@ -1089,8 +1259,25 @@ static void Task_UseFly(u8 taskId)
         gFieldEffectArguments[0] = GetCursorSelectionMonId();
         if ((int)gFieldEffectArguments[0] >= PARTY_SIZE)
             gFieldEffectArguments[0] = 0;
-        FieldEffectStart(FLDEFF_FLY_OUT);
-        task->data[0]++;
+        if (GetFlyUserFollowerObject() != NULL)
+        {
+            task->data[0] = FLY_FOLLOWER_HOP_1;
+        }
+        else if (GetFollowerObject() != NULL && !GetFollowerObject()->invisible)
+        {
+            task->data[0] = FLY_FOLLOWER_RECALL;
+        }
+        else
+        {
+            gFieldEffectArguments[3] = FALSE;
+            FieldEffectStart(FLDEFF_FLY_OUT);
+            task->data[0]++;
+        }
+    }
+    if (task->data[0] >= FLY_FOLLOWER_HOP_1)
+    {
+        RunFlyFollowerPrelude(task);
+        return;
     }
     if (!FieldEffectActiveListContains(FLDEFF_FLY_OUT))
     {
@@ -3197,6 +3384,7 @@ static void SpriteCB_NPCFlyOut(struct Sprite *sprite)
 #define tMonPartyId   data[1]
 #define tBirdSpriteId data[1] // re-used
 #define tTimer        data[2]
+#define tSkipPose     data[3] // followers-expanded-id: the follower is the Fly user, skip the player's pose
 #define tAvatarFlags  data[15]
 
 static void Task_FlyOut(u8 taskId);
@@ -3235,6 +3423,7 @@ u8 FldEff_FlyOut(void)
 {
     u8 taskId = CreateTask(Task_FlyOut, 0xFE);
     gTasks[taskId].tMonPartyId = gFieldEffectArguments[0];
+    gTasks[taskId].tSkipPose = gFieldEffectArguments[3];
     return 0;
 }
 
@@ -3251,8 +3440,11 @@ static void FlyOutFieldEffect_FieldMovePose(struct Task *task)
         task->tAvatarFlags = gPlayerAvatar.flags;
         gPlayerAvatar.preventStep = TRUE;
         SetPlayerAvatarStateMask(PLAYER_AVATAR_FLAG_ON_FOOT);
-        StartPlayerAvatarSummonMonForFieldMoveAnim();
-        ObjectEventSetHeldMovement(objectEvent, MOVEMENT_ACTION_START_ANIM_IN_DIRECTION);
+        if (!task->tSkipPose)
+        {
+            StartPlayerAvatarSummonMonForFieldMoveAnim();
+            ObjectEventSetHeldMovement(objectEvent, MOVEMENT_ACTION_START_ANIM_IN_DIRECTION);
+        }
         task->tState++;
     }
 }
@@ -3260,7 +3452,7 @@ static void FlyOutFieldEffect_FieldMovePose(struct Task *task)
 static void FlyOutFieldEffect_ShowMon(struct Task *task)
 {
     struct ObjectEvent *objectEvent = &gObjectEvents[gPlayerAvatar.objectEventId];
-    if (ObjectEventClearHeldMovementIfFinished(objectEvent))
+    if (task->tSkipPose || ObjectEventClearHeldMovementIfFinished(objectEvent))
     {
         task->tState++;
         gFieldEffectArguments[0] = task->tMonPartyId;
@@ -3664,6 +3856,7 @@ static void FlyInFieldEffect_End(struct Task *task)
 #undef tMonPartyId
 #undef tBirdSpriteId
 #undef tTimer
+#undef tSkipPose
 #undef tAvatarFlags
 
 static const union AffineAnimCmd sAffineAnim_FlyBirdOutOfMap[] =

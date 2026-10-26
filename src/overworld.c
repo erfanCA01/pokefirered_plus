@@ -1949,12 +1949,10 @@ static bool32 ReturnToFieldLocal(u8 *state)
         QuestLog_InitPalettesBackup();
         ResumeMap(FALSE);
         ReloadObjectsAndRunReturnToFieldMapScript();
-        // followers-expanded-id: hide the follower during the Fly-away bird
-        // animation (about to warp), otherwise resync it to the current party leader.
-        if (gFieldCallback == FieldCallback_UseFly)
-            RemoveFollowingPokemon();
-        else
-            UpdateFollowingPokemon();
+        // followers-expanded-id: resync the follower to the current party leader. For Fly it stays
+        // on screen: Task_UseFly makes it hop and take off (if it is the Fly user) or go back into its
+        // ball (if not) before the Fly-out effect starts.
+        UpdateFollowingPokemon();
         SetCameraToTrackPlayer();
         (*state)++;
         break;
