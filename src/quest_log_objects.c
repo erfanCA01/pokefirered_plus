@@ -16,8 +16,10 @@ void QL_RecordObjects(struct QuestLogScene * questLog)
         // truncate into this struct's u8 graphicsId field, and the follower must always be
         // rebuilt fresh from live party data (via UpdateFollowingPokemon) rather than from a
         // recorded snapshot. Leaving this slot's entry zeroed (from ClearSavedScene) makes
-        // QL_LoadObjects load it back as a harmless inactive slot.
-        if (gObjectEvents[i].localId == OBJ_EVENT_ID_FOLLOWER)
+        // QL_LoadObjects load it back as a harmless inactive slot. The Day Care mons (any other
+        // object with a Pokemon graphics id) are skipped for the same truncation reason.
+        if (gObjectEvents[i].localId == OBJ_EVENT_ID_FOLLOWER
+         || gObjectEvents[i].graphicsId >= OBJ_EVENT_GFX_MON_BASE)
             continue;
 
         questLog->objectEvents[i].active                         = gObjectEvents[i].active;

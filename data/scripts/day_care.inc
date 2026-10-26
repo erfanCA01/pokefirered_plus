@@ -31,6 +31,7 @@ Route5_PokemonDayCare_EventScript_TryGiveMon::
 	waitmoncry
 	special PutMonInRoute5Daycare
 	callnative UpdateFollowingPokemon
+	call Route5_PokemonDayCare_EventScript_RefreshDaycareMon
 	incrementgamestat GAME_STAT_USED_DAYCARE
 	goto Route5_PokemonDayCare_EventScript_CloseMoneyBox
 	end
@@ -95,6 +96,7 @@ Route5_PokemonDayCare_EventScript_RetrieveMon::
 	msgbox Route5_PokemonDayCare_Text_PlayerGotMonBack
 	call EventScript_RestorePrevTextColor
 	waitmoncry
+	call Route5_PokemonDayCare_EventScript_RefreshDaycareMon
 	goto Route5_PokemonDayCare_EventScript_CloseMoneyBox
 	end
 

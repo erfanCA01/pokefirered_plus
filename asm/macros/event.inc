@@ -278,6 +278,23 @@
 	.2byte \wait
 	.endm
 
+	@ followers-expanded-id: Day Care. Stores the overworld graphics ids of the Four Island Day Care mons
+	@ in gfx0/gfx1 and each mon's form | shiny << 5 in form0/form1. VAR_RESULT = number of mons (0-2).
+	.macro getdaycaregfx gfx0:req, gfx1:req, form0:req, form1:req
+	callfunc ScrFunc_getdaycaregfx
+	.2byte \gfx0
+	.2byte \gfx1
+	.2byte \form0
+	.2byte \form1
+	.endm
+
+	@ Same for the single mon of the Route 5 Day Care. VAR_RESULT = 1 if there is a mon, else 0.
+	.macro getroute5daycaregfx gfx:req, form:req
+	callfunc ScrFunc_getroute5daycaregfx
+	.2byte \gfx
+	.2byte \form
+	.endm
+
 	@ Replaces the script with the function stored at func. Execution returns to the bytecode script when func returns TRUE.
 	.macro gotonative func:req
 	.byte 0x24

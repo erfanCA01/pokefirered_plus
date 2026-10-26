@@ -20,6 +20,7 @@
 #include "metatile_behavior.h"
 #include "overworld.h"
 #include "pokeball.h"
+#include "pokedex_screen.h"
 #include "pokemon.h"
 #include "quest_log.h"
 #include "random.h"
@@ -1466,6 +1467,11 @@ static u8 InitObjectEventStateFromTemplate(const struct ObjectEventTemplate *tem
     objectEvent->previousMovementDirection = gInitialMovementTypeFacingDirections[template->objUnion.normal.movementType];
     SetObjectEventDirection(objectEvent, objectEvent->previousMovementDirection);
     SetObjectEventDynamicGraphicsId(objectEvent);
+    // followers-expanded-id: an OW mon placed from map data (the Day Care mons) takes its shininess
+    // from the template's variable (form | shiny << 5), as the follower's spawn template carries it
+    // as a plain number (VarGet returns numbers below VARS_START unchanged).
+    if (IS_OW_MON_OBJ(objectEvent) && template->objUnion.normal.trainerRange_berryTreeId)
+        objectEvent->shiny = VarGet(template->objUnion.normal.trainerRange_berryTreeId) >> 5;
     if (gRangedMovementTypes[objectEvent->movementType])
     {
         if (objectEvent->rangeX == 0)
@@ -2741,6 +2747,66 @@ static bool8 GetMonInfo(struct Pokemon *mon, u16 *species, u8 *form, u8 *shiny)
 static bool8 GetFollowerInfo(u16 *species, u8 *form, u8 *shiny)
 {
     return GetMonInfo(GetFirstLiveFollowMon(), species, form, shiny);
+}
+
+// followers-expanded-id: Day Care mons walking around inside the Day Care. Stores a Day Care mon's
+// overworld graphics id (species + form, usable as an OBJ_EVENT_GFX_VAR_x variable) in varGfx and its
+// form | shiny << 5 in varForm (the variable the Day Care object events read their shininess from).
+// If indoors, a mon that is too big for the Day Care's small room is left out: one whose overworld
+// sprite is larger than 32x32 (like the follower itself, see UpdateFollowingPokemon), or one that is
+// 2.0 m tall or more according to its Pokedex entry (heights are in decimeters).
+#define DAYCARE_INDOOR_MAX_HEIGHT 20
+
+static bool8 SetDaycareMonGfxVars(struct BoxPokemon *boxMon, u16 varGfx, u16 varForm, bool8 indoors)
+{
+    u16 species;
+    u8 form;
+    u8 shiny;
+    u16 graphicsId;
+
+    // GetMonInfo only reads box data (species, personality, OT id)
+    GetMonInfo((struct Pokemon *)boxMon, &species, &form, &shiny);
+    if (species == SPECIES_NONE)
+        return FALSE;
+    if (indoors
+     && (SpeciesToGraphicsInfo(species, form)->oam->size > ST_OAM_SIZE_2
+      || gPokedexEntries[SpeciesToNationalPokedexNum(species)].height >= DAYCARE_INDOOR_MAX_HEIGHT))
+        return FALSE;
+    graphicsId = (OBJ_EVENT_GFX_MON_BASE + species) & OBJ_EVENT_GFX_SPECIES_MASK;
+    graphicsId |= form << OBJ_EVENT_GFX_SPECIES_BITS;
+    VarSet(varGfx, graphicsId);
+    VarSet(varForm, form | (shiny << 5));
+    return TRUE;
+}
+
+// Four Island Day Care (two mons, shown outdoors in the yard). VAR_RESULT = number of mons found (0-2).
+bool8 ScrFunc_getdaycaregfx(struct ScriptContext *ctx)
+{
+    u16 varGfx[DAYCARE_MON_COUNT];
+    u16 varForm[DAYCARE_MON_COUNT];
+    s32 i;
+
+    for (i = 0; i < DAYCARE_MON_COUNT; i++)
+        varGfx[i] = ScriptReadHalfword(ctx);
+    for (i = 0; i < DAYCARE_MON_COUNT; i++)
+        varForm[i] = ScriptReadHalfword(ctx);
+    for (i = 0; i < DAYCARE_MON_COUNT; i++)
+    {
+        if (!SetDaycareMonGfxVars(&gSaveBlock1Ptr->daycare.mons[i].mon, varGfx[i], varForm[i], FALSE))
+            break;
+    }
+    gSpecialVar_Result = i;
+    return FALSE;
+}
+
+// Route 5 Day Care (one mon, stored separately, shown indoors). VAR_RESULT = 1 if there is a mon to show, else 0.
+bool8 ScrFunc_getroute5daycaregfx(struct ScriptContext *ctx)
+{
+    u16 varGfx = ScriptReadHalfword(ctx);
+    u16 varForm = ScriptReadHalfword(ctx);
+
+    gSpecialVar_Result = SetDaycareMonGfxVars(&gSaveBlock1Ptr->route5DayCareMon.mon, varGfx, varForm, TRUE);
+    return FALSE;
 }
 
 // followers-expanded-id: update (spawning if necessary) the following pokemon object event.
@@ -6772,7 +6838,20 @@ static void FaceDirection(struct ObjectEvent *objectEvent, struct Sprite *sprite
 {
     SetObjectEventDirection(objectEvent, direction);
     ShiftStillObjectEventCoords(objectEvent);
-    SetStepAnim(objectEvent, sprite, GetMoveDirectionAnimNum(objectEvent->facingDirection));
+    if (IS_OW_MON_OBJ(objectEvent))
+    {
+        // followers-expanded-id: FireRed turns an NPC by parking its walk animation on the standing
+        // frame, using per-table step data (GetStepAnimTable) that the overworld-Pokemon animation
+        // tables don't have; SetStepAnim then only changes animNum without restarting the animation, so
+        // the sprite kept its old frame and never visibly turned (the Day Care mons always faced down).
+        // Use the Pokemon tables' static face animations instead, as Emerald does.
+        if (!objectEvent->inanimate)
+            StartSpriteAnim(sprite, GetFaceDirectionAnimNum(objectEvent->facingDirection));
+    }
+    else
+    {
+        SetStepAnim(objectEvent, sprite, GetMoveDirectionAnimNum(objectEvent->facingDirection));
+    }
     sprite->animPaused = TRUE;
     sprite->data[2] = 1;
 }

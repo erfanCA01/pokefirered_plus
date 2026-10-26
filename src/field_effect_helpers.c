@@ -115,6 +115,9 @@ static void LoadObjectReflectionPalette(struct ObjectEvent * objectEvent, struct
 }
 
 // Tint a palette blue for a (moving) water reflection. Color 0 is transparency, copied as-is.
+// Stronger than Emerald's plain "+10 blue", which left yellow/orange sprites (Pikachu, Charmander...)
+// looking almost untinted on water: red is darkened by 1/4 and green by 1/8, blue gets the +10 plus
+// a fifth of its remaining headroom, so bright warm colors visibly shift toward blue/green.
 static void ApplyPondFilter(u8 paletteNum, u16 *dest)
 {
     u32 i, r, g, b;
@@ -124,8 +127,11 @@ static void ApplyPondFilter(u8 paletteNum, u16 *dest)
     for (i = 0; i < 16 - 1; i++)
     {
         r = GET_R(src[i]);
+        r -= r >> 2;
         g = GET_G(src[i]);
-        b = GET_B(src[i]) + 10;
+        g -= g >> 3;
+        b = GET_B(src[i]);
+        b += 10 + (31 - b) / 5;
         if (b > 31)
             b = 31;
         *dest++ = RGB2(r, g, b);

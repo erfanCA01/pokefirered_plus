@@ -1,5 +1,6 @@
 FourIsland_MapScripts::
 	map_script MAP_SCRIPT_ON_TRANSITION, FourIsland_OnTransition
+	map_script MAP_SCRIPT_ON_RETURN_TO_FIELD, FourIsland_OnReturnToField
 	map_script MAP_SCRIPT_ON_FRAME_TABLE, FourIsland_OnFrame
 	.byte 0
 
@@ -7,6 +8,38 @@ FourIsland_OnTransition::
 	setworldmapflag FLAG_WORLD_MAP_FOUR_ISLAND
 	call_if_eq VAR_MAP_SCENE_FOUR_ISLAND, 0, FourIsland_EventScript_ShowRival
 	call FourIsland_EventScript_TrySetDayCareManPos
+	call FourIsland_EventScript_SetUpDaycareMons
+	end
+
+@ followers-expanded-id: the mons being raised in the Day Care walk around in the yard (shown by two
+@ objects whose graphics come from VAR_OBJ_GFX_ID_C/D and whose shininess comes from VAR_TEMP_0/1)
+FourIsland_EventScript_SetUpDaycareMons::
+	setflag FLAG_TEMP_1
+	setflag FLAG_TEMP_2
+	getdaycaregfx VAR_OBJ_GFX_ID_C, VAR_OBJ_GFX_ID_D, VAR_TEMP_0, VAR_TEMP_1
+	switch VAR_RESULT
+	case 2, FourIsland_EventScript_ShowDaycareMon1
+	case 1, FourIsland_EventScript_ShowDaycareMon0
+	return
+
+FourIsland_EventScript_ShowDaycareMon1::
+	clearflag FLAG_TEMP_2
+FourIsland_EventScript_ShowDaycareMon0::
+	clearflag FLAG_TEMP_1
+	return
+
+@ The Day Care mon objects are never stored in the save (see SaveObjectEvents), so put them back after
+@ Continue. addobject does nothing for a mon that is already there (ordinary returns from a menu or
+@ battle). Both mons just look around on their own (MOVEMENT_TYPE_LOOK_AROUND), like the yard's other mons.
+FourIsland_OnReturnToField::
+	getdaycaregfx VAR_OBJ_GFX_ID_C, VAR_OBJ_GFX_ID_D, VAR_TEMP_0, VAR_TEMP_1
+	goto_if_eq VAR_RESULT, 0, FourIsland_EventScript_ReturnToFieldDone
+	clearflag FLAG_TEMP_1
+	addobject LOCALID_FOUR_ISLAND_DAYCARE_MON_0
+	goto_if_eq VAR_RESULT, 1, FourIsland_EventScript_ReturnToFieldDone
+	clearflag FLAG_TEMP_2
+	addobject LOCALID_FOUR_ISLAND_DAYCARE_MON_1
+FourIsland_EventScript_ReturnToFieldDone::
 	end
 
 FourIsland_EventScript_ShowRival::

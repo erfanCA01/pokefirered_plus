@@ -196,7 +196,12 @@ void SaveObjectEvents(void)
         gSaveBlock1Ptr->objectEvents[i].followerAppearsWithoutBall = FALSE; // runtime-only marker
         // Avoid a vanilla-load crash: save the follower object event as inactive.
         // It is rebuilt from party data on map load, never trusted from the save.
-        if (gObjectEvents[i].localId == OBJ_EVENT_ID_FOLLOWER)
+        // The same goes for any other object with a Pokemon graphics id (the Day Care mons): a vanilla
+        // ROM would read the low byte of that id as an unrelated vanilla sprite (and re-save it that
+        // way for the modified ROM to misread in turn), so it is saved inactive and the map scripts put
+        // it back (MAP_SCRIPT_ON_RETURN_TO_FIELD in the Day Care maps).
+        if (gObjectEvents[i].localId == OBJ_EVENT_ID_FOLLOWER
+         || gObjectEvents[i].graphicsId >= OBJ_EVENT_GFX_MON_BASE)
             gSaveBlock1Ptr->objectEvents[i].active = FALSE;
     }
 }

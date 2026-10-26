@@ -441,6 +441,13 @@ static void LoadSaveblockObjEventScripts(void)
 
     for (i = 0; i < OBJECT_EVENT_TEMPLATES_COUNT; i++)
     {
+        // followers-expanded-id: the Day Care maps gained placeholder objects (OBJ_EVENT_GFX_VAR_C/D).
+        // A save made inside one of them before that (e.g. by a vanilla ROM) has stale or empty
+        // template slots there, which would spawn phantom NPCs on Continue; reload them from the ROM.
+        if (i < gMapHeader.events->objectEventCount
+         && (src[i].graphicsId == OBJ_EVENT_GFX_VAR_C || src[i].graphicsId == OBJ_EVENT_GFX_VAR_D)
+         && savObjTemplates[i].graphicsId != src[i].graphicsId)
+            savObjTemplates[i] = src[i];
         savObjTemplates[i].script = src[i].script;
     }
 }
