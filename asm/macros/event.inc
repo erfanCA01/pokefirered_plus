@@ -278,6 +278,13 @@
 	.2byte \wait
 	.endm
 
+	@ followers-expanded-id: like `hidefollower`, but only if the Pokémon in party slot `slot` (a var or
+	@ value) is the one following the player. Waits for the follower to finish going into its ball.
+	.macro hidefollowerifpartyslot slot:req
+	callfunc ScrFunc_hidefollowerifpartyslot
+	.2byte \slot
+	.endm
+
 	@ followers-expanded-id: Day Care. Stores the overworld graphics ids of the Four Island Day Care mons
 	@ in gfx0/gfx1 and each mon's form | shiny << 5 in form0/form1. VAR_RESULT = number of mons (0-2).
 	.macro getdaycaregfx gfx0:req, gfx1:req, form0:req, form1:req

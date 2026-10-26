@@ -2386,3 +2386,25 @@ bool8 ScrFunc_hidefollower(struct ScriptContext * ctx)
     // execute next script command with no delay
     return TRUE;
 }
+
+// followers-expanded-id: like `hidefollower 1`, but only if the Pokemon in party slot `slot` is the
+// one following the player -- used by the Day Care scripts, so that leaving the lead Pokemon there
+// puts it back into its ball before the Day Care person says they'll raise it.
+bool8 ScrFunc_hidefollowerifpartyslot(struct ScriptContext * ctx)
+{
+    u16 slot = VarGet(ScriptReadHalfword(ctx));
+    struct ObjectEvent *obj;
+
+    if (slot < PARTY_SIZE && GetFirstLiveFollowMon() == &gPlayerParty[slot]
+     && (obj = ScriptHideFollower()) != NULL)
+    {
+        sMovingNpcId = obj->localId;
+        sMovingNpcMapGroup = obj->mapGroup;
+        sMovingNpcMapNum = obj->mapNum;
+        SetupNativeScript(ctx, WaitForMovementFinish);
+        FlagSet(FLAG_SAFE_FOLLOWER_MOVEMENT);
+    }
+
+    // execute next script command with no delay
+    return TRUE;
+}
