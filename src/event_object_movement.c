@@ -16,6 +16,7 @@
 #include "field_weather.h"
 #include "fieldmap.h"
 #include "graphics.h"
+#include "link.h"
 #include "metatile_behavior.h"
 #include "overworld.h"
 #include "pokeball.h"
@@ -2768,9 +2769,11 @@ void UpdateFollowingPokemon(void)
     // 1. GetFollowerInfo returns FALSE (no eligible party mon)
     // 2. Map is indoors and gfx is larger than 32x32
     // 3. FLAG_TEMP_HIDE_FOLLOWER is set
+    // 4. We are in the Union Room (remote player avatars need the object slots; gotcha #3)
     if (!GetFollowerInfo(&species, &form, &shiny)
         || (gMapHeader.mapType == MAP_TYPE_INDOOR && SpeciesToGraphicsInfo(species, 0)->oam->size > ST_OAM_SIZE_2)
-        || FlagGet(FLAG_TEMP_HIDE_FOLLOWER))
+        || FlagGet(FLAG_TEMP_HIDE_FOLLOWER)
+        || InUnionRoom())
     {
         RemoveFollowingPokemon();
         return;
@@ -5665,7 +5668,12 @@ static bool8 FollowablePlayerMovement_Step(struct ObjectEvent *objectEvent, stru
     }
     else if (PlayerGetCopyableMovement() == COPY_MOVE_JUMP2)
     {
-        ObjectEventSetSingleMovement(objectEvent, sprite, GetWalkSlowMovementAction(direction));
+        // While the player is mid ledge-jump (32 frames), step into its vacated tile over the same
+        // 32 frames so the follower arrives as the player lands, then waits for it to move on.
+        // Emerald's "WalkSlow" is that 32-frame walk; FireRed's WalkSlow is a faster 24-frame one
+        // and its 32-frame equivalent is WalkSlower, so using WalkSlow here made the follower arrive
+        // early and jump into the player's tile while the player was still in the air.
+        ObjectEventSetSingleMovement(objectEvent, sprite, GetWalkSlowerMovementAction(direction));
     }
     else if (gSprites[gPlayerAvatar.spriteId].data[4] == MOVE_SPEED_FAST_1)
     {
@@ -7131,6 +7139,8 @@ enum {
     JUMP_TYPE_HIGH,
     JUMP_TYPE_LOW,
     JUMP_TYPE_NORMAL,
+    JUMP_TYPE_FAST,   // followers-expanded-id: follower-only, see InitJumpRegular
+    JUMP_TYPE_FASTER, // followers-expanded-id: follower-only, see InitJumpRegular
 };
 
 void InitJump(struct ObjectEvent *objectEvent, struct Sprite *sprite, u8 direction, u8 distance, u8 type)
@@ -7154,6 +7164,15 @@ void InitJump(struct ObjectEvent *objectEvent, struct Sprite *sprite, u8 directi
 
 void InitJumpRegular(struct ObjectEvent *objectEvent, struct Sprite *sprite, u8 direction, u8 distance, u8 type)
 {
+    // followers-expanded-id: for the follower only, match the duration of the player's movement,
+    // whether dashing or walking, instead of taking the full-length ledge jump (which made the
+    // follower fall further behind with every ledge it followed the player over).
+    if (objectEvent->localId == OBJ_EVENT_ID_FOLLOWER
+        && type == JUMP_TYPE_HIGH
+        && distance == JUMP_DISTANCE_FAR
+        // the player can be ledge-jumping at the same time as the follower; keep the type then
+        && PlayerGetCopyableMovement() != COPY_MOVE_JUMP2)
+        type = TestPlayerAvatarFlags(PLAYER_AVATAR_FLAG_DASH) ? JUMP_TYPE_FASTER : JUMP_TYPE_FAST;
     InitJump(objectEvent, sprite, direction, distance, type);
     SetStepAnimHandleAlternation(objectEvent, sprite, GetMoveDirectionAnimNum(objectEvent->facingDirection));
     DoShadowFieldEffect(objectEvent);
@@ -10712,7 +10731,22 @@ u8 DoJumpSpriteMovement(struct Sprite *sprite)
     if (sprite->sJumpDistance != JUMP_DISTANCE_IN_PLACE)
         Step1(sprite, sprite->tDirection);
 
-    sprite->y2 = GetJumpY(sprite->sTimer >> distanceToShift[sprite->sJumpDistance], sprite->sJumpType);
+    // followers-expanded-id: FAST/FASTER are follower-only speeds (see InitJumpRegular); they reuse
+    // the normal jump arc and just advance further per frame (2 and 4 pixels, timer 2 and 4)
+    if (sprite->sJumpType == JUMP_TYPE_FASTER)
+    {
+        Step3(sprite, sprite->tDirection);
+        sprite->y2 = GetJumpY(sprite->sTimer >> distanceToShift[sprite->sJumpDistance], JUMP_TYPE_NORMAL);
+        sprite->sTimer += 3;
+    }
+    else if (sprite->sJumpType == JUMP_TYPE_FAST)
+    {
+        Step1(sprite, sprite->tDirection);
+        sprite->y2 = GetJumpY(sprite->sTimer >> distanceToShift[sprite->sJumpDistance], JUMP_TYPE_NORMAL);
+        sprite->sTimer++;
+    }
+    else
+        sprite->y2 = GetJumpY(sprite->sTimer >> distanceToShift[sprite->sJumpDistance], sprite->sJumpType);
 
     sprite->sTimer++;
 

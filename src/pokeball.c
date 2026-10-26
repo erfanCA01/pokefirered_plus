@@ -2,6 +2,7 @@
 #include "gflib.h"
 #include "battle.h"
 #include "battle_anim.h"
+#include "battle_main.h"
 #include "decompress.h"
 #include "graphics.h"
 #include "m4a.h"
@@ -15,6 +16,7 @@
 #include "constants/sound.h"
 
 static void Task_DoPokeballSendOutAnim(u8 taskId);
+static void StartPlayerMonSlideIn(u8 battlerId);
 static void SpriteCB_PlayerMonSendOut_1(struct Sprite *sprite);
 static void SpriteCB_PlayerMonSendOut_2(struct Sprite *sprite);
 static void SpriteCB_OpponentMonSendOut(struct Sprite *sprite);
@@ -364,6 +366,14 @@ static void Task_DoPokeballSendOutAnim(u8 taskId)
 
     throwCaseId = gTasks[taskId].tThrowId;
     battlerId = gTasks[taskId].tBattler;
+
+    if (throwCaseId == POKEBALL_PLAYER_SLIDEIN)
+    {
+        // followers-expanded-id: no ball at all; the mon slides in on its own
+        StartPlayerMonSlideIn(battlerId);
+        DestroyTask(taskId);
+        return;
+    }
 
     if (GetBattlerSide(battlerId) != B_SIDE_PLAYER)
         itemId = GetMonData(&gEnemyParty[gBattlerPartyIndexes[battlerId]], MON_DATA_POKEBALL);
@@ -908,6 +918,87 @@ static void SpriteCB_BallThrow_CaptureMon(struct Sprite *sprite)
             gBattleSpritesDataPtr->healthBoxesData[battlerId].ballAnimActive = FALSE;
     }
 }
+
+// followers-expanded-id: when the Pokemon following the player is the one being sent out, it slides
+// in from the left edge instead of being thrown out of a Poke Ball (the trainer holds its throwing
+// pose and slides off, see sAnimCmd_Red_Leaf_Slide). This replaces the whole ball release path
+// (SpriteCB_PlayerMonSendOut_*, SpriteCB_ReleaseMonFromBall, HandleBallAnimEnd), so it also has to
+// do what those do at the end: clear ballAnimActive/gDoingBattleAnim, hand the sprite to the idle
+// callback, play the cry, and free the ball graphics if every other ball animation is already done.
+#define tSlideBattler   data[0]
+#define tSlideFrame     data[1]
+#define tSlideDistance  data[2]
+#define SLIDE_IN_FRAMES 26
+#define SLIDE_IN_START_X (-33) // sprite center; a 64x64 pic is just off-screen here
+
+static void Task_PlayerMonSlideIn(u8 taskId)
+{
+    u8 battlerId = gTasks[taskId].tSlideBattler;
+    struct Sprite *monSprite = &gSprites[gBattlerSpriteIds[battlerId]];
+    struct Pokemon *mon;
+    u16 species;
+    s32 i, doneBattlers;
+
+    if (gTasks[taskId].tSlideFrame < SLIDE_IN_FRAMES)
+    {
+        gTasks[taskId].tSlideFrame++;
+        monSprite->x2 = -(gTasks[taskId].tSlideDistance * (SLIDE_IN_FRAMES - gTasks[taskId].tSlideFrame)) / SLIDE_IN_FRAMES;
+        return;
+    }
+
+    mon = &gPlayerParty[gBattlerPartyIndexes[battlerId]];
+    species = GetMonData(mon, MON_DATA_SPECIES);
+
+    monSprite->x2 = 0;
+    StartSpriteAffineAnim(monSprite, BATTLER_AFFINE_NORMAL);
+    SetIdleSpriteCallback(monSprite);
+    if (ShouldPlayNormalMonCry(mon) == TRUE)
+        PlayCry_ByMode(species, -25, CRY_MODE_NORMAL);
+    else
+        PlayCry_ByMode(species, -25, CRY_MODE_WEAK);
+
+    gDoingBattleAnim = FALSE;
+    gBattleSpritesDataPtr->healthBoxesData[battlerId].ballAnimActive = FALSE;
+    for (doneBattlers = 0, i = 0; i < MAX_BATTLERS_COUNT; i++)
+    {
+        if (gBattleSpritesDataPtr->healthBoxesData[i].ballAnimActive == FALSE)
+            doneBattlers++;
+    }
+    if (doneBattlers == MAX_BATTLERS_COUNT)
+    {
+        for (i = 0; i < POKEBALL_COUNT; i++)
+            FreeBallGfx(i);
+    }
+    DestroyTask(taskId);
+}
+
+static void StartPlayerMonSlideIn(u8 battlerId)
+{
+    u8 taskId;
+    struct Sprite *monSprite = &gSprites[gBattlerSpriteIds[battlerId]];
+
+    gBattlerTarget = battlerId;
+    // During the intro the mon's graphics are normally only loaded once the trainer sprite is freed
+    // (SpriteCB_FreePlayerSpriteLoadMonSprite), which is after the slide would already be on screen.
+    BattleLoadPlayerMonSpriteGfx(&gPlayerParty[gBattlerPartyIndexes[battlerId]], battlerId);
+    monSprite->oam.paletteNum = battlerId;
+    // Nothing should treat the mon as "released from a ball" while it slides.
+    gSprites[gBattleControllerData[battlerId]].callback = SpriteCallbackDummy;
+
+    taskId = CreateTask(Task_PlayerMonSlideIn, 3);
+    gTasks[taskId].tSlideBattler = battlerId;
+    gTasks[taskId].tSlideFrame = 0;
+    gTasks[taskId].tSlideDistance = monSprite->x - SLIDE_IN_START_X;
+    monSprite->x2 = -gTasks[taskId].tSlideDistance;
+    monSprite->invisible = FALSE;
+    PlaySE(SE_BALL_TRAY_ENTER);
+}
+
+#undef tSlideBattler
+#undef tSlideFrame
+#undef tSlideDistance
+#undef SLIDE_IN_FRAMES
+#undef SLIDE_IN_START_X
 
 static void SpriteCB_PlayerMonSendOut_1(struct Sprite *sprite)
 {

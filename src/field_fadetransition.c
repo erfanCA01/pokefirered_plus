@@ -803,12 +803,20 @@ static void Task_StairWarp(u8 taskId)
     s16 *data = gTasks[taskId].data;
     struct ObjectEvent *playerObj = &gObjectEvents[gPlayerAvatar.objectEventId];
     struct Sprite *playerSpr = &gSprites[gPlayerAvatar.spriteId];
+    struct ObjectEvent *followerObject = GetFollowerObject();
     switch (data[0])
     {
     case 0:
         LockPlayerFieldControls();
         FreezeObjectEvents();
         CameraObjectReset2();
+        if (followerObject && !followerObject->invisible)
+        {
+            // followers-expanded-id: stairs take the player off the follower's path, so put the
+            // follower into its pokeball instead of leaving it standing behind (see Task_DoorWarp)
+            ClearObjectEventMovement(followerObject, &gSprites[followerObject->spriteId]);
+            ObjectEventSetHeldMovement(followerObject, MOVEMENT_ACTION_ENTER_POKEBALL);
+        }
         data[0]++;
         break;
     case 1:
