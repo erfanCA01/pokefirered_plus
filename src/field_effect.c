@@ -3471,6 +3471,11 @@ static void FlyOutFieldEffect_BirdLeaveBall(struct Task *task)
             SetSurfBlob_DontSyncAnim(objectEvent->fieldEffectSpriteId, FALSE);
         }
         task->tBirdSpriteId = CreateFlyBirdSprite();
+        // followers-expanded-id: the follower already took off as the bird, so the bird does not come
+        // out of the player's ball: mark that stage complete (data[7] = sAnimCompleted) and go
+        // straight on to the bird swooping in from the right (StartFlyBirdSwoopDown resets it).
+        if (task->tSkipPose)
+            gSprites[task->tBirdSpriteId].data[7] = TRUE;
         task->tState++;
     }
 }
