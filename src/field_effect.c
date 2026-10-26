@@ -3339,9 +3339,9 @@ static void UseSurfEffect_1(struct Task *task)
     // followers-expanded-id: if the follower is the Surf user it performs the move (see
     // RunSurfFollowerPrelude); otherwise it goes into its pokeball before using Surf, as before.
     task->tSurfFollowerUser = GetFollowerObjectIfFieldMoveUser(task->tSurfMonPartyId) != NULL;
-    // Remember whether the follower is the surfer (it is hidden while surfing, being the surf blob), so
-    // battles can slide it in instead of throwing a ball. Saved with the game.
-    VarSet(VAR_FOLLOWER_SURFER_ID, task->tSurfFollowerUser
+    // Remember which Pokemon is the surfer (the one on the float), so battles can slide it in instead
+    // of throwing a ball, even if it is not the lead or the party order changes later. Saved with the game.
+    VarSet(VAR_FOLLOWER_SURFER_ID, task->tSurfMonPartyId < PARTY_SIZE
         ? (GetMonData(&gPlayerParty[task->tSurfMonPartyId], MON_DATA_PERSONALITY) & 0xFFFF)
         : 0);
     if (!task->tSurfFollowerUser)

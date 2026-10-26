@@ -2108,30 +2108,31 @@ static void PlayerHandleSwitchInAnim(void)
 // being sent out for the first time, it slides in from the left instead of being thrown from a ball
 // (the trainer holds its throwing pose and slides off). Link, double, multi, tutorial and
 // special-controller battles always use the vanilla ball throw, so nothing here is ever link-visible.
-// While surfing, a follower that is the Surf user is hidden because it is the surf blob itself.
-// It counts as "out" then if the lead Pokemon is the one that used Surf (see VAR_FOLLOWER_SURFER_ID).
-static bool8 IsFollowerTheSurfBlob(void)
+// While surfing, the Pokemon on the float (the one that used Surf, remembered in
+// VAR_FOLLOWER_SURFER_ID) is already out, so it slides in instead of being thrown from a ball.
+static bool8 IsSentOutMonTheSurfer(void)
 {
-    struct Pokemon *lead = GetFirstLiveFollowMon();
     u16 surferId = VarGet(VAR_FOLLOWER_SURFER_ID);
 
     return (gPlayerAvatar.flags & PLAYER_AVATAR_FLAG_SURFING)
         && surferId != 0
-        && lead != NULL
-        && (GetMonData(lead, MON_DATA_PERSONALITY) & 0xFFFF) == surferId;
+        && (GetMonData(&gPlayerParty[gBattlerPartyIndexes[gActiveBattler]], MON_DATA_PERSONALITY) & 0xFFFF) == surferId;
 }
 
 static bool8 ShouldDoSlideInAnim(void)
 {
     struct ObjectEvent *followerObj = GetFollowerObject();
 
-    if ((followerObj == NULL || followerObj->invisible) && !IsFollowerTheSurfBlob())
-        return FALSE;
-
     if (gBattleTypeFlags & (BATTLE_TYPE_LINK | BATTLE_TYPE_DOUBLE | BATTLE_TYPE_MULTI
                           | BATTLE_TYPE_SAFARI | BATTLE_TYPE_BATTLE_TOWER | BATTLE_TYPE_TRAINER_TOWER
                           | BATTLE_TYPE_FIRST_BATTLE | BATTLE_TYPE_OLD_MAN_TUTORIAL
                           | BATTLE_TYPE_POKEDUDE | BATTLE_TYPE_EREADER_TRAINER))
+        return FALSE;
+
+    if (IsSentOutMonTheSurfer())
+        return TRUE;
+
+    if (followerObj == NULL || followerObj->invisible)
         return FALSE;
 
     if (GetFirstLiveFollowMon() != &gPlayerParty[gBattlerPartyIndexes[gActiveBattler]])
