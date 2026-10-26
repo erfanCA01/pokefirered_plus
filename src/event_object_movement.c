@@ -2753,13 +2753,24 @@ static bool8 GetFollowerInfo(u16 *species, u8 *form, u8 *shiny)
 // live play (see QuestLog_StartFinalScene/CB2_EnterFieldFromQuestLog) -- the follower must spawn
 // normally there, even though gQuestLogState doesn't clear to 0 until the player dismisses the
 // end-of-Quest-Log recap screen afterward.
-void UpdateFollowingPokemon(void)
+// followers-expanded-id: is the follower currently out on the field (as opposed to recalled into its
+// ball, hidden, or not spawned at all)? A follower that is waiting to appear behind the player after a
+// ball-less warp counts as out, so chained warps keep it ball-less.
+bool8 IsFollowerOutOfBall(void)
+{
+    struct ObjectEvent *followerObj = GetFollowerObject();
+
+    return followerObj != NULL && (!followerObj->invisible || followerObj->followerAppearsWithoutBall);
+}
+
+static void UpdateFollowingPokemonInternal(bool8 appearWithoutBall)
 {
     struct ObjectEvent *objEvent;
     struct Sprite *sprite;
     u16 species;
     bool8 shiny;
     u8 form;
+    bool8 justSpawned = FALSE;
 
     if (gQuestLogState == QL_STATE_PLAYBACK)
         return;
@@ -2797,16 +2808,39 @@ void UpdateFollowingPokemon(void)
             return;
         objEvent = &gObjectEvents[objId];
         objEvent->invisible = TRUE;
+        justSpawned = TRUE;
     }
     sprite = &gSprites[objEvent->spriteId];
     // Follower appearance changed; move to player and set invisible
+    // (Also runs right after a spawn for shiny/non-default-form mons, since the spawn template
+    // doesn't carry those into objEvent->shiny/graphicsId; that is why a visible arrival has to be
+    // placed after this block, not before it.)
     if (species != OW_SPECIES(objEvent) || shiny != objEvent->shiny || form != OW_FORM(objEvent))
     {
         MoveObjectEventToMapCoords(objEvent, gObjectEvents[gPlayerAvatar.objectEventId].currentCoords.x, gObjectEvents[gPlayerAvatar.objectEventId].currentCoords.y);
         FollowerSetGraphics(objEvent, species, form, shiny);
         objEvent->invisible = TRUE;
     }
+    // Spawned hidden either way; the flag only changes how it appears on the player's first step
+    // (see FollowablePlayerMovement_Step): behind the player, no ball, vs. emerging from its ball.
+    if (justSpawned)
+        objEvent->followerAppearsWithoutBall = appearWithoutBall;
     sprite->data[5] = 0; // reset idle/bob animation data
+}
+
+void UpdateFollowingPokemon(void)
+{
+    UpdateFollowingPokemonInternal(FALSE);
+}
+
+// followers-expanded-id: used on arrival in a new map. The follower always spawns hidden. If it was
+// still out when the player left the old map (a warp with no recall animation, e.g. walking into a
+// cave), it simply appears behind the player when they first step off the arrival tile, as if it had
+// followed them through, instead of emerging from a ball. If it had been recalled (doors, stairs,
+// escalators, Fly, ...), it emerges from its ball on that first step as before.
+void UpdateFollowingPokemonAfterWarp(bool8 followerWasOut)
+{
+    UpdateFollowingPokemonInternal(followerWasOut);
 }
 
 // followers-expanded-id: remove the follower object event. Idempotent.
@@ -5550,6 +5584,43 @@ static bool8 MovementType_FollowPlayer_Shadow(struct ObjectEvent *objectEvent, s
     return TRUE;
 }
 
+// followers-expanded-id: a follower that was still out when the player warped (no recall) spawns hidden
+// with followerAppearsWithoutBall set. Once the player has stepped off the arrival tile and finished
+// moving, it simply appears in the tile behind them, facing their way -- no ball. This runs from the
+// Active state every frame rather than from FollowablePlayerMovement_Step, because a finished step
+// resets the player's previousCoords to currentCoords, which makes Step bail out early.
+static bool8 FollowerTryAppearWithoutBall(struct ObjectEvent *objectEvent, struct Sprite *sprite)
+{
+    struct ObjectEvent *playerObj = &gObjectEvents[gPlayerAvatar.objectEventId];
+    u8 behind;
+    s16 x;
+    s16 y;
+
+    // still standing on the arrival tile, or scripted/locked: stay hidden
+    if (ArePlayerFieldControlsLocked()
+     || (playerObj->currentCoords.x == objectEvent->currentCoords.x && playerObj->currentCoords.y == objectEvent->currentCoords.y))
+        return FALSE;
+    // mid-step: wait until the step has finished
+    if (playerObj->heldMovementActive && !playerObj->heldMovementFinished)
+        return FALSE;
+
+    x = playerObj->currentCoords.x;
+    y = playerObj->currentCoords.y;
+    behind = GetOppositeDirection(playerObj->movementDirection);
+    MoveCoords(behind, &x, &y);
+    // normally the tile the player just came from; if that isn't walkable, stay on the arrival tile
+    if (GetCollisionAtCoords(objectEvent, x, y, behind) == COLLISION_NONE)
+        MoveObjectEventToMapCoords(objectEvent, x, y);
+    ClearObjectEventMovement(objectEvent, sprite);
+    objectEvent->followerAppearsWithoutBall = FALSE;
+    objectEvent->invisible = FALSE;
+    objectEvent->triggerGroundEffectsOnMove = FALSE;
+    ObjectEventTurn(objectEvent, playerObj->movementDirection);
+    if (OW_MON_BOBBING == TRUE)
+        sprite->y2 = 0;
+    return FALSE;
+}
+
 static bool8 MovementType_FollowPlayer_Active(struct ObjectEvent *objectEvent, struct Sprite *sprite)
 {
     if (!IsFollowerVisible())
@@ -5566,6 +5637,8 @@ static bool8 MovementType_FollowPlayer_Active(struct ObjectEvent *objectEvent, s
         sprite->data[1] = 2; // movement action sets state to 0 when it finishes
         return TRUE;
     }
+    if (objectEvent->followerAppearsWithoutBall && objectEvent->invisible)
+        return FollowerTryAppearWithoutBall(objectEvent, sprite);
     return gFollowPlayerMovementFuncs[PlayerGetCopyableMovement()](objectEvent, sprite, GetPlayerMovementDirection(), NULL);
 }
 

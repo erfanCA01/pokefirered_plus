@@ -2141,6 +2141,8 @@ static void InitObjectEventsLocal(void)
 {
     s16 x, y;
     struct InitialPlayerAvatarState *player;
+    // followers-expanded-id: must be read before ResetObjectEvents() wipes the old map's objects
+    bool8 followerWasOut = IsFollowerOutOfBall();
 
     gTotalCameraPixelOffsetX = 0;
     gTotalCameraPixelOffsetY = 0;
@@ -2151,7 +2153,7 @@ static void InitObjectEventsLocal(void)
     SetPlayerAvatarTransitionFlags(player->transitionFlags);
     ResetInitialPlayerAvatarState();
     TrySpawnObjectEvents(0, 0);
-    UpdateFollowingPokemon();
+    UpdateFollowingPokemonAfterWarp(followerWasOut);
     TryRunOnWarpIntoMapScript();
 }
 

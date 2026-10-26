@@ -193,6 +193,7 @@ void SaveObjectEvents(void)
         graphicsId = gObjectEvents[i].graphicsId;
         gSaveBlock1Ptr->objectEvents[i].graphicsId = (graphicsId >> 8) | (graphicsId << 8);
         gSaveBlock1Ptr->objectEvents[i].spriteId = 0;
+        gSaveBlock1Ptr->objectEvents[i].followerAppearsWithoutBall = FALSE; // runtime-only marker
         // Avoid a vanilla-load crash: save the follower object event as inactive.
         // It is rebuilt from party data on map load, never trusted from the save.
         if (gObjectEvents[i].localId == OBJ_EVENT_ID_FOLLOWER)
@@ -227,6 +228,7 @@ void LoadObjectEvents(void)
         if (gObjectEvents[i].localId != OBJ_EVENT_ID_FOLLOWER)
             gObjectEvents[i].graphicsId &= 0xFF;
         gObjectEvents[i].spriteId = 0;
+        gObjectEvents[i].followerAppearsWithoutBall = FALSE; // runtime-only marker, never trusted from a save
         // Try to restore a saved inactive follower.
         if (gObjectEvents[i].localId == OBJ_EVENT_ID_FOLLOWER &&
             !gObjectEvents[i].active &&

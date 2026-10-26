@@ -241,7 +241,8 @@ struct ObjectEvent
              /*26*/ u32 fixedPriority:1;
              /*27*/ u32 hideReflection:1;
              /*28*/ u32 shiny:1; // OW mon shininess
-             /*29*/ u32 padding:3;
+             /*29*/ u32 followerAppearsWithoutBall:1; // follower: next emerge is a plain appearance, no pokeball
+             /*30*/ u32 padding:2;
     /*0x04*/        u16 graphicsId; // 11 bits for species; high 5 bits for form
     /*0x06*/        u8 movementType;
     /*0x07*/        u8 trainerType;
