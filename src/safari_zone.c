@@ -4,6 +4,7 @@
 #include "overworld.h"
 #include "script.h"
 #include "event_data.h"
+#include "event_object_movement.h"
 #include "field_screen_effect.h"
 
 EWRAM_DATA u8 gNumSafariBalls = 0;
@@ -37,6 +38,7 @@ void ExitSafariMode(void)
     ResetSafariZoneFlag();
     gNumSafariBalls = 0;
     gSafariZoneStepCounter = 0;
+    UpdateFollowingPokemon(); // followers-expanded-id: no follower in Safari mode; bring it back now it's over
 }
 
 bool8 SafariZoneTakeStep(void)

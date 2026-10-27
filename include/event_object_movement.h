@@ -112,6 +112,7 @@ struct ObjectEvent *GetFollowerObject(void);
 void UpdateFollowingPokemon(void);
 void UpdateFollowingPokemonAfterWarp(bool8 followerWasOut);
 bool8 IsFollowerOutOfBall(void);
+void MarkFollowerRecalledForWhiteout(void);
 void RemoveFollowingPokemon(void);
 void ClearObjectEventMovement(struct ObjectEvent *, struct Sprite *);
 void CameraObjectReset1(void);

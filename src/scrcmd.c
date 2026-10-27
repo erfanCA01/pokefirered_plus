@@ -740,7 +740,7 @@ bool8 ScrCmd_warp(struct ScriptContext * ctx)
     u16 y = VarGet(ScriptReadHalfword(ctx));
 
     SetWarpDestination(mapGroup, mapNum, warpId, x, y);
-    DoWarp();
+    DoScriptWarp();
     ResetInitialPlayerAvatarState();
     return TRUE;
 }

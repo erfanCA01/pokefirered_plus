@@ -104,6 +104,7 @@ EventScript_SetSail::
 	delay 20
 	goto_if_questlog EventScript_ReleaseEnd
 	special QuestLog_CutRecording
+	hidefollower 1
 	fadescreen FADE_TO_BLACK
 	special DoSeagallopFerryScene
 	waitstate

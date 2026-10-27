@@ -2068,7 +2068,11 @@ void RemoveObjectEventsOutsideView(void)
         {
             struct ObjectEvent *objectEvent = &gObjectEvents[i];
 
-            if (objectEvent->active && !objectEvent->isPlayer)
+            // followers-expanded-id: never cull the follower. A scripted recall (an NPC walking onto it)
+            // leaves it frozen where it was until the script ends, so a long scripted player walk
+            // (e.g. the Pewter gym guide) carries the camera away from it; deleting it here meant it
+            // never came back after the scene. Once released it shadows the player again.
+            if (objectEvent->active && !objectEvent->isPlayer && objectEvent->localId != OBJ_EVENT_ID_FOLLOWER)
                 RemoveObjectEventIfOutsideView(objectEvent);
         }
     }
@@ -2829,6 +2833,22 @@ bool8 IsFollowerOutOfBall(void)
     return followerObj != NULL && (!followerObj->invisible || followerObj->followerAppearsWithoutBall);
 }
 
+// followers-expanded-id: called from DoWhiteOut() before the warp to the Pokemon Center. The party is
+// already healed at that point, so the follower stays eligible and would otherwise count as "still
+// out" (IsFollowerOutOfBall) and appear ball-less in the Center. A whiteout isn't a walk through a
+// doorway, so treat the follower as having been recalled: it emerges from its ball on the first
+// step. Only flags fields; the old sprite id is stale after the battle and ResetObjectEvents()
+// wipes this object on the map load anyway.
+void MarkFollowerRecalledForWhiteout(void)
+{
+    struct ObjectEvent *followerObj = GetFollowerObject();
+
+    if (followerObj == NULL)
+        return;
+    followerObj->invisible = TRUE;
+    followerObj->followerAppearsWithoutBall = FALSE;
+}
+
 static void UpdateFollowingPokemonInternal(bool8 appearWithoutBall)
 {
     struct ObjectEvent *objEvent;
@@ -2847,10 +2867,12 @@ static void UpdateFollowingPokemonInternal(bool8 appearWithoutBall)
     // 2. Map is indoors and gfx is larger than 32x32
     // 3. FLAG_TEMP_HIDE_FOLLOWER is set
     // 4. We are in the Union Room (remote player avatars need the object slots; gotcha #3)
+    // 5. The player is in Safari mode (no Pokemon battles there, so no follower)
     if (!GetFollowerInfo(&species, &form, &shiny)
         || (gMapHeader.mapType == MAP_TYPE_INDOOR && SpeciesToGraphicsInfo(species, 0)->oam->size > ST_OAM_SIZE_2)
         || FlagGet(FLAG_TEMP_HIDE_FOLLOWER)
-        || InUnionRoom())
+        || InUnionRoom()
+        || FlagGet(FLAG_SYS_SAFARI_MODE))
     {
         RemoveFollowingPokemon();
         return;

@@ -25,6 +25,7 @@
 #include "constants/event_objects.h"
 #include "constants/field_weather.h"
 #include "constants/map_types.h"
+#include "constants/maps.h"
 
 static void ExitWarpFadeInScreen(u8 playerNotMoving);
 static void Task_ExitDoor(u8 taskId);
@@ -546,14 +547,52 @@ static void DoWarpNow(void)
 
 // followers-expanded-id: walking out of a building (indoor map -> outdoor map) through a plain or
 // arrow warp, i.e. not a door, which already recalls the follower in Task_DoorWarp.
-static bool8 ShouldRecallFollowerOnIndoorExit(void)
+// Route and city gate buildings: the follower walks through them with the player, so leaving one
+// doesn't recall it (it reappears behind the player outside, like after a cave warp).
+static const u16 sGateBuildingMaps[] = {
+    MAP_ROUTE2_VIRIDIAN_FOREST_SOUTH_ENTRANCE,
+    MAP_ROUTE2_VIRIDIAN_FOREST_NORTH_ENTRANCE,
+    MAP_ROUTE5_SOUTH_ENTRANCE,
+    MAP_ROUTE6_NORTH_ENTRANCE,
+    MAP_ROUTE7_EAST_ENTRANCE,
+    MAP_ROUTE8_WEST_ENTRANCE,
+    MAP_ROUTE11_EAST_ENTRANCE_1F,
+    MAP_ROUTE11_EAST_ENTRANCE_2F,
+    MAP_ROUTE12_NORTH_ENTRANCE_1F,
+    MAP_ROUTE12_NORTH_ENTRANCE_2F,
+    MAP_ROUTE15_WEST_ENTRANCE_1F,
+    MAP_ROUTE15_WEST_ENTRANCE_2F,
+    MAP_ROUTE16_NORTH_ENTRANCE_1F,
+    MAP_ROUTE16_NORTH_ENTRANCE_2F,
+    MAP_ROUTE18_EAST_ENTRANCE_1F,
+    MAP_ROUTE18_EAST_ENTRANCE_2F,
+    MAP_ROUTE22_NORTH_ENTRANCE,
+};
+
+static bool8 IsCurrentMapGateBuilding(void)
+{
+    u16 currentMap = gSaveBlock1Ptr->location.mapNum | (gSaveBlock1Ptr->location.mapGroup << 8);
+    u32 i;
+
+    for (i = 0; i < NELEMS(sGateBuildingMaps); i++)
+    {
+        if (sGateBuildingMaps[i] == currentMap)
+            return TRUE;
+    }
+    return FALSE;
+}
+
+// A warp started by a script command (`warp`) is a cutscene-style transition, so it always recalls.
+static bool8 ShouldRecallFollowerBeforeWarp(bool8 scriptWarp)
 {
     struct ObjectEvent *followerObject = GetFollowerObject();
 
     return followerObject != NULL
         && !followerObject->invisible
-        && GetCurrentMapType() == MAP_TYPE_INDOOR
-        && IsMapTypeOutdoors(GetDestinationWarpMapHeader()->mapType) == TRUE;
+        && (scriptWarp
+         || (GetCurrentMapType() == MAP_TYPE_INDOOR
+          && !IsCurrentMapGateBuilding()
+          && IsMapTypeOutdoors(GetDestinationWarpMapHeader()->mapType) == TRUE));
 }
 
 #define FOLLOWER_RECALL_TIMEOUT 40
@@ -570,9 +609,9 @@ static void Task_WarpAfterFollowerRecall(u8 taskId)
     DoWarpNow();
 }
 
-void DoWarp(void)
+static void DoWarpInternal(bool8 scriptWarp)
 {
-    if (ShouldRecallFollowerOnIndoorExit())
+    if (ShouldRecallFollowerBeforeWarp(scriptWarp))
     {
         struct ObjectEvent *followerObject = GetFollowerObject();
 
@@ -583,6 +622,17 @@ void DoWarp(void)
         return;
     }
     DoWarpNow();
+}
+
+void DoWarp(void)
+{
+    DoWarpInternal(FALSE);
+}
+
+// followers-expanded-id: warp from a script's `warp` command; recalls the follower first
+void DoScriptWarp(void)
+{
+    DoWarpInternal(TRUE);
 }
 
 void DoDiveWarp(void)
@@ -759,6 +809,7 @@ static void Task_TeleportWarp(u8 taskId)
     case 0:
         FreezeObjectEvents();
         LockPlayerFieldControls();
+        HideFollowerForFieldEffect(); // followers-expanded-id: the follower can't spin away with the player; recall it
         PlaySE(SE_WARP_IN);
         StartTeleportWarpOutPlayerAnim();
         task->data[0]++;

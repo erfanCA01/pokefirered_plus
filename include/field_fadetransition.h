@@ -5,6 +5,7 @@
 
 void FieldCB_RushInjuredPokemonToCenter(void);
 void DoWarp(void);
+void DoScriptWarp(void);
 void DoDiveWarp(void);
 void DoDoorWarp(void);
 

@@ -252,6 +252,7 @@ static void DoWhiteOut(void)
     RunScriptImmediately(EventScript_ResetEliteFourEnd);
     RemoveMoney(&gSaveBlock1Ptr->money, ComputeWhiteOutMoneyLoss());
     HealPlayerParty();
+    MarkFollowerRecalledForWhiteout();
     Overworld_ResetStateAfterWhitingOut();
     Overworld_SetWhiteoutRespawnPoint();
     WarpIntoMap();
