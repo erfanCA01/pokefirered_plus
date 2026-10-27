@@ -1267,41 +1267,7 @@ static const union AnimCmd *const sAnimTable_RedGreenFish[] = {
     [ANIM_HOOKED_POKEMON_EAST] = sAnim_HookedPokemonEast,
 };
 
-static const struct StepAnimTable sStepAnimTables[] = {
-    {
-        .anims = sAnimTable_QuintyPlump,
-        .animPos = {1, 3, 0, 2},
-    },
-    {
-        .anims = sAnimTable_Standard,
-        .animPos = {1, 3, 0, 2},
-    },
-    {
-        .anims = sAnimTable_RedGreenNormal,
-        .animPos = {1, 3, 0, 2},
-    },
-    {
-        .anims = sAnimTable_AcroBike,
-        .animPos = {1, 3, 0, 2},
-    },
-    {
-        .anims = sAnimTable_RedGreenSurf,
-        .animPos = {1, 3, 0, 2},
-    },
-    {
-        .anims = sAnimTable_Nurse,
-        .animPos = {1, 3, 0, 2},
-    },
-    {
-        .anims = sAnimTable_RedGreenFish,
-        .animPos = {1, 3, 0, 2},
-    },
-    {
-        .anims = sAnimTable_Unknown,
-        .animPos = {3, 7, 0, 4},
-    },
-    {}
-};
+// (sStepAnimTables is defined at the end of this file, after the follower anim tables it refers to)
 
 // --- followers-expanded-id: species-indexed follower walk-cycle anims ---
 // 2-frame ("2F") walk-cycle variants used by all follower OW sprites (6 frames
@@ -1652,4 +1618,52 @@ static const union AnimCmd *const sAnimTable_Following_Asym[] = {
     [ANIM_EXIT_POKEBALL_FAST_NORTH] = sAnim_ExitPokeballFastNorth,
     [ANIM_EXIT_POKEBALL_FAST_WEST] = sAnim_ExitPokeballFastWest,
     [ANIM_EXIT_POKEBALL_FAST_EAST] = sAnim_ExitPokeballFastEast_Asym,
+};
+
+// For animations with alternating steps (which animation command the next step starts on).
+// followers-expanded-id: the follower tables must be listed here (as in Emerald) or the follower's
+// walk cycle never alternates, so while the player runs (8-frame steps) its animation advances only
+// one command per step and plays at half speed. Defined after the follower tables above, which it uses.
+static const struct StepAnimTable sStepAnimTables[] = {
+    {
+        .anims = sAnimTable_QuintyPlump,
+        .animPos = {1, 3, 0, 2},
+    },
+    {
+        .anims = sAnimTable_Standard,
+        .animPos = {1, 3, 0, 2},
+    },
+    {
+        .anims = sAnimTable_RedGreenNormal,
+        .animPos = {1, 3, 0, 2},
+    },
+    {
+        .anims = sAnimTable_AcroBike,
+        .animPos = {1, 3, 0, 2},
+    },
+    {
+        .anims = sAnimTable_RedGreenSurf,
+        .animPos = {1, 3, 0, 2},
+    },
+    {
+        .anims = sAnimTable_Nurse,
+        .animPos = {1, 3, 0, 2},
+    },
+    {
+        .anims = sAnimTable_RedGreenFish,
+        .animPos = {1, 3, 0, 2},
+    },
+    {
+        .anims = sAnimTable_Unknown,
+        .animPos = {3, 7, 0, 4},
+    },
+    {
+        .anims = sAnimTable_Following,
+        .animPos = {1, 3, 0, 2},
+    },
+    {
+        .anims = sAnimTable_Following_Asym,
+        .animPos = {1, 3, 0, 2},
+    },
+    {}
 };
