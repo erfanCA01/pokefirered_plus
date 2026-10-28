@@ -1545,4 +1545,11 @@ extern const u8 gText_PokeSum_EggOrigin_NicePlace[];
 extern const u8 gText_PokeSum_EggOrigin_Spa[];
 extern const u8 gText_PokeSum_EggOrigin_Trade[];
 
+extern const u8 gText_LinkStandby2[];
+extern const u8 gText_EventSafelyLoaded[];
+extern const u8 gText_LoadErrorEndingSession[];
+extern const u8 gText_PressAToLoadEvent[];
+extern const u8 gText_LoadingEvent[];
+extern const u8 gText_DontRemoveCableTurnOff[];
+
 #endif //GUARD_STRINGS_H
