@@ -169,14 +169,11 @@ TrainerTower_Lobby_EventScript_ChallengeInfo::
 	end
 
 TrainerTower_Lobby_EventScript_ChooseChallenge::
-	multichoice 13, 3, MULTICHOICE_TRAINER_TOWER_MODE, FALSE
-	switch VAR_RESULT
-	case 0, TrainerTower_Lobby_EventScript_BeginChallenge
-	case 1, TrainerTower_Lobby_EventScript_BeginChallenge
-	case 2, TrainerTower_Lobby_EventScript_BeginChallenge
-	case 3, TrainerTower_Lobby_EventScript_BeginChallenge
-	case 4, TrainerTower_Lobby_EventScript_DeclineChallenge
-	case SCR_MENU_CANCEL, TrainerTower_Lobby_EventScript_DeclineChallenge
+	setvar VAR_MAP_SCENE_TRAINER_TOWER, 1
+	special HealPlayerParty
+	msgbox TrainerTower_Lobby_Text_StartClockGetSetGo
+	ttower_startchallenge
+	releaseall
 	end
 
 TrainerTower_Lobby_EventScript_BeginChallenge::
