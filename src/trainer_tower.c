@@ -3,6 +3,7 @@
 #include "util.h"
 #include "event_data.h"
 #include "cereader_tool.h"
+#include "trainer_tower.h"
 #include "easy_chat.h"
 #include "battle_setup.h"
 #include "battle_transition.h"
@@ -20,7 +21,7 @@
 #include "constants/trainer_tower.h"
 
 #define CURR_FLOOR sTrainerTowerState->data.floors[sTrainerTowerState->floorIdx]
-#define TRAINER_TOWER gSaveBlock1Ptr->trainerTower[gSaveBlock1Ptr->towerChallengeId]
+#define TRAINER_TOWER (*GetTrainerTowerRecord(gSaveBlock1Ptr->towerChallengeId))
 
 struct TrainerTowerState
 {
@@ -1062,7 +1063,7 @@ void PrintTrainerTowerRecords(void)
 
     for (i = 0; i < NUM_TOWER_CHALLENGE_TYPES; i++)
     {
-        PRINT_TOWER_TIME(GetTrainerTowerRecordTime(&gSaveBlock1Ptr->trainerTower[i].bestTime));
+        PRINT_TOWER_TIME(GetTrainerTowerRecordTime(&GetTrainerTowerRecord(i)->bestTime));
         StringExpandPlaceholders(gStringVar4, gText_XMinYZSec);
         AddTextPrinterParameterized3(windowId, FONT_NORMAL, 0x18, 0x24 + 0x14 * i, sTextColors, 0, gTrainerTowerChallengeTypeTexts[i]);
         AddTextPrinterParameterized3(windowId, FONT_NORMAL, 0x60, 0x24 + 0x14 * i, sTextColors, 0, gStringVar4);
@@ -1071,6 +1072,25 @@ void PrintTrainerTowerRecords(void)
     PutWindowTilemap(windowId);
     CopyWindowToVram(windowId, COPYWIN_FULL);
     FreeTrainerTowerDataStruct();
+}
+
+// SaveBlock1.trainerTower[] only has room for the vanilla challenge types, so the e-Reader record overlays space that
+// vanilla leaves unused. Vanilla re-keys the encrypted fields it knows about but not this one, so the key the record
+// is currently encoded with is stored next to it and the record is re-keyed on access if it fell behind.
+struct TrainerTower *GetTrainerTowerRecord(u32 challengeType)
+{
+    struct TrainerTower *record;
+
+    if (challengeType < NUM_TOWER_CHALLENGE_TYPES_SAVED)
+        return &gSaveBlock1Ptr->trainerTower[challengeType];
+
+    record = &gSaveBlock1Ptr->trainerTowerEReader;
+    if (gSaveBlock1Ptr->trainerTowerEReaderKey != gSaveBlock2Ptr->encryptionKey)
+    {
+        record->bestTime ^= gSaveBlock1Ptr->trainerTowerEReaderKey ^ gSaveBlock2Ptr->encryptionKey;
+        gSaveBlock1Ptr->trainerTowerEReaderKey = gSaveBlock2Ptr->encryptionKey;
+    }
+    return record;
 }
 
 static u32 GetTrainerTowerRecordTime(u32 *counter)
@@ -1089,6 +1109,6 @@ void ResetTrainerTowerResults(void)
 
     for (i = 0; i < NUM_TOWER_CHALLENGE_TYPES; i++)
     {
-        SetTrainerTowerRecordTime(&gSaveBlock1Ptr->trainerTower[i].bestTime, TRAINER_TOWER_MAX_TIME);
+        SetTrainerTowerRecordTime(&GetTrainerTowerRecord(i)->bestTime, TRAINER_TOWER_MAX_TIME);
     }
 }

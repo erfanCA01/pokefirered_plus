@@ -1366,7 +1366,8 @@ const u8 *const gTrainerTowerChallengeTypeTexts[NUM_TOWER_CHALLENGE_TYPES] =
     gOtherText_Single,
     gOtherText_Double,
     gOtherText_Knockout,
-    gOtherText_Mixed
+    gOtherText_Mixed,
+    gOtherText_EReader
 };
 
 static const u8 sText_Trainer1Fled[] = _("{PLAY_SE SE_FLEE}{B_TRAINER1_CLASS} {B_TRAINER1_NAME} fled!");

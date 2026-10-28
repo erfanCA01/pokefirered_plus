@@ -545,6 +545,7 @@ const u8 gOtherText_Single[] = _("SINGLE");
 const u8 gOtherText_Double[] = _("DOUBLE");
 const u8 gOtherText_Knockout[] = _("KNOCKOUT");
 const u8 gOtherText_Mixed[] = _("MIXED");
+const u8 gOtherText_EReader[] = _("E-READER");
 const u8 gText_99TimesPlus[] = _("99かい いじょう");
 const u8 gText_1MinutePlus[] = _("1ぷん いじょう");
 const u8 gText_SpaceSeconds[] = _("びょう");
