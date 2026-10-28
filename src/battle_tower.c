@@ -1344,7 +1344,7 @@ void CopyEReaderTrainerName5(u8 *trainerName)
 {
     s32 i;
 
-    for (i = 0; i < 5; i++)
+    for (i = 0; i < 8; i++)
         trainerName[i] = gSaveBlock2Ptr->battleTower.ereaderTrainer.name[i];
 
     trainerName[i] = EOS;
