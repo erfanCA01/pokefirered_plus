@@ -1,4 +1,5 @@
 #include "global.h"
+#include "trainer_tower.h"
 #include "gflib.h"
 #include "gba/flash_internal.h"
 #include "load_save.h"
@@ -288,7 +289,8 @@ void ApplyNewEncryptionKeyToAllEncryptedData(u32 encryptionKey)
     int i;
 
     for(i = 0; i < NUM_TOWER_CHALLENGE_TYPES; i++)
-        ApplyNewEncryptionKeyToWord(&gSaveBlock1Ptr->trainerTower[i].bestTime, encryptionKey);
+        ApplyNewEncryptionKeyToWord(&GetTrainerTowerRecord(i)->bestTime, encryptionKey);
+    gSaveBlock1Ptr->trainerTowerEReaderKey = encryptionKey;
 
     ApplyNewEncryptionKeyToGameStats(encryptionKey);
     ApplyNewEncryptionKeyToBagItems_(encryptionKey);

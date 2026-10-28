@@ -707,6 +707,7 @@ extern const u8 gText_Other[];
 extern const u8 gOtherText_Double[];
 extern const u8 gOtherText_Knockout[];
 extern const u8 gOtherText_Mixed[];
+extern const u8 gOtherText_EReader[];
 extern const u8 gOtherText_Single[];
 extern const u8 gText_Info[];
 extern const u8 gText_Eggs[];

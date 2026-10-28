@@ -1,6 +1,9 @@
 #ifndef GUARD_TRAINER_TOWER_H
 #define GUARD_TRAINER_TOWER_H
 
+struct TrainerTower;
+
+struct TrainerTower *GetTrainerTowerRecord(u32 challengeType);
 void PrintTrainerTowerRecords(void);
 void InitTrainerTowerBattleStruct(void);
 void FreeTrainerTowerBattleStruct(void);

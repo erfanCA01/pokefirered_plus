@@ -1,4 +1,5 @@
 #include "global.h"
+#include "trainer_tower.h"
 #include "heal_location.h"
 #include "event_data.h"
 #include "constants/maps.h"
@@ -65,7 +66,7 @@ void SetWhiteoutRespawnWarpAndHealerNpc(struct WarpData * warp)
 
     if (VarGet(VAR_MAP_SCENE_TRAINER_TOWER) == 1)
     {
-        if (!gSaveBlock1Ptr->trainerTower[gSaveBlock1Ptr->towerChallengeId].spokeToOwner)
+        if (!GetTrainerTowerRecord(gSaveBlock1Ptr->towerChallengeId)->spokeToOwner)
             VarSet(VAR_MAP_SCENE_TRAINER_TOWER, 0);
         gSpecialVar_LastTalked = 1;
         warp->x = 4;
