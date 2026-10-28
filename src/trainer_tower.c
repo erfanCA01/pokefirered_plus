@@ -513,7 +513,6 @@ void GetTrainerTowerOpponentLoseText(u8 *dest, u8 opponentIdx)
 
 static void SetUpTrainerTowerDataStruct(void)
 {
-    u32 challengeType = gSaveBlock1Ptr->towerChallengeId;
     s32 i;
     const struct TrainerTowerFloor *const * floors_p;
 
@@ -526,7 +525,7 @@ static void SetUpTrainerTowerDataStruct(void)
         struct TrainerTowerState * ttstate_p = sTrainerTowerState;
         const struct EReaderTrainerTowerSetSubstruct * header_p = &gTrainerTowerLocalHeader;
         memcpy(&ttstate_p->data, header_p, sizeof(struct EReaderTrainerTowerSetSubstruct));
-        floors_p = gTrainerTowerFloors[challengeType];
+        floors_p = gTrainerTowerFloors[CHALLENGE_TYPE_EREADER];
         for (i = 0; i < MAX_TRAINER_TOWER_FLOORS; i++)
         {
             *(sTrainerTowerState->data.floors + i) = *(floors_p[i]); // manual pointer arithmetic needed to match
