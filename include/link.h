@@ -117,7 +117,7 @@ enum {
 
 #define MASTER_HANDSHAKE  0x8FFF
 #define SLAVE_HANDSHAKE   0xB9A0
-#define EREADER_HANDSHAKE 0xCCD0
+#define EREADER_HANDSHAKE 0xCCC0
 
 #define IsSendCmdComplete()    (gSendCmd[0] == 0)
 
