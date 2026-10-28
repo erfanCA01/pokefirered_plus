@@ -5,6 +5,7 @@
 #define CHALLENGE_TYPE_DOUBLE     1
 #define CHALLENGE_TYPE_KNOCKOUT   2
 #define CHALLENGE_TYPE_MIXED      3
+#define CHALLENGE_TYPE_EREADER    4
 // Mixed challenges use one of the above 3 for each floor
 
 #define CHALLENGE_STATUS_LOST     0
