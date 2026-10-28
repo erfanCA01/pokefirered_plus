@@ -22,7 +22,9 @@ enum MainMenuType
 {
     MAIN_MENU_NEWGAME = 0,
     MAIN_MENU_CONTINUE,
-    MAIN_MENU_MYSTERYGIFT
+    MAIN_MENU_MYSTERYGIFT,
+    MAIN_MENU_EREADER,
+    MAIN_MENU_MYSTERYGIFT_ERROR
 };
 
 enum MainMenuWindow
@@ -450,16 +452,9 @@ static void Task_ExecuteMainMenuSelection(u8 taskId)
                 break;
             case 2:
                 if (!IsWirelessAdapterConnected())
-                {
-                    SetStdFrame0OnBg(0);
-                    gTasks[taskId].func = Task_MysteryGiftError;
-                    BeginNormalPaletteFade(PALETTES_ALL, 0, 16, 0, RGB_BLACK);
-                    return;
-                }
+                    menuAction = MAIN_MENU_EREADER;
                 else
-                {
                     menuAction = MAIN_MENU_MYSTERYGIFT;
-                }
                 break;
             }
             break;
@@ -485,6 +480,25 @@ static void Task_ExecuteMainMenuSelection(u8 taskId)
             HelpSystem_Disable();
             FreeAllWindowBuffers();
             DestroyTask(taskId);
+            break;
+        case MAIN_MENU_EREADER:
+            SetMainCallback2(CB2_InitEReader);
+            HelpSystem_Disable();
+            FreeAllWindowBuffers();
+            DestroyTask(taskId);
+            break;
+        case MAIN_MENU_MYSTERYGIFT_ERROR:
+            gTasks[taskId].tMGErrorMsgState = 0;
+            gTasks[taskId].func = Task_MysteryGiftError;
+            gPlttBufferUnfaded[BG_PLTT_ID(15) + 1] = RGB_WHITE;
+            gPlttBufferFaded[BG_PLTT_ID(15) + 1] = RGB_WHITE;
+            SetGpuReg(REG_OFFSET_BG2HOFS, 0);
+            SetGpuReg(REG_OFFSET_BG2VOFS, 0);
+            SetGpuReg(REG_OFFSET_BG1HOFS, 0);
+            SetGpuReg(REG_OFFSET_BG1VOFS, 0);
+            SetGpuReg(REG_OFFSET_BG0HOFS, 0);
+            SetGpuReg(REG_OFFSET_BG0VOFS, 0);
+            BeginNormalPaletteFade(PALETTES_ALL, 0, 16, 0, RGB_BLACK);
             break;
         }
     }
@@ -558,6 +572,9 @@ static void MoveWindowByMenuTypeAndCursorPos(u8 menuType, u8 cursorPos)
         case 2: // MYSTERY GIFT
             win0vTop = 0x80 << 8;
             win0vBot = 0xA0;
+            break;        case 3:
+            win0vTop = 0xA0 << 8;
+            win0vBot = 0xC0;
             break;
         }
         break;
