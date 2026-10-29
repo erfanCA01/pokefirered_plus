@@ -1053,6 +1053,7 @@ CableClub_EventScript_TryJoinLinkGroup::
 CableClub_EventScript_EnterWirelessLinkRoom::
 	messageautoscroll CableClub_Text_DirectYouToYourRoom
 	waitmessage
+	hidefollower 1
 	delay 60
 	closemessage
 	copyvar VAR_0x8007, VAR_LAST_TALKED
@@ -1237,6 +1238,7 @@ CableClub_EventScript_TryJoinMinigameLinkGroup::
 CableClub_EventScript_EnterMinigame::
 	messageautoscroll Text_AllGoodToGo
 	waitmessage
+	hidefollower 1
 	delay 120
 	closemessage
 	copyvar VAR_0x8007, VAR_LAST_TALKED
