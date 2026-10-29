@@ -45,7 +45,8 @@ else
   CPP := $(PREFIX)cpp
 endif
 
-ROM := poke$(BUILD_NAME).gba
+# This fork's builds carry an _ecard suffix so they can't be mistaken for vanilla ROMs (they are not hash-identical)
+ROM := poke$(BUILD_NAME)_ecard.gba
 OBJ_DIR := $(BUILD_DIR)/$(BUILD_NAME)
 
 ELF := $(ROM:.gba=.elf)
@@ -218,7 +219,8 @@ clean-assets:
 	find $(DATA_ASM_SUBDIR)/maps \( -iname 'connections.inc' -o -iname 'events.inc' -o -iname 'header.inc' \) -exec rm {} +
 
 tidy:
-	$(RM) $(ALL_BUILDS:%=poke%{.gba,.elf,.map})
+	$(RM) $(ALL_BUILDS:%=poke%{.gba,.elf,.map,.sym})
+	$(RM) $(ALL_BUILDS:%=poke%_ecard{.gba,.elf,.map,.sym})
 	$(RM) -r $(BUILD_DIR)
 
 # "friendly" target names for convenience sake
