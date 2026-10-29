@@ -768,8 +768,7 @@ static void GetFloorAlreadyCleared(void)
 
 static void StartTrainerTowerChallenge(void)
 {
-    // Every challenge in this build is the e-Reader one, whose record is not indexed by towerChallengeId. Vanilla uses
-    // towerChallengeId as an unchecked index into trainerTower[], so only ever store a value it can handle.
+    // Vanilla indexes trainerTower[] with this unchecked, so never store the e-Reader type
     gSaveBlock1Ptr->towerChallengeId = CHALLENGE_TYPE_SINGLE;
     ValidateOrResetCurTrainerTowerRecord();
     if (!ReadTrainerTowerAndValidate())
@@ -1074,9 +1073,8 @@ void PrintTrainerTowerRecords(void)
     FreeTrainerTowerDataStruct();
 }
 
-// SaveBlock1.trainerTower[] only has room for the vanilla challenge types, so the e-Reader record overlays space that
-// vanilla leaves unused. Vanilla re-keys the encrypted fields it knows about but not this one, so the key the record
-// is currently encoded with is stored next to it and the record is re-keyed on access if it fell behind.
+// The e-Reader record overlays space vanilla leaves unused. Vanilla does not re-key it, so the key it is encoded
+// with is stored next to it and the record is re-keyed here on access if the key fell behind.
 struct TrainerTower *GetTrainerTowerRecord(u32 challengeType)
 {
     struct TrainerTower *record;
@@ -1095,7 +1093,7 @@ struct TrainerTower *GetTrainerTowerRecord(u32 challengeType)
 
 struct TrainerTower *GetCurrentTrainerTowerRecord(void)
 {
-    // Saves made by an earlier build of this ROM may hold the e-Reader type here, which vanilla would index out of bounds
+    // Older saves may hold the e-Reader type here
     if (gSaveBlock1Ptr->towerChallengeId >= NUM_TOWER_CHALLENGE_TYPES_SAVED)
         gSaveBlock1Ptr->towerChallengeId = CHALLENGE_TYPE_SINGLE;
     return GetTrainerTowerRecord(CHALLENGE_TYPE_EREADER);

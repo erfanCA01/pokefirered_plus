@@ -8948,6 +8948,7 @@ static const struct TrainerTowerFloor sTrainerTowerFloor_Knockout_5 = {
 	.checksum = 0x00016b80
 };
 
+// Floors used when no e-Reader card has been scanned. Floors 5-8 of the e-Reader row repeat the last record.
 static const struct TrainerTowerFloor sTrainerTowerFloor_EReader_1 = {
 	.id = 1,
 	.floorIdx = 4,

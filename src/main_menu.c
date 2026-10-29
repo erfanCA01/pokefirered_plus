@@ -487,7 +487,7 @@ static void Task_ExecuteMainMenuSelection(u8 taskId)
             FreeAllWindowBuffers();
             DestroyTask(taskId);
             break;
-        case MAIN_MENU_MYSTERYGIFT_ERROR:
+        case MAIN_MENU_MYSTERYGIFT_ERROR: // not reachable, kept from the e-Reader patch
             gTasks[taskId].tMGErrorMsgState = 0;
             gTasks[taskId].func = Task_MysteryGiftError;
             gPlttBufferUnfaded[BG_PLTT_ID(15) + 1] = RGB_WHITE;
@@ -572,7 +572,7 @@ static void MoveWindowByMenuTypeAndCursorPos(u8 menuType, u8 cursorPos)
         case 2: // MYSTERY GIFT
             win0vTop = 0x80 << 8;
             win0vBot = 0xA0;
-            break;        case 3:
+            break;        case 3: // (no fourth entry)
             win0vTop = 0xA0 << 8;
             win0vBot = 0xC0;
             break;
