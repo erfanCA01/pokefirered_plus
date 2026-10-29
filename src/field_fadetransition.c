@@ -547,7 +547,7 @@ static void DoWarpNow(void)
 
 // followers-expanded-id: walking out of a building (indoor map -> outdoor map) through a plain or
 // arrow warp, i.e. not a door, which already recalls the follower in Task_DoorWarp.
-// Route and city gate buildings: the follower walks through them with the player, so leaving one
+// Route and city gate buildings, and the Sevii harbors: the follower walks through them with the player, so leaving one
 // doesn't recall it (it reappears behind the player outside, like after a cave warp).
 static const u16 sGateBuildingMaps[] = {
     MAP_ROUTE2_VIRIDIAN_FOREST_SOUTH_ENTRANCE,
@@ -567,6 +567,16 @@ static const u16 sGateBuildingMaps[] = {
     MAP_ROUTE18_EAST_ENTRANCE_1F,
     MAP_ROUTE18_EAST_ENTRANCE_2F,
     MAP_ROUTE22_NORTH_ENTRANCE,
+    // Seagallop harbors: the follower walks out of the dock with the player
+    MAP_ONE_ISLAND_HARBOR,
+    MAP_TWO_ISLAND_HARBOR,
+    MAP_THREE_ISLAND_HARBOR,
+    MAP_FOUR_ISLAND_HARBOR,
+    MAP_FIVE_ISLAND_HARBOR,
+    MAP_SIX_ISLAND_HARBOR,
+    MAP_SEVEN_ISLAND_HARBOR,
+    MAP_NAVEL_ROCK_HARBOR,
+    MAP_BIRTH_ISLAND_HARBOR,
 };
 
 static bool8 IsCurrentMapGateBuilding(void)

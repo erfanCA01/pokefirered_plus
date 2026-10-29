@@ -48,6 +48,7 @@ static void Task_ItemUseWaitForFade(u8 taskId);
 static bool8 FieldCB2_UseItemFromField(void);
 static void CB2_CheckMail(void);
 static void ItemUseOnFieldCB_Bicycle(u8 taskId);
+static void Task_BicycleMountAfterFollowerRecall(u8 taskId);
 static bool8 CanFish(void);
 static void ItemUseOnFieldCB_Rod(u8 taskId);
 static void Task_PlayPokeFlute(u8 taskId);
@@ -276,7 +277,33 @@ void FieldUseFunc_Bike(u8 taskId)
 static void ItemUseOnFieldCB_Bicycle(u8 taskId)
 {
     if (!TestPlayerAvatarFlags(PLAYER_AVATAR_FLAG_MACH_BIKE | PLAYER_AVATAR_FLAG_ACRO_BIKE))
+    {
+        // followers-expanded-id: the follower goes into its ball before the player mounts, rather
+        // than vanishing when the bike flag flips (after returning from the Bag its sprite is
+        // still in its initial shadowing state, which hides it instantly).
+        struct ObjectEvent *follower = GetFollowerObject();
+
+        if (follower != NULL && !follower->invisible)
+        {
+            HideFollowerForFieldEffect();
+            gTasks[taskId].func = Task_BicycleMountAfterFollowerRecall;
+            return;
+        }
         PlaySE(SE_BIKE_BELL);
+    }
+    GetOnOffBike(PLAYER_AVATAR_FLAG_MACH_BIKE | PLAYER_AVATAR_FLAG_ACRO_BIKE);
+    ClearPlayerHeldMovementAndUnfreezeObjectEvents();
+    UnlockPlayerFieldControls();
+    DestroyTask(taskId);
+}
+
+static void Task_BicycleMountAfterFollowerRecall(u8 taskId)
+{
+    struct ObjectEvent *follower = GetFollowerObject();
+
+    if (follower != NULL && !follower->invisible && !ObjectEventClearHeldMovementIfFinished(follower))
+        return;
+    PlaySE(SE_BIKE_BELL);
     GetOnOffBike(PLAYER_AVATAR_FLAG_MACH_BIKE | PLAYER_AVATAR_FLAG_ACRO_BIKE);
     ClearPlayerHeldMovementAndUnfreezeObjectEvents();
     UnlockPlayerFieldControls();

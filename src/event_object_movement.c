@@ -2849,6 +2849,17 @@ void MarkFollowerRecalledForWhiteout(void)
     followerObj->followerAppearsWithoutBall = FALSE;
 }
 
+// The follower is recalled by the Cable Club scripts before the player enters a link room
+// (Colosseum, Trade Center), and stays away while the player is inside.
+static bool8 IsCurrentMapLinkRoom(void)
+{
+    u16 currentMap = gSaveBlock1Ptr->location.mapNum | (gSaveBlock1Ptr->location.mapGroup << 8);
+
+    return currentMap == MAP_BATTLE_COLOSSEUM_2P
+        || currentMap == MAP_BATTLE_COLOSSEUM_4P
+        || currentMap == MAP_TRADE_CENTER;
+}
+
 static void UpdateFollowingPokemonInternal(bool8 appearWithoutBall)
 {
     struct ObjectEvent *objEvent;
@@ -2866,12 +2877,13 @@ static void UpdateFollowingPokemonInternal(bool8 appearWithoutBall)
     // 1. GetFollowerInfo returns FALSE (no eligible party mon)
     // 2. Map is indoors and gfx is larger than 32x32
     // 3. FLAG_TEMP_HIDE_FOLLOWER is set
-    // 4. We are in the Union Room (remote player avatars need the object slots; gotcha #3)
+    // 4. We are in the Union Room or a Cable Club link room (remote player avatars need the object slots; gotcha #3)
     // 5. The player is in Safari mode (no Pokemon battles there, so no follower)
     if (!GetFollowerInfo(&species, &form, &shiny)
         || (gMapHeader.mapType == MAP_TYPE_INDOOR && SpeciesToGraphicsInfo(species, 0)->oam->size > ST_OAM_SIZE_2)
         || FlagGet(FLAG_TEMP_HIDE_FOLLOWER)
         || InUnionRoom()
+        || IsCurrentMapLinkRoom()
         || FlagGet(FLAG_SYS_SAFARI_MODE))
     {
         RemoveFollowingPokemon();
@@ -2912,7 +2924,13 @@ static void UpdateFollowingPokemonInternal(bool8 appearWithoutBall)
     // Spawned hidden either way; the flag only changes how it appears on the player's first step
     // (see FollowablePlayerMovement_Step): behind the player, no ball, vs. emerging from its ball.
     if (justSpawned)
+    {
         objEvent->followerAppearsWithoutBall = appearWithoutBall;
+        // While hidden, the follower's facing holds the direction the player arrived facing; it is the
+        // direction the follower shows when it appears (see FollowerTryAppearWithoutBall).
+        if (appearWithoutBall)
+            SetObjectEventDirection(objEvent, gObjectEvents[gPlayerAvatar.objectEventId].facingDirection);
+    }
     sprite->data[5] = 0; // reset idle/bob animation data
 }
 
@@ -5657,6 +5675,10 @@ static bool8 MovementType_FollowPlayer_Shadow(struct ObjectEvent *objectEvent, s
     {
         // Shadow the player's position while hidden
         objectEvent->invisible = TRUE;
+        // Catch-all: whatever hides the follower (bike, surf, forced movement, ...) counts as a recall,
+        // so it comes back out of its ball rather than appearing from nowhere, even if it was spawned
+        // as a ball-less arrival (e.g. the gate onto the Cycling Road mounts the bike on arrival).
+        objectEvent->followerAppearsWithoutBall = FALSE;
         MoveObjectEventToMapCoords(objectEvent, gObjectEvents[gPlayerAvatar.objectEventId].currentCoords.x, gObjectEvents[gPlayerAvatar.objectEventId].currentCoords.y);
         objectEvent->triggerGroundEffectsOnMove = FALSE; // stop endless reflection spawning
         return FALSE;
@@ -5674,7 +5696,7 @@ static bool8 MovementType_FollowPlayer_Shadow(struct ObjectEvent *objectEvent, s
 
 // followers-expanded-id: a follower that was still out when the player warped (no recall) spawns hidden
 // with followerAppearsWithoutBall set. Once the player has stepped off the arrival tile and finished
-// moving, it simply appears in the tile behind them, facing their way -- no ball. This runs from the
+// moving, it simply appears in the tile behind them, facing the direction they arrived facing -- no ball. This runs from the
 // Active state every frame rather than from FollowablePlayerMovement_Step, because a finished step
 // resets the player's previousCoords to currentCoords, which makes Step bail out early.
 static bool8 FollowerTryAppearWithoutBall(struct ObjectEvent *objectEvent, struct Sprite *sprite)
@@ -5703,7 +5725,8 @@ static bool8 FollowerTryAppearWithoutBall(struct ObjectEvent *objectEvent, struc
     objectEvent->followerAppearsWithoutBall = FALSE;
     objectEvent->invisible = FALSE;
     objectEvent->triggerGroundEffectsOnMove = FALSE;
-    ObjectEventTurn(objectEvent, playerObj->movementDirection);
+    // face the way the player was facing on arrival, even if their first step went sideways
+    ObjectEventTurn(objectEvent, objectEvent->facingDirection);
     if (OW_MON_BOBBING == TRUE)
         sprite->y2 = 0;
     return FALSE;

@@ -290,6 +290,7 @@ CableClub_EventScript_EnterColosseum::
 	copyvar VAR_CABLE_CLUB_STATE, VAR_0x8004
 	messageautoscroll CableClub_Text_PleaseEnter
 	waitmessage
+	hidefollower 1
 	call CableClub_EventScript_OpenDirectCornerBarrier
 	special DrawWholeMapView
 	playse SE_CLICK
@@ -388,6 +389,7 @@ CableClub_EventScript_EnterTradeCenter::
 	copyvar VAR_CABLE_CLUB_STATE, VAR_0x8004
 	messageautoscroll CableClub_Text_PleaseEnter
 	waitmessage
+	hidefollower 1
 	call CableClub_EventScript_OpenDirectCornerBarrier
 	special DrawWholeMapView
 	playse SE_CLICK
@@ -773,6 +775,7 @@ CableClub_EventScript_EnterUnionRoom::
 	goto_if_eq VAR_RESULT, 0, CableClub_EventScript_AbortLink
 	msgbox CableClub_Text_EnjoyUnionRoom
 	closemessage
+	hidefollower 1
 	special HealPlayerParty
 	setvar VAR_0x8004, USING_UNION_ROOM
 	copyvar VAR_CABLE_CLUB_STATE, VAR_0x8004
