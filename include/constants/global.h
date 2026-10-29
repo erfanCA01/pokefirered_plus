@@ -81,8 +81,7 @@
 #define QUEST_LOG_SCENE_COUNT 4
 
 #define NUM_TOWER_CHALLENGE_TYPES 5
-// Only the vanilla challenge types have a record in SaveBlock1.trainerTower[]. The e-Reader record lives in
-// SaveBlock1.trainerTowerEReader, which overlays space that vanilla leaves unused (save compatibility).
+// Challenge types with a record in SaveBlock1.trainerTower[]; the e-Reader record is stored separately
 #define NUM_TOWER_CHALLENGE_TYPES_SAVED 4
 
 #define MALE   0
