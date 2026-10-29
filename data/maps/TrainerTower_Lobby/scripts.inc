@@ -169,7 +169,6 @@ TrainerTower_Lobby_EventScript_ChallengeInfo::
 	end
 
 TrainerTower_Lobby_EventScript_ChooseChallenge::
-	setvar VAR_0x8005, CHALLENGE_TYPE_EREADER
 	setvar VAR_MAP_SCENE_TRAINER_TOWER, 1
 	special HealPlayerParty
 	msgbox TrainerTower_Lobby_Text_StartClockGetSetGo

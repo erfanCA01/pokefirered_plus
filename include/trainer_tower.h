@@ -4,6 +4,7 @@
 struct TrainerTower;
 
 struct TrainerTower *GetTrainerTowerRecord(u32 challengeType);
+struct TrainerTower *GetCurrentTrainerTowerRecord(void);
 void PrintTrainerTowerRecords(void);
 void InitTrainerTowerBattleStruct(void);
 void FreeTrainerTowerBattleStruct(void);

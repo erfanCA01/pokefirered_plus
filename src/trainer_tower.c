@@ -21,7 +21,7 @@
 #include "constants/trainer_tower.h"
 
 #define CURR_FLOOR sTrainerTowerState->data.floors[sTrainerTowerState->floorIdx]
-#define TRAINER_TOWER (*GetTrainerTowerRecord(gSaveBlock1Ptr->towerChallengeId))
+#define TRAINER_TOWER (*GetCurrentTrainerTowerRecord())
 
 struct TrainerTowerState
 {
@@ -768,9 +768,9 @@ static void GetFloorAlreadyCleared(void)
 
 static void StartTrainerTowerChallenge(void)
 {
-    gSaveBlock1Ptr->towerChallengeId = gSpecialVar_0x8005;
-    if (gSaveBlock1Ptr->towerChallengeId >= NUM_TOWER_CHALLENGE_TYPES)
-        gSaveBlock1Ptr->towerChallengeId = 0;
+    // Every challenge in this build is the e-Reader one, whose record is not indexed by towerChallengeId. Vanilla uses
+    // towerChallengeId as an unchecked index into trainerTower[], so only ever store a value it can handle.
+    gSaveBlock1Ptr->towerChallengeId = CHALLENGE_TYPE_SINGLE;
     ValidateOrResetCurTrainerTowerRecord();
     if (!ReadTrainerTowerAndValidate())
         TRAINER_TOWER.validated = TRUE;
@@ -1091,6 +1091,14 @@ struct TrainerTower *GetTrainerTowerRecord(u32 challengeType)
         gSaveBlock1Ptr->trainerTowerEReaderKey = gSaveBlock2Ptr->encryptionKey;
     }
     return record;
+}
+
+struct TrainerTower *GetCurrentTrainerTowerRecord(void)
+{
+    // Saves made by an earlier build of this ROM may hold the e-Reader type here, which vanilla would index out of bounds
+    if (gSaveBlock1Ptr->towerChallengeId >= NUM_TOWER_CHALLENGE_TYPES_SAVED)
+        gSaveBlock1Ptr->towerChallengeId = CHALLENGE_TYPE_SINGLE;
+    return GetTrainerTowerRecord(CHALLENGE_TYPE_EREADER);
 }
 
 static u32 GetTrainerTowerRecordTime(u32 *counter)
