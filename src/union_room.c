@@ -3522,6 +3522,10 @@ void InitUnionRoom(void)
 #else
     if (QL_IS_PLAYBACK_STATE)
         return;
+    // Only search the Union Room when a Wireless Adapter is connected. Without one there is
+    // nobody to find, and the wireless setup stalls the warp into the Pokémon Center.
+    if (!IsWirelessAdapterConnected())
+        return;
     CreateTask(Task_InitUnionRoom, 0);
     sWirelessLinkMain.uRoom = sWirelessLinkMain.uRoom; // Needed to match.
     sWirelessLinkMain.uRoom = data = AllocZeroed(sizeof(struct WirelessLink_URoom));
