@@ -84,7 +84,7 @@ void FieldClearPlayerInput(struct FieldInput *input)
     input->tookStep = FALSE;
     input->pressedBButton = FALSE;
     input->pressedRButton = FALSE;
-    input->input_field_1_0 = FALSE;
+    input->pressedLButton = FALSE;
     input->input_field_1_1 = FALSE;
     input->input_field_1_2 = FALSE;
     input->input_field_1_3 = FALSE;
@@ -119,6 +119,8 @@ void FieldGetPlayerInput(struct FieldInput *input, u16 newKeys, u16 heldKeys)
                         input->pressedBButton = TRUE;
                     if (newKeys & R_BUTTON)
                         input->pressedRButton = TRUE;
+                    if (newKeys & L_BUTTON)
+                        input->pressedLButton = TRUE;
                 }
             }
         }
@@ -289,11 +291,18 @@ int ProcessPlayerFieldInput(struct FieldInput *input)
         ShowStartMenu();
         return TRUE;
     }
-    if (input->pressedSelectButton && UseRegisteredKeyItemOnField() == TRUE)
+    if (input->pressedSelectButton && UseRegisteredKeyItemOnField(REGISTERED_ITEM_SELECT) == TRUE)
     {
         gFieldInputRecord.pressedSelectButton = TRUE;
         return TRUE;
     }
+    // In HELP mode L/R open the help system, and in L=A mode L acts as A
+    if (input->pressedLButton && gSaveBlock2Ptr->optionsButtonMode == OPTIONS_BUTTON_MODE_LR
+     && UseRegisteredKeyItemOnField(REGISTERED_ITEM_L) == TRUE)
+        return TRUE;
+    if (input->pressedRButton && gSaveBlock2Ptr->optionsButtonMode != OPTIONS_BUTTON_MODE_HELP
+     && UseRegisteredKeyItemOnField(REGISTERED_ITEM_R) == TRUE)
+        return TRUE;
 
     return FALSE;
 }

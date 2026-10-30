@@ -456,16 +456,43 @@ void ItemPcCompaction(void)
     }
 }
 
+// L/R registrations reuse vanilla's unused SaveBlock1 bytes at 0x632; the vanilla layout must not move.
+// See qol_progress_docs/save_modifications.md.
+STATIC_ASSERT(sizeof(struct SaveBlock1) == 0x3D68, SaveBlock1SizeMatchesVanilla);
+STATIC_ASSERT(offsetof(struct SaveBlock1, registeredItemL) == 0x632, RegisteredItemLOffset);
+STATIC_ASSERT(offsetof(struct SaveBlock1, registeredItemR) == 0x634, RegisteredItemROffset);
+STATIC_ASSERT(offsetof(struct SaveBlock1, trainerRematchStepCounter) == 0x638, RegisteredItemLRFitsUnused632);
+
+u16 *GetRegisteredItemPtr(u8 button)
+{
+    switch (button)
+    {
+    case REGISTERED_ITEM_L:
+        return &gSaveBlock1Ptr->registeredItemL;
+    case REGISTERED_ITEM_R:
+        return &gSaveBlock1Ptr->registeredItemR;
+    default:
+        return &gSaveBlock1Ptr->registeredItem;
+    }
+}
+
 void RegisteredItemHandleBikeSwap(void)
 {
-    switch (gSaveBlock1Ptr->registeredItem)
+    u8 i;
+
+    for (i = 0; i < REGISTERED_ITEM_COUNT; i++)
     {
-    case ITEM_MACH_BIKE:
-        gSaveBlock1Ptr->registeredItem = ITEM_ACRO_BIKE;
-        break;
-    case ITEM_ACRO_BIKE:
-        gSaveBlock1Ptr->registeredItem = ITEM_MACH_BIKE;
-        break;
+        u16 *registeredItem = GetRegisteredItemPtr(i);
+
+        switch (*registeredItem)
+        {
+        case ITEM_MACH_BIKE:
+            *registeredItem = ITEM_ACRO_BIKE;
+            break;
+        case ITEM_ACRO_BIKE:
+            *registeredItem = ITEM_MACH_BIKE;
+            break;
+        }
     }
 }
 

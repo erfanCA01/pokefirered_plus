@@ -782,7 +782,9 @@ struct SaveBlock1
     /*0x054c*/ struct ItemSlot bagPocket_Berries[BAG_BERRIES_COUNT];
     /*0x05F8*/ u8 seen1[DEX_FLAGS_NO];
     /*0x062C*/ u16 berryBlenderRecords[3]; // unused
-    /*0x0632*/ u8 unused_632[6];
+    /*0x0632*/ u16 registeredItemL; // registered for use with L button (unused in vanilla, so saves stay compatible)
+    /*0x0634*/ u16 registeredItemR; // registered for use with R button (unused in vanilla, so saves stay compatible)
+    /*0x0636*/ u8 unused_636[2];
     /*0x0638*/ u16 trainerRematchStepCounter;
     /*0x063A*/ u8 ALIGNED(2) trainerRematches[MAX_REMATCH_ENTRIES];
     /*0x06A0*/ struct ObjectEvent objectEvents[OBJECT_EVENTS_COUNT];
