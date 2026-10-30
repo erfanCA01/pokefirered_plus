@@ -56,6 +56,14 @@ enum PokemonSummaryScreenStat
     PSS_STAT_SPE
 };
 
+enum PokemonSummaryScreenSkillsStatsMode
+{
+    PSS_SKILLS_STATS_ALL,
+    PSS_SKILLS_STATS_EVS,
+    PSS_SKILLS_STATS_IVS,
+    PSS_SKILLS_STATS_COUNT
+};
+
 #define TAG_PSS_UNK_64 0x64
 #define TAG_PSS_UNK_65 0x65
 #define TAG_PSS_UNK_66 0x66

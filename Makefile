@@ -219,6 +219,7 @@ clean-assets:
 
 tidy:
 	$(RM) $(ALL_BUILDS:%=poke%{.gba,.elf,.map})
+	$(RM) poke*_qol*{.gba,.elf,.map,.sym}
 	$(RM) -r $(BUILD_DIR)
 
 # "friendly" target names for convenience sake
