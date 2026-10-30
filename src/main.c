@@ -463,6 +463,15 @@ static void WaitForVBlank(void)
 {
     gMain.intrCheck &= ~INTR_FLAG_VBLANK;
 
+    // Halt the CPU until VBlank instead of busy-waiting, unless a link is active.
+    // The Wireless Adapter desyncs without the busy-wait; cable link keeps it too so link
+    // timing stays identical to vanilla.
+    if (!gWirelessCommType && !IsCableLinkOpen())
+    {
+        VBlankIntrWait();
+        return;
+    }
+
     while (!(gMain.intrCheck & INTR_FLAG_VBLANK))
         ;
 }
