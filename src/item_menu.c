@@ -1746,6 +1746,7 @@ static void ShowBagSortMenu(const struct MenuAction *actions, const u8 *items, u
     HideBagWindow(6);
     // The new menu may be shorter; restore the list rows the old one covered
     PutWindowTilemap(0);
+    BagPrintTextOnWindow(ShowBagWindow(6, 0), FONT_NORMAL, prompt, 0, 2, 1, 0, 0, 1);
     windowId = ShowBagWindow(10, numItems - 1);
     AddItemMenuActionTextPrinters(
         windowId,
@@ -1759,7 +1760,9 @@ static void ShowBagSortMenu(const struct MenuAction *actions, const u8 *items, u
         items
     );
     Menu_InitCursor(windowId, FONT_NORMAL, 0, 2, GetFontAttribute(FONT_NORMAL, FONTATTR_MAX_LETTER_HEIGHT) + 2, numItems, 0);
-    BagPrintTextOnWindow(ShowBagWindow(6, 0), FONT_NORMAL, prompt, 0, 2, 1, 0, 0, 1);
+    // Every menu size shares the same tiles, so queue the tilemap now, together with the menu's
+    // tile gfx. Waiting for the scheduled copy can show new text in the old menu's frame for a frame.
+    CopyBgTilemapBufferToVram(0);
 }
 
 static void ShowBagSortTypeMenu(u8 taskId)
