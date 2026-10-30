@@ -45,7 +45,9 @@ else
   CPP := $(PREFIX)cpp
 endif
 
-ROM := poke$(BUILD_NAME).gba
+# followers-expanded-id: ROMs built from this branch are named pokefirered_follower_*.gba / pokeleafgreen_follower_*.gba
+ROM_STEM := $(patsubst firered%,firered_follower%,$(patsubst leafgreen%,leafgreen_follower%,$(BUILD_NAME)))
+ROM := poke$(ROM_STEM).gba
 OBJ_DIR := $(BUILD_DIR)/$(BUILD_NAME)
 
 ELF := $(ROM:.gba=.elf)
@@ -131,6 +133,7 @@ MAKEFLAGS += --no-print-directory
 
 ALL_BUILDS := firered firered_rev1 firered_rev10 leafgreen leafgreen_rev1 leafgreen_rev10
 ALL_BUILDS += $(ALL_BUILDS:%=%_modern)
+ALL_ROM_STEMS := $(patsubst firered%,firered_follower%,$(patsubst leafgreen%,leafgreen_follower%,$(ALL_BUILDS)))
 
 RULES_NO_SCAN += clean clean-assets tidy generated clean-generated
 .PHONY: all rom modern compare $(ALL_BUILDS) $(ALL_BUILDS:%=compare_%)
@@ -219,6 +222,7 @@ clean-assets:
 
 tidy:
 	$(RM) $(ALL_BUILDS:%=poke%{.gba,.elf,.map})
+	$(RM) $(ALL_ROM_STEMS:%=poke%{.gba,.elf,.map})
 	$(RM) -r $(BUILD_DIR)
 
 # "friendly" target names for convenience sake
