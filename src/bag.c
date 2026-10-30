@@ -186,6 +186,15 @@ static const struct WindowTemplate sWindowTemplates[] = {
         .height = 8,
         .paletteNum = 15,
         .baseBlock = 0x20a
+    }, {
+        // 5-item context menu (SORT). Placed after the other windows' tiles.
+        .bg = 0,
+        .tilemapLeft = 22,
+        .tilemapTop = 9,
+        .width = 7,
+        .height = 10,
+        .paletteNum = 15,
+        .baseBlock = 0x3b2
     }
 };
 

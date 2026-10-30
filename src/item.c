@@ -8,6 +8,7 @@
 #include "quest_log.h"
 #include "strings.h"
 #include "constants/hold_effects.h"
+#include "constants/item_menu.h"
 #include "constants/items.h"
 #include "constants/maps.h"
 
@@ -536,6 +537,115 @@ void SortAndCompactBagPocket(struct BagPocket * pocket)
         for (j = i + 1; j < pocket->capacity; j++)
         {
             if (GetBagItemQuantity(&pocket->itemSlots[i].quantity) == 0 || (GetBagItemQuantity(&pocket->itemSlots[j].quantity) != 0 && pocket->itemSlots[i].itemId > pocket->itemSlots[j].itemId))
+                SwapItemSlots(&pocket->itemSlots[i], &pocket->itemSlots[j]);
+        }
+    }
+}
+
+// Order used by BAG_SORT_BY_TYPE. Items not listed (Poké Balls, Berries, ...) follow in item ID order.
+static const u16 sItemTypeSortOrder[] =
+{
+    // HP restoration
+    ITEM_POTION, ITEM_SUPER_POTION, ITEM_HYPER_POTION, ITEM_MAX_POTION, ITEM_FULL_RESTORE,
+    ITEM_FRESH_WATER, ITEM_SODA_POP, ITEM_LEMONADE, ITEM_MOOMOO_MILK,
+    ITEM_ENERGY_POWDER, ITEM_ENERGY_ROOT, ITEM_BERRY_JUICE,
+    // Revival
+    ITEM_REVIVE, ITEM_MAX_REVIVE, ITEM_REVIVAL_HERB, ITEM_SACRED_ASH,
+    // Status healing
+    ITEM_ANTIDOTE, ITEM_BURN_HEAL, ITEM_ICE_HEAL, ITEM_AWAKENING, ITEM_PARALYZE_HEAL,
+    ITEM_FULL_HEAL, ITEM_HEAL_POWDER, ITEM_LAVA_COOKIE,
+    // PP restoration
+    ITEM_ETHER, ITEM_MAX_ETHER, ITEM_ELIXIR, ITEM_MAX_ELIXIR,
+    // Stat boosts
+    ITEM_HP_UP, ITEM_PROTEIN, ITEM_IRON, ITEM_CALCIUM, ITEM_ZINC, ITEM_CARBOS,
+    ITEM_PP_UP, ITEM_PP_MAX, ITEM_RARE_CANDY,
+    // Battle items
+    ITEM_X_ATTACK, ITEM_X_DEFEND, ITEM_X_SPEED, ITEM_X_ACCURACY, ITEM_X_SPECIAL,
+    ITEM_DIRE_HIT, ITEM_GUARD_SPEC, ITEM_POKE_DOLL, ITEM_FLUFFY_TAIL,
+    // Flutes
+    ITEM_BLUE_FLUTE, ITEM_YELLOW_FLUTE, ITEM_RED_FLUTE, ITEM_BLACK_FLUTE, ITEM_WHITE_FLUTE,
+    // Field items
+    ITEM_REPEL, ITEM_SUPER_REPEL, ITEM_MAX_REPEL, ITEM_ESCAPE_ROPE,
+    // Evolution items
+    ITEM_FIRE_STONE, ITEM_WATER_STONE, ITEM_THUNDER_STONE, ITEM_LEAF_STONE, ITEM_MOON_STONE, ITEM_SUN_STONE,
+    ITEM_KINGS_ROCK, ITEM_METAL_COAT, ITEM_DRAGON_SCALE, ITEM_UP_GRADE, ITEM_DEEP_SEA_TOOTH, ITEM_DEEP_SEA_SCALE,
+    // Held items
+    ITEM_BRIGHT_POWDER, ITEM_WHITE_HERB, ITEM_MACHO_BRACE, ITEM_EXP_SHARE, ITEM_QUICK_CLAW,
+    ITEM_SOOTHE_BELL, ITEM_MENTAL_HERB, ITEM_CHOICE_BAND, ITEM_SILVER_POWDER, ITEM_AMULET_COIN,
+    ITEM_CLEANSE_TAG, ITEM_SOUL_DEW, ITEM_SMOKE_BALL, ITEM_EVERSTONE, ITEM_FOCUS_BAND,
+    ITEM_LUCKY_EGG, ITEM_SCOPE_LENS, ITEM_LEFTOVERS, ITEM_LIGHT_BALL, ITEM_SOFT_SAND,
+    ITEM_HARD_STONE, ITEM_MIRACLE_SEED, ITEM_BLACK_GLASSES, ITEM_BLACK_BELT, ITEM_MAGNET,
+    ITEM_MYSTIC_WATER, ITEM_SHARP_BEAK, ITEM_POISON_BARB, ITEM_NEVER_MELT_ICE, ITEM_SPELL_TAG,
+    ITEM_TWISTED_SPOON, ITEM_CHARCOAL, ITEM_DRAGON_FANG, ITEM_SILK_SCARF, ITEM_SHELL_BELL,
+    ITEM_SEA_INCENSE, ITEM_LAX_INCENSE, ITEM_LUCKY_PUNCH, ITEM_METAL_POWDER, ITEM_THICK_CLUB,
+    ITEM_STICK,
+    // Valuables
+    ITEM_TINY_MUSHROOM, ITEM_BIG_MUSHROOM, ITEM_PEARL, ITEM_BIG_PEARL,
+    ITEM_STARDUST, ITEM_STAR_PIECE, ITEM_NUGGET,
+    // Trade materials
+    ITEM_HEART_SCALE, ITEM_SHOAL_SALT, ITEM_SHOAL_SHELL,
+    ITEM_RED_SHARD, ITEM_BLUE_SHARD, ITEM_YELLOW_SHARD, ITEM_GREEN_SHARD,
+    // Contest scarves
+    ITEM_RED_SCARF, ITEM_BLUE_SCARF, ITEM_PINK_SCARF, ITEM_GREEN_SCARF, ITEM_YELLOW_SCARF,
+    // Mail
+    ITEM_ORANGE_MAIL, ITEM_HARBOR_MAIL, ITEM_GLITTER_MAIL, ITEM_MECH_MAIL, ITEM_WOOD_MAIL, ITEM_WAVE_MAIL,
+    ITEM_BEAD_MAIL, ITEM_SHADOW_MAIL, ITEM_TROPIC_MAIL, ITEM_DREAM_MAIL, ITEM_FAB_MAIL, ITEM_RETRO_MAIL,
+};
+
+static u16 GetItemTypeSortRank(u16 itemId)
+{
+    u16 i;
+
+    for (i = 0; i < ARRAY_COUNT(sItemTypeSortOrder); i++)
+    {
+        if (sItemTypeSortOrder[i] == itemId)
+            return i;
+    }
+    return ARRAY_COUNT(sItemTypeSortOrder) + itemId;
+}
+
+// Empty slots always go last. Ties fall back to item ID so the result is stable.
+static bool8 BagSlotsOutOfOrder(struct ItemSlot * a, struct ItemSlot * b, u8 sortType, bool8 reverse)
+{
+    u16 quantityA = GetBagItemQuantity(&a->quantity);
+    u16 quantityB = GetBagItemQuantity(&b->quantity);
+    s32 cmp = 0;
+
+    if (quantityA == 0)
+        return quantityB != 0;
+    if (quantityB == 0)
+        return FALSE;
+
+    switch (sortType)
+    {
+    case BAG_SORT_BY_TYPE:
+        cmp = GetItemTypeSortRank(a->itemId) - GetItemTypeSortRank(b->itemId);
+        break;
+    case BAG_SORT_BY_NAME:
+        cmp = StringCompare(ItemId_GetName(a->itemId), ItemId_GetName(b->itemId));
+        break;
+    case BAG_SORT_BY_AMOUNT:
+        cmp = quantityB - quantityA;
+        break;
+    }
+    if (cmp == 0)
+        cmp = a->itemId - b->itemId;
+
+    if (reverse)
+        return cmp < 0;
+    else
+        return cmp > 0;
+}
+
+void SortBagPocket(struct BagPocket * pocket, u8 sortType, bool8 reverse)
+{
+    u16 i, j;
+
+    for (i = 0; i < pocket->capacity; i++)
+    {
+        for (j = i + 1; j < pocket->capacity; j++)
+        {
+            if (BagSlotsOutOfOrder(&pocket->itemSlots[i], &pocket->itemSlots[j], sortType, reverse))
                 SwapItemSlots(&pocket->itemSlots[i], &pocket->itemSlots[j]);
         }
     }

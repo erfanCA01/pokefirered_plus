@@ -124,6 +124,9 @@ static void Task_ItemMenuAction_ToggleSelect(u8 taskId);
 static void Task_ItemMenuAction_Give(u8 taskId);
 static void Task_PrintThereIsNoPokemon(u8 taskId);
 static void Task_ItemMenuAction_Cancel(u8 taskId);
+static void Task_ItemMenuAction_Sort(u8 taskId);
+static void Task_SortMenuHandleInput(u8 taskId);
+static void Task_SortOrderMenuHandleInput(u8 taskId);
 static void Task_PrintItemCantBeHeld(u8 taskId);
 static void Task_WaitAButtonAndCloseContextMenu(u8 taskId);
 static void Task_ItemMenuAction_BattleUse(u8 taskId);
@@ -203,23 +206,71 @@ static const struct MenuAction sItemMenuContextActions[] = {
     [ITEMMENUACTION_OPEN_BERRIES] = {gOtherText_Open, {.void_u8 = Task_ItemMenuAction_BattleUse}},
     [ITEMMENUACTION_WALK] = {gOtherText_Walk, {.void_u8 = Task_ItemMenuAction_Use}},
     [ITEMMENUACTION_DESELECT] = {gOtherText_Deselect, {.void_u8 = Task_ItemMenuAction_ToggleSelect}},
-    [ITEMMENUACTION_DUMMY] = {gString_Dummy, {.void_u8 = NULL}}
+    [ITEMMENUACTION_DUMMY] = {gString_Dummy, {.void_u8 = NULL}},
+    [ITEMMENUACTION_SORT] = {gOtherText_Sort, {.void_u8 = Task_ItemMenuAction_Sort}}
 };
 
-static const u8 sContextMenuItems_Field[][4] = {
+static const struct MenuAction sBagSortMenuActions[] = {
+    [BAG_SORT_BY_TYPE]   = {gOtherText_SortType},
+    [BAG_SORT_BY_NAME]   = {gText_Name},
+    [BAG_SORT_BY_AMOUNT] = {gOtherText_SortAmount},
+    [BAG_SORT_CANCEL]    = {gFameCheckerText_Cancel}
+};
+
+static const u8 sBagSortMenuItems[] = {
+    BAG_SORT_BY_TYPE,
+    BAG_SORT_BY_NAME,
+    BAG_SORT_BY_AMOUNT,
+    BAG_SORT_CANCEL
+};
+
+static const struct MenuAction sBagSortOrderMenuActions[][3] = {
+    [BAG_SORT_BY_TYPE] = {
+        [BAG_SORT_ORDER_NORMAL]  = {gOtherText_SortNormal},
+        [BAG_SORT_ORDER_REVERSE] = {gOtherText_SortReverse},
+        [BAG_SORT_ORDER_CANCEL]  = {gFameCheckerText_Cancel}
+    },
+    [BAG_SORT_BY_NAME] = {
+        [BAG_SORT_ORDER_NORMAL]  = {gOtherText_SortAToZ},
+        [BAG_SORT_ORDER_REVERSE] = {gOtherText_SortZToA},
+        [BAG_SORT_ORDER_CANCEL]  = {gFameCheckerText_Cancel}
+    },
+    [BAG_SORT_BY_AMOUNT] = {
+        [BAG_SORT_ORDER_NORMAL]  = {gOtherText_SortMost},
+        [BAG_SORT_ORDER_REVERSE] = {gOtherText_SortLeast},
+        [BAG_SORT_ORDER_CANCEL]  = {gFameCheckerText_Cancel}
+    }
+};
+
+static const u8 sBagSortOrderMenuItems[] = {
+    BAG_SORT_ORDER_NORMAL,
+    BAG_SORT_ORDER_REVERSE,
+    BAG_SORT_ORDER_CANCEL
+};
+
+static const u8 *const sBagSortNames[] = {
+    [BAG_SORT_BY_TYPE]   = gText_SortName_Type,
+    [BAG_SORT_BY_NAME]   = gText_SortName_Name,
+    [BAG_SORT_BY_AMOUNT] = gText_SortName_Amount
+};
+
+static const u8 sContextMenuItems_Field[][5] = {
     {
         ITEMMENUACTION_USE,
         ITEMMENUACTION_GIVE,
         ITEMMENUACTION_TOSS,
+        ITEMMENUACTION_SORT,
         ITEMMENUACTION_CANCEL
     }, {
         ITEMMENUACTION_USE,
         ITEMMENUACTION_REGISTER,
         ITEMMENUACTION_CANCEL,
+        ITEMMENUACTION_DUMMY,
         ITEMMENUACTION_DUMMY
     }, {
         ITEMMENUACTION_GIVE,
         ITEMMENUACTION_TOSS,
+        ITEMMENUACTION_SORT,
         ITEMMENUACTION_CANCEL,
         ITEMMENUACTION_DUMMY
     }
@@ -229,6 +280,7 @@ static const u8 sContextMenuItems_CheckGiveTossCancel[] = {
     ITEMMENUACTION_CHECK,
     ITEMMENUACTION_GIVE,
     ITEMMENUACTION_TOSS,
+    ITEMMENUACTION_SORT,
     ITEMMENUACTION_CANCEL
 };
 
@@ -1388,7 +1440,7 @@ static void OpenContextMenu(u8 taskId)
             switch (gBagMenuState.pocket)
             {
             case OPEN_BAG_ITEMS:
-                sContextMenuNumItems = 4;
+                sContextMenuNumItems = 5;
                 if (ItemIsMail(gSpecialVar_ItemId) == TRUE)
                     sContextMenuItemsPtr = sContextMenuItems_CheckGiveTossCancel;
                 else
@@ -1411,7 +1463,7 @@ static void OpenContextMenu(u8 taskId)
                 break;
             case OPEN_BAG_POKEBALLS:
                 sContextMenuItemsPtr = sContextMenuItems_Field[gBagMenuState.pocket];
-                sContextMenuNumItems = 3;
+                sContextMenuNumItems = 4;
                 break;
             }
         }
@@ -1682,6 +1734,115 @@ static void Task_ItemMenuAction_Cancel(u8 taskId)
     bag_menu_print_cursor_(gTasks[taskId].data[0], 1);
     Task_RedrawArrowsAndReturnToBagMenuSelect(taskId);
 }
+
+#define tSortType data[14]
+
+// Replaces the open context/sort menu (window 10) and prompt (window 6) with a new menu
+static void ShowBagSortMenu(const struct MenuAction *actions, const u8 *items, u8 numItems, const u8 *prompt)
+{
+    u8 windowId;
+
+    HideBagWindow(10);
+    HideBagWindow(6);
+    // The new menu may be shorter; restore the list rows the old one covered
+    PutWindowTilemap(0);
+    windowId = ShowBagWindow(10, numItems - 1);
+    AddItemMenuActionTextPrinters(
+        windowId,
+        FONT_NORMAL,
+        GetMenuCursorDimensionByFont(FONT_NORMAL, 0),
+        2,
+        GetFontAttribute(FONT_NORMAL, FONTATTR_LETTER_SPACING),
+        GetFontAttribute(FONT_NORMAL, FONTATTR_MAX_LETTER_HEIGHT) + 2,
+        numItems,
+        actions,
+        items
+    );
+    Menu_InitCursor(windowId, FONT_NORMAL, 0, 2, GetFontAttribute(FONT_NORMAL, FONTATTR_MAX_LETTER_HEIGHT) + 2, numItems, 0);
+    BagPrintTextOnWindow(ShowBagWindow(6, 0), FONT_NORMAL, prompt, 0, 2, 1, 0, 0, 1);
+}
+
+static void ShowBagSortTypeMenu(u8 taskId)
+{
+    ShowBagSortMenu(sBagSortMenuActions, sBagSortMenuItems, ARRAY_COUNT(sBagSortMenuItems), gText_SortItemsByWhat);
+    gTasks[taskId].func = Task_SortMenuHandleInput;
+}
+
+static void Task_ItemMenuAction_Sort(u8 taskId)
+{
+    if (sBagMenuDisplay->nItems[gBagMenuState.pocket] < 2)
+    {
+        HideBagWindow(10);
+        HideBagWindow(6);
+        PutWindowTilemap(0);
+        PutWindowTilemap(1);
+        ScheduleBgCopyTilemapToVram(0);
+        DisplayItemMessageInBag(taskId, FONT_NORMAL, gText_ThereIsNothingToSort, Task_WaitAButtonAndCloseContextMenu);
+        return;
+    }
+    ShowBagSortTypeMenu(taskId);
+}
+
+static void Task_SortMenuHandleInput(u8 taskId)
+{
+    s16 *data = gTasks[taskId].data;
+    s8 input = Menu_ProcessInputNoWrapAround();
+
+    switch (input)
+    {
+    case MENU_NOTHING_CHOSEN:
+        return;
+    case MENU_B_PRESSED:
+    case BAG_SORT_CANCEL:
+        PlaySE(SE_SELECT);
+        Task_ItemMenuAction_Cancel(taskId);
+        return;
+    }
+
+    PlaySE(SE_SELECT);
+    tSortType = sBagSortMenuItems[input];
+    ShowBagSortMenu(sBagSortOrderMenuActions[tSortType], sBagSortOrderMenuItems, ARRAY_COUNT(sBagSortOrderMenuItems),
+                    tSortType == BAG_SORT_BY_AMOUNT ? gText_SortMostOrLeastFirst : gText_SortInWhichOrder);
+    gTasks[taskId].func = Task_SortOrderMenuHandleInput;
+}
+
+static void Task_SortOrderMenuHandleInput(u8 taskId)
+{
+    s16 *data = gTasks[taskId].data;
+    s8 input = Menu_ProcessInputNoWrapAround();
+
+    switch (input)
+    {
+    case MENU_NOTHING_CHOSEN:
+        return;
+    case MENU_B_PRESSED:
+    case BAG_SORT_ORDER_CANCEL:
+        PlaySE(SE_SELECT);
+        ShowBagSortTypeMenu(taskId);
+        return;
+    }
+
+    PlaySE(SE_SELECT);
+    SortBagPocket(&gBagPockets[gBagMenuState.pocket], tSortType, sBagSortOrderMenuItems[input] == BAG_SORT_ORDER_REVERSE);
+    HideBagWindow(10);
+    HideBagWindow(6);
+
+    // Redraw the sorted list before the message so the result is visible right away
+    DestroyListMenuTask(data[0], NULL, NULL);
+    gBagMenuState.cursorPos[gBagMenuState.pocket] = 0;
+    gBagMenuState.itemsAbove[gBagMenuState.pocket] = 0;
+    Bag_BuildListMenuTemplate(gBagMenuState.pocket);
+    data[0] = ListMenuInit(&gMultiuseListMenuTemplate, 0, 0);
+    PutWindowTilemap(0);
+    PutWindowTilemap(1);
+    ScheduleBgCopyTilemapToVram(0);
+
+    StringCopy(gStringVar1, sBagSortNames[tSortType]);
+    StringExpandPlaceholders(gStringVar4, gText_ItemsSortedByStrVar1);
+    DisplayItemMessageInBag(taskId, FONT_NORMAL, gStringVar4, Task_WaitAButtonAndCloseContextMenu);
+}
+
+#undef tSortType
 
 static void Task_ItemMenuAction_BattleUse(u8 taskId)
 {
