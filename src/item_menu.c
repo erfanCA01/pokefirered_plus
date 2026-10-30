@@ -1823,13 +1823,14 @@ static void Task_ItemMenuAction_Cancel(u8 taskId)
 static void ShowBagSubMenu(const struct MenuAction *actions, const u8 *items, u8 numItems, const u8 *prompt)
 {
     u8 windowId;
+    bool8 altTiles = !IsBagContextMenuInAltTiles();
 
     HideBagWindow(10);
     HideBagWindow(6);
     // The new menu may be shorter; restore the list rows the old one covered
     PutWindowTilemap(0);
     BagPrintTextOnWindow(ShowBagWindow(6, 0), FONT_NORMAL, prompt, 0, 2, 1, 0, 0, 1);
-    windowId = ShowBagWindow(10, numItems - 1);
+    windowId = ShowBagContextMenuWindow(numItems, altTiles);
     AddItemMenuActionTextPrinters(
         windowId,
         FONT_NORMAL,
@@ -1842,8 +1843,8 @@ static void ShowBagSubMenu(const struct MenuAction *actions, const u8 *items, u8
         items
     );
     Menu_InitCursor(windowId, FONT_NORMAL, 0, 2, GetFontAttribute(FONT_NORMAL, FONTATTR_MAX_LETTER_HEIGHT) + 2, numItems, 0);
-    // Every menu size shares the same tiles, so queue the tilemap now, together with the menu's
-    // tile gfx. Waiting for the scheduled copy can show new text in the old menu's frame for a frame.
+    // The new menu is in the other tile bank, so its gfx never show through the old frame.
+    // Queue the tilemap right after the gfx so the switch happens in the same frame when possible.
     CopyBgTilemapBufferToVram(0);
 }
 

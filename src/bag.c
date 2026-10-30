@@ -73,6 +73,10 @@ static const struct WindowTemplate sDefaultBagWindowsDeposit[] = {
     }, DUMMY_WIN_TEMPLATE
 };
 
+// Tiles after the vanilla windows' (which end at 0x3b2), with room for a 7x10 window.
+// Context menus alternate between these and the vanilla 0x20a tiles (see ShowBagContextMenuWindow).
+#define CONTEXT_MENU_ALT_TILES 0x3b2
+
 static const struct WindowTemplate sWindowTemplates[] = {
     {
         .bg = 0,
@@ -194,8 +198,27 @@ static const struct WindowTemplate sWindowTemplates[] = {
         .width = 7,
         .height = 10,
         .paletteNum = 15,
-        .baseBlock = 0x3b2
+        .baseBlock = CONTEXT_MENU_ALT_TILES
     }
+};
+
+#define CONTEXT_MENU_ALT_TEMPLATE(rows) {     \
+    .bg = 0,                                  \
+    .tilemapLeft = 22,                        \
+    .tilemapTop = 19 - (rows) * 2,            \
+    .width = 7,                               \
+    .height = (rows) * 2,                     \
+    .paletteNum = 15,                         \
+    .baseBlock = CONTEXT_MENU_ALT_TILES       \
+}
+
+// Same positions as the context menu templates above, but in the alternate tiles
+static const struct WindowTemplate sContextMenuAltTilesTemplates[] = {
+    CONTEXT_MENU_ALT_TEMPLATE(1),
+    CONTEXT_MENU_ALT_TEMPLATE(2),
+    CONTEXT_MENU_ALT_TEMPLATE(3),
+    CONTEXT_MENU_ALT_TEMPLATE(4),
+    CONTEXT_MENU_ALT_TEMPLATE(5),
 };
 
 static const u8 sUnused[] = {16, 8, 4};
@@ -298,6 +321,29 @@ void CloseBagWindow(u8 whichWindow)
 u8 GetBagWindow(u8 whichWindow)
 {
     return sOpenWindows[whichWindow];
+}
+
+bool8 IsBagContextMenuInAltTiles(void)
+{
+    return sOpenWindows[10] != 0xFF
+        && GetWindowAttribute(sOpenWindows[10], WINDOW_BASE_BLOCK) == CONTEXT_MENU_ALT_TILES;
+}
+
+// Opens the context menu window (slot 10) in the vanilla or the alternate tiles. Replacing a
+// visible menu with one in the other tiles means its gfx never land in tiles the old menu's
+// tilemap still shows, so a resize can't flash new text inside the old frame.
+u8 ShowBagContextMenuWindow(u8 nItems, bool8 altTiles)
+{
+    if (!altTiles)
+        return ShowBagWindow(10, nItems - 1);
+
+    if (sOpenWindows[10] == 0xFF)
+    {
+        sOpenWindows[10] = AddWindow(&sContextMenuAltTilesTemplates[nItems - 1]);
+        DrawStdFrameWithCustomTileAndPalette(sOpenWindows[10], FALSE, 0x064, 14);
+        ScheduleBgCopyTilemapToVram(0);
+    }
+    return sOpenWindows[10];
 }
 
 void BagCreateYesNoMenuBottomRight(u8 taskId, const struct YesNoFuncTable * ptrs)
