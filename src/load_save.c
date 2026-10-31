@@ -217,19 +217,11 @@ void LoadObjectEvents(void)
         // Swap graphicsId bytes back.
         graphicsId = gObjectEvents[i].graphicsId;
         gObjectEvents[i].graphicsId = (graphicsId >> 8) | (graphicsId << 8);
-        // Bug caught, not ported as-is (present upstream in pokeemerald too): the old gate here
-        // was a per-slot marker byte (spriteId == 127, written to *every* slot on save), meant to
-        // signal "this graphicsId is in swapped/widened format, trust the high byte." It cannot
-        // survive a save round-tripping through an intervening vanilla session: vanilla leaves
-        // that marker byte untouched forever (it's unused padding in vanilla's struct), but it
-        // *does* actively reassign its own spriteId byte for real NPCs during normal play --
-        // which lands at the post-swap *high* byte here. A [modified ROM save] -> [load+resave in
-        // vanilla] -> [load in modified ROM] round-trip would then trust that leftover vanilla
-        // spriteId as a real graphicsId high byte, pushing ordinary NPCs into the follower/
-        // species-encoded range (>= OBJ_EVENT_GFX_MON_BASE) and rendering them as Pokémon sprites
-        // until the map next respawns them fresh from the ROM template (confirmed via manual
-        // mGBA testing). The only object event that ever legitimately needs a graphicsId >= 0x100
-        // is the follower's own slot -- gate on that directly instead of the fragile marker.
+        // Deviation from Emerald, which gates on a per-slot marker byte (spriteId == 127). That
+        // does not survive a round trip through a vanilla ROM: vanilla leaves the marker alone
+        // but reassigns spriteId for real NPCs, which lands in the high byte of graphicsId here,
+        // pushing ordinary NPCs into the species-encoded range (>= OBJ_EVENT_GFX_MON_BASE).
+        // Only the follower's own slot ever needs a graphicsId >= 0x100, so gate on that.
         if (gObjectEvents[i].localId != OBJ_EVENT_ID_FOLLOWER)
             gObjectEvents[i].graphicsId &= 0xFF;
         gObjectEvents[i].spriteId = 0;

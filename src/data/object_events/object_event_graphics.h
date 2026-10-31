@@ -671,13 +671,10 @@ const u32 gObjectEventPic_RepeatBall[] = INCBIN_U32("graphics/object_events/pics
 const u32 gObjectEventPic_TimerBall[] = INCBIN_U32("graphics/object_events/pics/misc/ball_timer.4bpp");
 const u32 gObjectEventPic_LuxuryBall[] = INCBIN_U32("graphics/object_events/pics/misc/ball_luxury.4bpp");
 const u32 gObjectEventPic_PremierBall[] = INCBIN_U32("graphics/object_events/pics/misc/ball_premier.4bpp");
-// followers-expanded-id: dedicated plain Poke Ball graphic for BALL_POKE -- NOT the vanilla
-// hidden-item-ball asset. Emerald's own equivalent overwrites OBJ_EVENT_GFX_ITEM_BALL's
-// graphics-info slot (a vanilla NPC asset) to get sAnimTable_Following-compatible dimensions;
-// we use a genuinely separate entry instead, per this project's "original assets unharmed"
-// constraint, and because the vanilla item-ball's incompatible 16x16/non-Following anim table
-// caused real corruption when reused mid-animation on the follower's own sprite (confirmed by
-// testing: showed unrelated garbage tile data instead of a ball).
+// followers-expanded-id: dedicated plain Poke Ball graphic for BALL_POKE, not the vanilla
+// item ball. Emerald overwrites OBJ_EVENT_GFX_ITEM_BALL's graphics-info slot to get
+// sAnimTable_Following-compatible dimensions; here that vanilla asset is left intact, and its
+// 16x16/non-Following anim table cannot drive the follower's sprite anyway.
 const u32 gObjectEventPic_PokeBall[] = INCBIN_U32("graphics/object_events/pics/misc/ball_poke.4bpp");
 
 const u16 gObjectEventPal_MasterBall[] = INCBIN_U16("graphics/object_events/pics/misc/ball_master.gbapal");

@@ -1008,11 +1008,10 @@ struct ObjectEvent *ScriptHideFollower(void)
 
     ClearObjectEventMovement(obj, &gSprites[obj->spriteId]);
     gSprites[obj->spriteId].animCmdIndex = 0; // Reset start frame of animation
-    // Bug caught, not ported as-is: upstream passes (mapGroup, mapNum) here, but
-    // ScriptMovement_StartObjectMovementScript's real signature (both here and in pokeemerald
-    // itself) is (localId, mapNum, mapGroup, script) -- the swapped order would make it search
-    // for the follower under the wrong map identifiers on any map where group != num, silently
-    // failing to hide it. Note: ScriptMovement_StartObjectMovementScript returns TRUE on error.
+    // Deviation from Emerald, which passes (mapGroup, mapNum); the real signature is
+    // (localId, mapNum, mapGroup, script), and the swapped order searches under the wrong map
+    // on any map where group != num. Note: ScriptMovement_StartObjectMovementScript returns
+    // TRUE on error.
     if (ScriptMovement_StartObjectMovementScript(obj->localId, obj->mapNum, obj->mapGroup, EnterPokeballMovement))
         return NULL;
     return obj;

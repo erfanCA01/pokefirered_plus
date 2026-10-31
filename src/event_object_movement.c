@@ -576,16 +576,10 @@ static const struct SpritePalette sObjectEventSpritePalettes[] = {
     {gObjectEventPal_PremierBall,             OBJ_EVENT_PAL_TAG_BALL_PREMIER},
     {gObjectEventPal_PokeBall,                OBJ_EVENT_PAL_TAG_BALL_POKE},
 #endif //OW_MON_POKEBALLS
-    // Bug caught, not ported as-is: this terminator used to be a bare `{}`, which
-    // zero-initializes .tag to 0 -- but FindObjectEventPaletteIndexByTag's scan loop
-    // only stops at .tag == OBJ_EVENT_PAL_TAG_NONE (0x11FF), never checks for 0. Every
-    // existing caller always searched for a tag that matched a real entry above, so the
-    // loop never actually reached this terminator before. Phase 5 added the first call
-    // site (ObjectEventSetGraphics, for OBJ_EVENT_PAL_TAG_DYNAMIC) that's guaranteed to
-    // miss every real entry and rely on the terminator -- exposing an effectively
-    // infinite scan into whatever ROM data follows this array (confirmed: froze the
-    // game, sound kept playing, consistent with a tight CPU loop). Terminator must
-    // explicitly carry OBJ_EVENT_PAL_TAG_NONE.
+    // FindObjectEventPaletteIndexByTag stops only at .tag == OBJ_EVENT_PAL_TAG_NONE (0x11FF),
+    // never at 0, so the terminator must carry that tag explicitly. Looking up
+    // OBJ_EVENT_PAL_TAG_DYNAMIC misses every real entry and relies on it; a bare `{}`
+    // would scan on into whatever ROM data follows the array.
     {NULL, OBJ_EVENT_PAL_TAG_NONE},
 };
 
@@ -2577,18 +2571,11 @@ static u8 LoadDynamicFollowerPalette(u16 species, u8 form, bool32 shiny)
     }
 
     paletteNum = LoadSpritePaletteEvictingReflections(&spritePalette);
-    // Bug caught, not ported as-is: upstream never calls ApplyGlobalFieldPaletteTint here,
-    // unlike every other sprite-palette load path in this file (e.g. PatchObjectPalette,
-    // FieldEffectScript_LoadFadedPal/_LoadPal). That function does double duty under
-    // QL_TINT_BACKUP_GRAYSCALE (the mode active while returning from the Quest Log's final
-    // "Previously on your quest..." recap): it backs up this slot's true color into
-    // quest_log.c's sPalettesBackup *and* applies the grayscale tint. Skipping it meant the
-    // follower's slot was never backed up (sPalettesBackup is zero-initialized) -- so when
-    // the recap ends and QuestLog_EndPlaybackLast's wholesale restore-from-backup runs, the
-    // follower's slot got overwritten with zero (solid black), while every other palette
-    // correctly restored its true color. Confirmed via live mGBA debugging (2026-10-24):
-    // the follower rendered with no grayscale tint at all during the recap (this call being
-    // missing), then turned solid black the instant the tint-removal restore fired.
+    // Deviation from Emerald: ApplyGlobalFieldPaletteTint is required here, like in every other
+    // sprite-palette load path in this file. Under QL_TINT_BACKUP_GRAYSCALE (the end of the
+    // Quest Log recap) it backs up this slot's color into quest_log.c's sPalettesBackup and
+    // applies the grayscale tint. Without it the slot is never backed up, so the restore at the
+    // end of the recap overwrites it with black.
     ApplyGlobalFieldPaletteTint(paletteNum);
     if (gWeatherPtr->currWeather != WEATHER_FOG_HORIZONTAL)
         UpdateSpritePaletteWithWeather(paletteNum);
@@ -2598,9 +2585,8 @@ static u8 LoadDynamicFollowerPalette(u16 species, u8 form, bool32 shiny)
 // followers-expanded-id: like ObjectEventSetGraphicsId, but takes a graphicsInfo pointer
 // directly instead of a graphicsId (so FollowerSetGraphics can assign objectEvent->graphicsId
 // its own packed species|form value afterward) and wires up OW_GFX_COMPRESS/DOWP the same way
-// Phase 3's TrySetupObjectEventSprite/SpawnObjectEventOnReturnToField patches do for a fresh
-// spawn. Used only by follower code -- FireRed's own ObjectEventSetGraphicsId (used for vanilla
-// NPCs) is untouched.
+// TrySetupObjectEventSprite/SpawnObjectEventOnReturnToField do for a fresh spawn. Used only by
+// follower code; ObjectEventSetGraphicsId (vanilla NPCs) is untouched.
 static void ObjectEventSetGraphics(struct ObjectEvent *objectEvent, const struct ObjectEventGraphicsInfo *graphicsInfo)
 {
     struct Sprite *sprite = &gSprites[objectEvent->spriteId];
@@ -2647,20 +2633,12 @@ static void ObjectEventSetGraphics(struct ObjectEvent *objectEvent, const struct
 static void FollowerSetGraphics(struct ObjectEvent *objEvent, u16 species, u8 form, bool8 shiny)
 {
     const struct ObjectEventGraphicsInfo *graphicsInfo = SpeciesToGraphicsInfo(species, form);
-    // Bug caught, not ported as-is: upstream Emerald (and our initial port) called
-    // ObjectEventSetGraphics() *before* updating objEvent->graphicsId. But under
-    // OW_GFX_COMPRESS, ObjectEventSetGraphics -> LoadSheetGraphicsInfo uses
+    // Deviation from Emerald, which calls ObjectEventSetGraphics() before updating
+    // objEvent->graphicsId. Under OW_GFX_COMPRESS, LoadSheetGraphicsInfo uses
     // objEvent->graphicsId as the shared-tile-sheet cache key (COMP_OW_TILE_TAG_BASE
-    // + graphicsId). Passing the stale *old* species' graphicsId makes it find that
-    // species' sheet "already loaded" (from the object event's last full respawn,
-    // e.g. SpawnObjectEventOnReturnToField re-creating every object event's sprite
-    // on return-to-field *before* this runs) and skip loading the new species' tiles
-    // entirely -- the palette updates correctly, but the old species' pixels stay on
-    // screen under the new palette until a full respawn forces a real reload.
-    // Confirmed via live mGBA debugging (2026-10-24): the palette buffer held the
-    // exact correct colors immediately after load, but VRAM tile data at the
-    // sprite's tile address was still the previous species'. Update graphicsId/shiny
-    // first so the cache key is already correct when the sheet lookup happens.
+    // + graphicsId), so a stale id finds the old species' sheet "already loaded" and skips
+    // loading the new tiles, leaving the old pixels under the new palette. Update
+    // graphicsId/shiny first so the cache key is correct for the sheet lookup.
     objEvent->graphicsId = (OBJ_EVENT_GFX_MON_BASE + species) & OBJ_EVENT_GFX_SPECIES_MASK;
     objEvent->graphicsId |= form << OBJ_EVENT_GFX_SPECIES_BITS;
     objEvent->shiny = shiny;
@@ -3277,7 +3255,7 @@ bool8 ScrFunc_getfolloweraction(struct ScriptContext *ctx) // Essentially a big 
 // Returns (via the given var) whether the party mon about to use an overworld field move
 // (gFieldEffectArguments[0], set by the field-move script before calling this -- its party
 // index) is the live follower -- i.e. whether the follower sprite should animate the move
-// instead of/alongside the player. Field-move script call sites wired in Phase 7.
+// instead of/alongside the player.
 bool8 ScrFunc_IsFollowerFieldMoveUser(struct ScriptContext *ctx)
 {
     u16 *var = GetVarPointer(ScriptReadHalfword(ctx));
@@ -3319,18 +3297,11 @@ static u8 LoadFillColorPalette(u16 color, u16 paletteTag, struct Sprite *sprite)
 static void ObjectEventSetPokeballGfx(struct ObjectEvent *objEvent)
 {
 #if OW_MON_POKEBALLS
-    // Bug caught, not ported as-is: upstream falls back to OBJ_EVENT_GFX_POKE_BALL (an alias
-    // of the vanilla OBJ_EVENT_GFX_ITEM_BALL, the hidden-item-ball graphic) for BALL_POKE, by
-    // actually *overwriting* that vanilla graphics-info slot with its own 16x32/sAnimTable_
-    // Following-compatible ball graphic -- which this project's "original assets unharmed"
-    // constraint rules out (see progress_docs' Phase 1 deferred-items note on
-    // OBJ_EVENT_GFX_POKE_BALL/OBJ_EVENT_GFX_OW_MON). Reusing FireRed's *actual* vanilla
-    // ItemBall entry as-is doesn't work either: it's 16x16 and uses sAnimTable_Inanimate, both
-    // incompatible with the follower sprite's ongoing sAnimTable_Following-based animation
-    // state (confirmed: showed unrelated garbage tile data, not a ball, when tried). Instead,
-    // gPokeballGraphics[BALL_POKE] carries a genuinely separate dedicated plain-ball asset
-    // (ball_poke.png) built with the same sAnimTable_Following/16x32 convention as every other
-    // ball here -- no vanilla slot touched, and no sAnimTable mismatch.
+    // Deviation from Emerald: Emerald reuses OBJ_EVENT_GFX_POKE_BALL (an alias of the vanilla
+    // item ball) for BALL_POKE by overwriting that graphics-info slot. Here the vanilla entry
+    // must stay intact, and it cannot be used as is: it is 16x16 with sAnimTable_Inanimate,
+    // incompatible with the follower's sAnimTable_Following animation state. So
+    // gPokeballGraphics[BALL_POKE] has its own 16x32 plain-ball asset (ball_poke.png).
     u32 ball = BALL_POKE;
     if (objEvent->localId == OBJ_EVENT_ID_FOLLOWER)
     {
@@ -5628,10 +5599,8 @@ static bool32 TryStartFollowerTransformEffect(struct ObjectEvent *objectEvent, s
         objectEvent->graphicsId |= multi << OBJ_EVENT_GFX_SPECIES_BITS;
         return TRUE;
     }
-    // Bug caught, not ported as-is: upstream passes a literal FALSE (i.e. NULL) here for
-    // isWaterMon, but GetLocalWildMon unconditionally writes *isWaterMon = FALSE at its very
-    // start (no NULL check) -- a real NULL-deref in the ~0.03%-per-tick case this fires. Pass a
-    // real local instead; the result isn't needed here.
+    // Deviation from Emerald, which passes a literal FALSE (NULL) as isWaterMon: GetLocalWildMon
+    // writes *isWaterMon unconditionally, so pass a real local. The result isn't needed here.
     else if ((Random() & 0xFFFF) < 18 && GetLocalWildMon(&isWaterMon)
             && (OW_SPECIES(objectEvent) == SPECIES_MEW || OW_SPECIES(objectEvent) == SPECIES_DITTO))
     {
@@ -5784,10 +5753,9 @@ static bool8 MovementType_FollowPlayer_Moving(struct ObjectEvent *objectEvent, s
         if (sprite->data[1])
             sprite->data[1] = 1; // restore active state
     }
-    // followers-expanded-id: restored from Phase 4's deferred TODO now that
-    // MOVEMENT_ACTION_EXIT_POKEBALL/ENTER_POKEBALL exist -- the pokeball emerge/recall
-    // animation drives its own palette/affine state and must not also get the idle
-    // transform-effect/bob update stomping on it mid-animation.
+    // followers-expanded-id: the pokeball emerge/recall animation drives its own
+    // palette/affine state and must not also get the idle transform-effect/bob update
+    // stomping on it mid-animation.
     else if (objectEvent->movementActionId < MOVEMENT_ACTION_EXIT_POKEBALL)
     {
         UpdateFollowerTransformEffect(objectEvent, sprite);

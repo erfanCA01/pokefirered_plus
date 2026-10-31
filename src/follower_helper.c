@@ -68,12 +68,12 @@ static const u8 sCondMsg42[] = _("{STR_VAR_1}'s burn looks painful!");
 // are tied to Hoenn-only locations with no FireRed equivalent (Route 112's Mt. Chimney view,
 // New Mauville/Stern's Shipyard machine ambiance, Route 117's flower fields, Sky Pillar's
 // dragon-growl trigger) -- those COND_MSG_* entries were dropped entirely rather than ported
-// with a dangling/always-false condition (see progress_docs/progress.md for the full audit).
+// with a dangling/always-false condition.
 // The rest are remapped to their closest FireRed/Kanto equivalent:
 //   EVER_GRANDE_CITY -> INDIGO_PLATEAU_EXTERIOR (both are "the league town")
 //   ROUTE117_POKEMON_DAY_CARE -> ROUTE5_POKEMON_DAY_CARE (FireRed's primary Day Care)
 //   MUS_POKE_MART -> MUS_POKE_CENTER (FireRed marts reuse the Pokémon Center theme, so this
-//     message pool can now also surface inside Pokémon Centers -- harmless flavor overlap)
+//     message pool can also surface inside Pokémon Centers -- harmless flavor overlap)
 //   MAUVILLE_CITY_BIKE_SHOP -> CERULEAN_CITY_BIKE_SHOP
 //   MUS_SAILING -> MUS_SS_ANNE
 //   LILYCOVE_CITY_DEPARTMENT_STORE_ELEVATOR -> CELADON_CITY_DEPARTMENT_STORE_ELEVATOR
@@ -81,12 +81,11 @@ static const u8 sCondMsg42[] = _("{STR_VAR_1}'s burn looks painful!");
 //   MAPSEC_MT_PYRE/MUS_MT_PYRE -> MAPSEC_POKEMON_TOWER/MUS_POKE_TOWER (both are the eerie
 //     ghost-themed tower that spooks a non-Ghost-type follower)
 //   MAPSEC_PETALBURG_WOODS -> MAPSEC_VIRIDIAN_FOREST (both are the starting-route forest)
-// MATCH_WEATHER-gated entries (FIRE_RAIN, RAIN) are kept structurally (master_plan's
-// TODO(weather) convention) since FireRed's WEATHER_RAIN/WEATHER_RAIN_THUNDERSTORM constants
-// exist but are never set by any map -- permanently unreachable, not a crash risk.
+// MATCH_WEATHER-gated entries (FIRE_RAIN, RAIN) are kept structurally (TODO(weather)) since
+// FireRed's WEATHER_RAIN/WEATHER_RAIN_THUNDERSTORM constants exist but are never set by any
+// map -- permanently unreachable, not a crash risk.
 // COND_MSG_ABNORMAL_WEATHER was dropped outright: FireRed has no MUS_ABNORMAL_WEATHER song
-// constant at all (no primal-weather-trio story event exists in FRLG), so there was no
-// constant to even reference, unlike the rain case.
+// constant (no primal-weather-trio story event exists in FRLG).
 const struct FollowerMsgInfoExtended gFollowerConditionalMessages[COND_MSG_COUNT] = {
     [COND_MSG_CELEBI] =
     {

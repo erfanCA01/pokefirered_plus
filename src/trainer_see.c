@@ -768,10 +768,10 @@ u8 FldEff_QuestionMarkIcon(void)
     u8 spriteId;
 
     // followers-expanded-id: gFieldEffectArguments[7] selects a follower emote bubble instead of
-    // the vanilla question mark when non-negative. Bug caught, not ported as-is: Emerald's
-    // gFieldEffectArguments is s32 and compares this slot directly against 0, but FireRed's is
-    // u32 (include/field_effect.h) -- an unsigned >= 0 comparison is always true, so the sentinel
-    // -1 written by MovementAction_EmoteQuestionMark_Step0 must be read back through a signed cast.
+    // the vanilla question mark when non-negative. Deviation from Emerald: gFieldEffectArguments is
+    // s32 there but u32 in FireRed (include/field_effect.h), where an unsigned >= 0 is always
+    // true, so the sentinel -1 written by MovementAction_EmoteQuestionMark_Step0 is read back
+    // through a signed cast.
     if ((s32)gFieldEffectArguments[7] >= 0)
     {
         u8 emotion = (u8)gFieldEffectArguments[7];
