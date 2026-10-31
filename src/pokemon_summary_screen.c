@@ -25,6 +25,7 @@
 #include "field_specials.h"
 #include "party_menu.h"
 #include "constants/battle.h"
+#include "constants/battle_move_effects.h"
 #include "event_data.h"
 #include "trainer_pokemon_sprites.h"
 #include "battle_anim.h"
@@ -2321,6 +2322,9 @@ static void BufferMonMoveI(u8 i)
 
     if (sMonSummaryScreen->moveIds[i] == MOVE_HIDDEN_POWER)
         ConvertIntToDecimalStringN(sMonSummaryScreen->summary.movePowerStrBufs[i], GetMonHiddenPowerPower(&sMonSummaryScreen->currentMon), STR_CONV_MODE_RIGHT_ALIGN, 3);
+    else if (gBattleMoves[sMonSummaryScreen->moveIds[i]].effect == EFFECT_RETURN
+          || gBattleMoves[sMonSummaryScreen->moveIds[i]].effect == EFFECT_FRUSTRATION)
+        ConvertIntToDecimalStringN(sMonSummaryScreen->summary.movePowerStrBufs[i], GetMonFriendshipMovePower(&sMonSummaryScreen->currentMon, sMonSummaryScreen->moveIds[i]), STR_CONV_MODE_RIGHT_ALIGN, 3);
     else if (gBattleMoves[sMonSummaryScreen->moveIds[i]].power <= 1)
         StringCopy(sMonSummaryScreen->summary.movePowerStrBufs[i], gText_ThreeHyphens);
     else

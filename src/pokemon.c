@@ -5046,6 +5046,23 @@ u8 GetMonHiddenPowerPower(struct Pokemon *mon)
     return (40 * GetHiddenPowerIVBits(mon, 1)) / 63 + 30;
 }
 
+// Same base power as Cmd_friendshiptodamagecalculation gives Return/Frustration in battle.
+// A result of 0 means no override in CalculateBaseDamage, so the move's table power is used.
+u8 GetMonFriendshipMovePower(struct Pokemon *mon, u16 move)
+{
+    u8 friendship = GetMonData(mon, MON_DATA_FRIENDSHIP, NULL);
+    u8 power;
+
+    if (gBattleMoves[move].effect == EFFECT_RETURN)
+        power = 10 * friendship / 25;
+    else // EFFECT_FRUSTRATION
+        power = 10 * (255 - friendship) / 25;
+
+    if (power == 0)
+        power = gBattleMoves[move].power;
+    return power;
+}
+
 static u8 GetNatureFromPersonality(u32 personality)
 {
     return personality % NUM_NATURES;

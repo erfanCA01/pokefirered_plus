@@ -372,6 +372,7 @@ const u8 *Battle_PrintStatBoosterEffectMessage(u16 itemId);
 u8 GetNature(struct Pokemon *mon);
 u8 GetMonHiddenPowerType(struct Pokemon *mon);
 u8 GetMonHiddenPowerPower(struct Pokemon *mon);
+u8 GetMonFriendshipMovePower(struct Pokemon *mon, u16 move);
 u16 GetEvolutionTargetSpecies(struct Pokemon *mon, u8 type, u16 evolutionItem);
 u16 NationalPokedexNumToSpecies(u16 nationalNum);
 u16 SpeciesToNationalPokedexNum(u16 species);
