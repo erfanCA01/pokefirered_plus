@@ -41,6 +41,31 @@ SilphCo_11F_Text_ThanksForRescuingUs::
     .string "We, from the PRESIDENT down,\n"
     .string "are indebted to you.$"
 
+SilphCo_11F_Text_UseTmReplicator::
+    .string "As thanks, our R&D team will let\n"
+    .string "you use their prototype.\p"
+    .string "It's called the TM REPLICATOR.\p"
+    .string "It can copy any rare TM that\n"
+    .string "you've already found.\p"
+    .string "Being a prototype, it isn't cheap\n"
+    .string "to run, I'm afraid.\p"
+    .string "Would you like to use it?$"
+
+SilphCo_11F_Text_UseItAnytime::
+    .string "SECRETARY: Please feel free to use\n"
+    .string "it anytime.$"
+
+SilphCo_11F_Text_NoTmDataYet::
+    .string "SECRETARY: Oh, dear…\p"
+    .string "The REPLICATOR has no data on any\n"
+    .string "rare TM you've found yet.\p"
+    .string "Please come back once you've found\n"
+    .string "some.$"
+
+SilphCo_11F_Text_AlwaysAtYourService::
+    .string "SECRETARY: SILPH CO. is always at\n"
+    .string "your service.$"
+
 SilphCo_11F_Text_GiovanniIntro::
     .string "Ah, {PLAYER}!\n"
     .string "So we meet again!\p"

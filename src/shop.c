@@ -23,12 +23,16 @@
 #include "fieldmap.h"
 #include "event_object_movement.h"
 #include "money.h"
+#include "coins.h"
+#include "event_data.h"
 #include "quest_log.h"
 #include "script.h"
 #include "constants/songs.h"
 #include "constants/items.h"
+#include "constants/flags.h"
 #include "constants/game_stat.h"
 #include "constants/field_weather.h"
+#include "constants/shop.h"
 
 #define tItemCount data[1]
 #define tItemId data[5]
@@ -41,6 +45,14 @@ enum
     MART_TYPE_TMHM,
     MART_TYPE_DECOR,
     MART_TYPE_DECOR2,
+};
+
+// How a shop prices its items. Anything but SHOP_PRICING_NORMAL is a buy-only special shop.
+enum
+{
+    SHOP_PRICING_NORMAL,
+    SHOP_PRICING_DOUBLE, // Money, 2x the item's price
+    SHOP_PRICING_COINS,  // Game Corner coins, fixed prices
 };
 
 // shop view window NPC info enum
@@ -67,6 +79,7 @@ struct ShopData
              u16 itemSlot:2;
              u16 unk16_11:5;
     /*0x18*/ u16 unk18;
+    /*0x1A*/ u8 pricing;
 };
 
 static EWRAM_DATA s16 sViewportObjectEvents[OBJECT_EVENTS_COUNT][4] = {0};
@@ -78,6 +91,69 @@ EWRAM_DATA u16 (*gShopTilemapBuffer3)[0x400] = {0};
 EWRAM_DATA u16 (*gShopTilemapBuffer4)[0x400] = {0};
 EWRAM_DATA struct ListMenuItem *sShopMenuListMenu = {0};
 static EWRAM_DATA u8 (*sShopMenuItemStrings)[13] = {0};
+
+struct OneTimeTm
+{
+    u16 itemId;
+    u16 flag; // Set once the player has found it
+};
+
+// TMs the player can only get once (TM10 has no source in FRLG). The TMs sold at the
+// Celadon Dept. Store and the Game Corner are left out, since they can be bought there.
+static const struct OneTimeTm sOneTimeTms[] =
+{
+    {ITEM_TM01, FLAG_HIDE_SILPH_CO_5F_TM01},
+    {ITEM_TM02, FLAG_HIDE_VICTORY_ROAD_1F_TM02},
+    {ITEM_TM03, FLAG_GOT_TM03_FROM_MISTY},
+    {ITEM_TM04, FLAG_GOT_TM04_FROM_SABRINA},
+    {ITEM_TM06, FLAG_GOT_TM06_FROM_KOGA},
+    {ITEM_TM07, FLAG_HIDE_VICTORY_ROAD_2F_TM07},
+    {ITEM_TM08, FLAG_HIDE_SILPH_CO_7F_TM08},
+    {ITEM_TM09, FLAG_HIDE_MT_MOON_1F_TM09},
+    {ITEM_TM11, FLAG_HIDE_SAFARI_ZONE_EAST_TM11},
+    {ITEM_TM12, FLAG_HIDE_ROCKET_HIDEOUT_B2F_TM12},
+    {ITEM_TM14, FLAG_HIDE_POKEMON_MANSION_B1F_TM14},
+    {ITEM_TM16, FLAG_GOT_TM16_FROM_THIRSTY_GIRL},
+    {ITEM_TM17, FLAG_HIDE_POWER_PLANT_TM17},
+    {ITEM_TM18, FLAG_HIDE_ROUTE15_TM18},
+    {ITEM_TM19, FLAG_GOT_TM19_FROM_ERIKA},
+    {ITEM_TM20, FLAG_GOT_TM20_FROM_THIRSTY_GIRL},
+    {ITEM_TM21, FLAG_HIDE_ROCKET_HIDEOUT_B3F_TM21},
+    {ITEM_TM22, FLAG_HIDE_POKEMON_MANSION_B1F_TM22},
+    {ITEM_TM25, FLAG_HIDE_POWER_PLANT_TM25},
+    {ITEM_TM26, FLAG_GOT_TM26_FROM_GIOVANNI},
+    {ITEM_TM27, FLAG_GOT_TM27},
+    {ITEM_TM29, FLAG_GOT_TM29_FROM_MR_PSYCHIC},
+    {ITEM_TM32, FLAG_HIDE_SAFARI_ZONE_WEST_TM32},
+    {ITEM_TM33, FLAG_GOT_TM33_FROM_THIRSTY_GIRL},
+    {ITEM_TM34, FLAG_GOT_TM34_FROM_SURGE},
+    {ITEM_TM36, FLAG_HIDE_FIVE_ISLAND_ROCKET_WAREHOUSE_TM36},
+    {ITEM_TM37, FLAG_HIDE_VICTORY_ROAD_2F_TM37},
+    {ITEM_TM38, FLAG_GOT_TM38_FROM_BLAINE},
+    {ITEM_TM39, FLAG_GOT_TM39_FROM_BROCK},
+    {ITEM_TM40, FLAG_HIDE_ROUTE9_TM40},
+    {ITEM_TM41, FLAG_HIDE_SILPH_CO_4F_TM41},
+    {ITEM_TM42, FLAG_GOT_TM42_AT_MEMORIAL_PILLAR},
+    {ITEM_TM44, FLAG_HIDE_SSANNE_B1F_ROOM2_TM44},
+    {ITEM_TM46, FLAG_HIDE_MT_MOON_B2F_TM46},
+    {ITEM_TM47, FLAG_HIDE_SAFARI_ZONE_NORTH_TM47},
+    {ITEM_TM48, FLAG_HIDE_ROUTE12_TM48},
+    {ITEM_TM49, FLAG_HIDE_ROCKET_HIDEOUT_B4F_TM49},
+    {ITEM_TM50, FLAG_HIDE_VICTORY_ROAD_3F_TM50},
+};
+
+static const u16 sEvBerries[] =
+{
+    ITEM_POMEG_BERRY,
+    ITEM_KELPSY_BERRY,
+    ITEM_QUALOT_BERRY,
+    ITEM_HONDEW_BERRY,
+    ITEM_GREPA_BERRY,
+    ITEM_TAMATO_BERRY,
+};
+
+// Built at runtime for the special shops, ITEM_NONE terminated
+static EWRAM_DATA u16 sSpecialShopItems[ARRAY_COUNT(sOneTimeTms) + 1] = {0};
 EWRAM_DATA struct QuestLogEvent_Shop sHistory[2] = {0};
 
 //Function Declarations
@@ -237,6 +313,7 @@ static u8 GetMartTypeFromItemList(u32 martType)
 
 static void SetShopItemsForSale(const u16 *items)
 {
+    sShopData.pricing = SHOP_PRICING_NORMAL;
     sShopData.itemList = items;
     sShopData.itemCount = 0;
     if (sShopData.itemList[0] == 0)
@@ -251,6 +328,83 @@ static void SetShopItemsForSale(const u16 *items)
 static void SetShopMenuCallback(void (*callback)(void))
 {
     sShopData.callback = callback;
+}
+
+static u32 GetShopItemPrice(u16 itemId)
+{
+    switch (sShopData.pricing)
+    {
+    case SHOP_PRICING_DOUBLE:
+        return ItemId_GetPrice(itemId) * 2;
+    case SHOP_PRICING_COINS:
+        if (ItemId_GetPocket(itemId) == POCKET_TM_CASE)
+            return COIN_SHOP_TM_PRICE;
+        return COIN_SHOP_BERRY_PRICE;
+    default:
+        return ItemId_GetPrice(itemId);
+    }
+}
+
+static u32 GetShopCurrencyAmount(void)
+{
+    if (sShopData.pricing == SHOP_PRICING_COINS)
+        return GetCoins();
+    return GetMoney(&gSaveBlock1Ptr->money);
+}
+
+static void PrintShopCurrencyInBox(void)
+{
+    if (sShopData.pricing == SHOP_PRICING_COINS)
+    {
+        ConvertIntToDecimalStringN(gStringVar1, GetCoins(), STR_CONV_MODE_RIGHT_ALIGN, 4);
+        StringExpandPlaceholders(gStringVar4, gText_Coins);
+        AddTextPrinterParameterized(0, FONT_SMALL, gStringVar4, 64 - GetStringWidth(FONT_SMALL, gStringVar4, 0), 0xC, 0, NULL);
+    }
+    else
+    {
+        PrintMoneyAmountInMoneyBox(0, GetMoney(&gSaveBlock1Ptr->money), 0);
+    }
+}
+
+// Fills sSpecialShopItems for the special shop in VAR_0x8004 and returns how many items it has
+u16 BuildSpecialShopItems(void)
+{
+    u16 i, count = 0;
+
+    if (gSpecialVar_0x8004 == SPECIAL_SHOP_BROKER_BERRIES)
+    {
+        for (i = 0; i < ARRAY_COUNT(sEvBerries); i++)
+            sSpecialShopItems[count++] = sEvBerries[i];
+    }
+    else
+    {
+        for (i = 0; i < ARRAY_COUNT(sOneTimeTms); i++)
+        {
+            if (FlagGet(sOneTimeTms[i].flag))
+                sSpecialShopItems[count++] = sOneTimeTms[i].itemId;
+        }
+    }
+    sSpecialShopItems[count] = ITEM_NONE;
+    return count;
+}
+
+// Buy-only shop for the items built by BuildSpecialShopItems
+void CreateSpecialShop(void)
+{
+    SetShopItemsForSale(sSpecialShopItems);
+    if (gSpecialVar_0x8004 == SPECIAL_SHOP_TM_REPLICATOR)
+        sShopData.pricing = SHOP_PRICING_DOUBLE;
+    else
+        sShopData.pricing = SHOP_PRICING_COINS;
+    sShopData.martType = GetMartTypeFromItemList(MART_TYPE_REGULAR);
+    sShopData.selectedRow = 0;
+    sShopData.scrollOffset = 0;
+    if (ContextNpcGetTextColor() == NPC_TEXT_COLOR_MALE)
+        sShopData.fontId = FONT_MALE;
+    else
+        sShopData.fontId = FONT_FEMALE;
+    SetShopMenuCallback(ScriptContext_Enable);
+    CreateTask(Task_HandleShopMenuBuy, 8);
 }
 
 static void Task_ShopMenu(u8 taskId)
@@ -327,6 +481,14 @@ static void Task_ReturnToShopMenu(u8 taskId)
     if (IsWeatherNotFadingIn() != TRUE)
         return;
 
+    // Special shops are buy only, so hand straight back to the script
+    if (sShopData.pricing != SHOP_PRICING_NORMAL)
+    {
+        DestroyTask(taskId);
+        if (sShopData.callback != NULL)
+            sShopData.callback();
+        return;
+    }
     DisplayItemMessageOnField(taskId, GetMartFontId(), gText_AnythingElseICanHelp, ShowShopMenuAfterExitingBuyOrSellMenu);
 }
 
@@ -498,7 +660,16 @@ static void BuyMenuDrawGraphics(void)
 {
     BuyMenuDrawMapView();
     BuyMenuCopyTilemapData();
-    BuyMenuDrawMoneyBox();
+    if (sShopData.pricing == SHOP_PRICING_COINS)
+    {
+        DrawStdFrameWithCustomTileAndPalette(0, FALSE, 0xA, 0xF);
+        AddTextPrinterParameterized(0, FONT_NORMAL, gText_Coins_2, 0, 0, 0xFF, 0);
+        PrintShopCurrencyInBox();
+    }
+    else
+    {
+        BuyMenuDrawMoneyBox();
+    }
     ScheduleBgCopyTilemapToVram(0);
     ScheduleBgCopyTilemapToVram(1);
     ScheduleBgCopyTilemapToVram(2);
@@ -603,13 +774,30 @@ static void BuyMenuPrintPriceInList(u8 windowId, u32 item, u8 y)
 
     if (item != INDEX_CANCEL)
     {
-        ConvertIntToDecimalStringN(gStringVar1, ItemId_GetPrice(item), 0, 4);
-        x = 4 - StringLength(gStringVar1);
+        if (sShopData.pricing == SHOP_PRICING_COINS)
+        {
+            // Right-aligned to end where a vanilla price does
+            ConvertIntToDecimalStringN(gStringVar1, GetShopItemPrice(item), STR_CONV_MODE_RIGHT_ALIGN, 4);
+            StringExpandPlaceholders(gStringVar4, gText_Coins);
+            BuyMenuPrint(windowId, FONT_SMALL, gStringVar4, 0x69 + 28 - GetStringWidth(FONT_SMALL, gStringVar4, 0), y, 0, 0, TEXT_SKIP_DRAW, 1);
+            return;
+        }
+        if (sShopData.pricing == SHOP_PRICING_DOUBLE)
+        {
+            // 2x prices can have 5 digits, so start one digit further left
+            ConvertIntToDecimalStringN(gStringVar1, GetShopItemPrice(item), 0, 5);
+            x = 5 - StringLength(gStringVar1);
+        }
+        else
+        {
+            ConvertIntToDecimalStringN(gStringVar1, ItemId_GetPrice(item), 0, 4);
+            x = 4 - StringLength(gStringVar1);
+        }
         loc = gStringVar4;
         while (x-- != 0)
             *loc++ = 0;
         StringExpandPlaceholders(loc, gText_PokedollarVar1);
-        BuyMenuPrint(windowId, FONT_SMALL, gStringVar4, 0x69, y, 0, 0, TEXT_SKIP_DRAW, 1);
+        BuyMenuPrint(windowId, FONT_SMALL, gStringVar4, sShopData.pricing == SHOP_PRICING_DOUBLE ? 0x64 : 0x69, y, 0, 0, TEXT_SKIP_DRAW, 1);
     }
 }
 
@@ -862,7 +1050,17 @@ static void BuyMenuPrintItemQuantityAndPrice(u8 taskId)
     s16 *data = gTasks[taskId].data;
 
     FillWindowPixelBuffer(3, PIXEL_FILL(1));
-    PrintMoneyAmount(3, 0x36, 0xA, sShopData.itemPrice, TEXT_SKIP_DRAW);
+    if (sShopData.pricing == SHOP_PRICING_COINS)
+    {
+        // Right-aligned to end where a vanilla money amount does
+        ConvertIntToDecimalStringN(gStringVar1, sShopData.itemPrice, STR_CONV_MODE_LEFT_ALIGN, 4);
+        StringExpandPlaceholders(gStringVar4, gText_Coins);
+        BuyMenuPrint(3, FONT_SMALL, gStringVar4, 0x5A - GetStringWidth(FONT_SMALL, gStringVar4, 0), 0xA, 0, 0, TEXT_SKIP_DRAW, 1);
+    }
+    else
+    {
+        PrintMoneyAmount(3, 0x36, 0xA, sShopData.itemPrice, TEXT_SKIP_DRAW);
+    }
     ConvertIntToDecimalStringN(gStringVar1, tItemCount, STR_CONV_MODE_LEADING_ZEROS, 2);
     StringExpandPlaceholders(gStringVar4, gText_TimesStrVar1);
     BuyMenuPrint(3, FONT_SMALL, gStringVar4, 2, 0xA, 0, 0, 0, 1);
@@ -891,10 +1089,13 @@ static void Task_BuyMenu(u8 taskId)
             BuyMenuRemoveScrollIndicatorArrows();
             BuyMenuPrintCursor(tListTaskId, 2);
             RecolorItemDescriptionBox(1);
-            sShopData.itemPrice = ItemId_GetPrice(itemId);
-            if (!IsEnoughMoney(&gSaveBlock1Ptr->money, sShopData.itemPrice))
+            sShopData.itemPrice = GetShopItemPrice(itemId);
+            if (GetShopCurrencyAmount() < sShopData.itemPrice)
             {
-                BuyMenuDisplayMessage(taskId, gText_YouDontHaveMoney, BuyMenuReturnToItemList);
+                if (sShopData.pricing == SHOP_PRICING_COINS)
+                    BuyMenuDisplayMessage(taskId, gText_YouDontHaveEnoughCoins, BuyMenuReturnToItemList);
+                else
+                    BuyMenuDisplayMessage(taskId, gText_YouDontHaveMoney, BuyMenuReturnToItemList);
             }
             else
             {
@@ -920,7 +1121,7 @@ static void Task_BuyHowManyDialogueInit(u8 taskId)
     BuyMenuQuantityBoxNormalBorder(3, 0);
     BuyMenuPrintItemQuantityAndPrice(taskId);
     ScheduleBgCopyTilemapToVram(0);
-    maxQuantity = GetMoney(&gSaveBlock1Ptr->money) / ItemId_GetPrice(tItemId);
+    maxQuantity = GetShopCurrencyAmount() / GetShopItemPrice(tItemId);
     if (maxQuantity > 99)
         sShopData.maxQuantity = 99;
     else
@@ -938,7 +1139,7 @@ static void Task_BuyHowManyDialogueHandleInput(u8 taskId)
 
     if (AdjustQuantityAccordingToDPadInput(&tItemCount, sShopData.maxQuantity) == TRUE)
     {
-        sShopData.itemPrice = ItemId_GetPrice(tItemId) * tItemCount;
+        sShopData.itemPrice = GetShopItemPrice(tItemId) * tItemCount;
         BuyMenuPrintItemQuantityAndPrice(taskId);
     }
     else
@@ -955,7 +1156,10 @@ static void Task_BuyHowManyDialogueHandleInput(u8 taskId)
             CopyItemName(tItemId, gStringVar1);
             ConvertIntToDecimalStringN(gStringVar2, tItemCount, STR_CONV_MODE_LEFT_ALIGN, 2);
             ConvertIntToDecimalStringN(gStringVar3, sShopData.itemPrice, STR_CONV_MODE_LEFT_ALIGN, 8);
-            BuyMenuDisplayMessage(taskId, gText_Var1AndYouWantedVar2, CreateBuyMenuConfirmPurchaseWindow);
+            if (sShopData.pricing == SHOP_PRICING_COINS)
+                BuyMenuDisplayMessage(taskId, gText_Var1AndYouWantedVar2Coins, CreateBuyMenuConfirmPurchaseWindow);
+            else
+                BuyMenuDisplayMessage(taskId, gText_Var1AndYouWantedVar2, CreateBuyMenuConfirmPurchaseWindow);
         }
         else if (JOY_NEW(B_BUTTON))
         {
@@ -995,9 +1199,12 @@ static void BuyMenuTryMakePurchase(u8 taskId)
 static void BuyMenuSubtractMoney(u8 taskId)
 {
     IncrementGameStat(GAME_STAT_SHOPPED);
-    RemoveMoney(&gSaveBlock1Ptr->money, sShopData.itemPrice);
+    if (sShopData.pricing == SHOP_PRICING_COINS)
+        RemoveCoins(sShopData.itemPrice);
+    else
+        RemoveMoney(&gSaveBlock1Ptr->money, sShopData.itemPrice);
     PlaySE(SE_SHOP);
-    PrintMoneyAmountInMoneyBox(0, GetMoney(&gSaveBlock1Ptr->money), 0);
+    PrintShopCurrencyInBox();
     gTasks[taskId].func = Task_ReturnToItemListAfterItemPurchase;
 }
 

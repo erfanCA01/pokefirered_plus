@@ -10,6 +10,8 @@
 #include "strings.h"
 #include "field_effect.h"
 #include "event_scripts.h"
+#include "item.h"
+#include "constants/items.h"
 #include "constants/songs.h"
 #include "constants/seagallop.h"
 #include "constants/menu.h"
@@ -502,6 +504,19 @@ static const struct MenuAction sMultichoiceList_Exit[] = {
     { gOtherText_Exit }
 };
 
+static const struct MenuAction sMultichoiceList_BrokerWares[] = {
+    { gText_Tms },
+    { gText_Berries },
+    { gOtherText_Exit }
+};
+
+static const struct MenuAction sMultichoiceList_BerryPayment[] = {
+    { gOtherText_Powder },
+    { gItems[ITEM_TINY_MUSHROOM].name },
+    { gItems[ITEM_BIG_MUSHROOM].name },
+    { gOtherText_Exit }
+};
+
 static const struct MultichoiceListStruct sMultichoiceLists[] = {
     [MULTICHOICE_YES_NO]                                     = MULTICHOICE(sMultichoiceList_YesNo),
     [MULTICHOICE_EEVEELUTIONS]                               = MULTICHOICE(sMultichoiceList_Eeveelutions),
@@ -568,6 +583,8 @@ static const struct MultichoiceListStruct sMultichoiceLists[] = {
     [MULTICHOICE_62]                                         = MULTICHOICE(sMultichoiceList_62),
     [MULTICHOICE_JOIN_OR_LEAD]                               = MULTICHOICE(sMultichoiceList_JoinOrLead),
     [MULTICHOICE_TRAINER_TOWER_MODE]                         = MULTICHOICE(sMultichoiceList_TrainerTowerMode),
+    [MULTICHOICE_BROKER_WARES]                               = MULTICHOICE(sMultichoiceList_BrokerWares),
+    [MULTICHOICE_BERRY_PAYMENT]                              = MULTICHOICE(sMultichoiceList_BerryPayment),
 };
 
 // From Cool to Berries goes unused

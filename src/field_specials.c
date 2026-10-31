@@ -25,6 +25,7 @@
 #include "pokemon_storage_system.h"
 #include "script_menu.h"
 #include "data.h"
+#include "item.h"
 #include "pokedex.h"
 #include "text_window.h"
 #include "menu.h"
@@ -1245,6 +1246,16 @@ void ListMenu(void)
         task->data[6] = 0;
         task->data[15] = taskId;
         break;
+    case LISTMENU_EV_BERRIES: // Same window as LISTMENU_BERRY_POWDER
+        task->data[0] = 7;
+        task->data[1] = 7;
+        task->data[2] = 16;
+        task->data[3] = 1;
+        task->data[4] = 17;
+        task->data[5] = 12;
+        task->data[6] = 0;
+        task->data[15] = taskId;
+        break;
     case 99:
         break;
     default:
@@ -1324,6 +1335,16 @@ static const u8 *const sListMenuLabels[][12] = {
     {
         gText_Rooftop,
         gText_B1F,
+        gOtherText_Exit,
+    },
+    [LISTMENU_EV_BERRIES] =
+    {
+        gItems[ITEM_POMEG_BERRY].name,
+        gItems[ITEM_KELPSY_BERRY].name,
+        gItems[ITEM_QUALOT_BERRY].name,
+        gItems[ITEM_HONDEW_BERRY].name,
+        gItems[ITEM_GREPA_BERRY].name,
+        gItems[ITEM_TAMATO_BERRY].name,
         gOtherText_Exit,
     }
 };

@@ -3975,7 +3975,7 @@ bool8 ExecuteTableBasedItemEffect(struct Pokemon *mon, u16 item, u8 partyIndex, 
 
 #define UPDATE_FRIENDSHIP_FROM_ITEM()                                                                   \
 {                                                                                                       \
-    if (retVal == 0 && friendshipChange == 0)                                                           \
+    if ((retVal == 0 || friendshipOnly) && friendshipChange == 0)                                       \
     {                                                                                                   \
         friendshipChange = itemEffect[idx];                                                             \
         friendship = GetMonData(mon, MON_DATA_FRIENDSHIP, NULL);                                        \
@@ -3995,7 +3995,24 @@ bool8 ExecuteTableBasedItemEffect(struct Pokemon *mon, u16 item, u8 partyIndex, 
         if (friendship > MAX_FRIENDSHIP)                                                                \
             friendship = MAX_FRIENDSHIP;                                                                \
         SetMonData(mon, MON_DATA_FRIENDSHIP, &friendship);                                              \
+        retVal = FALSE;                                                                                 \
     }                                                                                                   \
+}
+
+// For the EV-lowering berries (ITEM6_SUBTRACT_EV), as in Emerald.
+// Returns FALSE if the Pokémon has no EVs in that stat to lose.
+static bool8 SubtractMonEVFromItem(struct Pokemon *mon, u8 evDataId, s8 evChange)
+{
+    s32 ev = GetMonData(mon, evDataId, NULL);
+
+    if (ev == 0)
+        return FALSE;
+    ev += evChange;
+    if (ev < 0)
+        ev = 0;
+    SetMonData(mon, evDataId, &ev);
+    CalculateMonStats(mon);
+    return TRUE;
 }
 
 bool8 PokemonUseItemEffects(struct Pokemon *mon, u16 item, u8 partyIndex, u8 moveIndex, bool8 usedByAI)
@@ -4004,6 +4021,7 @@ bool8 PokemonUseItemEffects(struct Pokemon *mon, u16 item, u8 partyIndex, u8 mov
     s32 friendship;
     s32 cmdIndex;
     bool8 retVal = TRUE;
+    bool8 friendshipOnly = FALSE;
     const u8 *itemEffect;
     u8 idx = ITEM_EFFECT_ARG_START;
     u32 i;
@@ -4229,6 +4247,15 @@ bool8 PokemonUseItemEffects(struct Pokemon *mon, u16 item, u8 partyIndex, u8 mov
                     {
                     case 0: // ITEM4_EV_HP
                     case 1: // ITEM4_EV_ATK
+                        if ((s8)itemEffect[idx] < 0)
+                        {
+                            if (SubtractMonEVFromItem(mon, sGetMonDataEVConstants[i], itemEffect[idx]))
+                                retVal = FALSE;
+                            else
+                                friendshipOnly = TRUE; // No EVs to lose, but friendship still changes
+                            idx++;
+                            break;
+                        }
                         evCount = GetMonEVCount(mon);
 
                         // Has EV increase limit already been reached?
@@ -4436,8 +4463,17 @@ bool8 PokemonUseItemEffects(struct Pokemon *mon, u16 item, u8 partyIndex, u8 mov
                     case 1: // ITEM5_EV_SPEED
                     case 2: // ITEM5_EV_SPDEF
                     case 3: // ITEM5_EV_SPATK
+                        if ((s8)itemEffect[idx] < 0)
+                        {
+                            if (SubtractMonEVFromItem(mon, sGetMonDataEVConstants[i + 2], itemEffect[idx]))
+                                retVal = FALSE;
+                            else
+                                friendshipOnly = TRUE; // No EVs to lose, but friendship still changes
+                            idx++;
+                            break;
+                        }
                         evCount = GetMonEVCount(mon);
-                        
+
                         // Has EV increase limit already been reached?
                         if (evCount >= MAX_TOTAL_EVS)
                             return TRUE;

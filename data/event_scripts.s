@@ -22,6 +22,7 @@
 #include "constants/seagallop.h"
 #include "constants/game_stat.h"
 #include "constants/coins.h"
+#include "constants/shop.h"
 #include "constants/menu.h"
 #include "constants/battle_setup.h"
 #include "constants/map_scripts.h"

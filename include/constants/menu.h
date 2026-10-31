@@ -69,6 +69,8 @@
 #define MULTICHOICE_62                                         62
 #define MULTICHOICE_JOIN_OR_LEAD                               63
 #define MULTICHOICE_TRAINER_TOWER_MODE                         64
+#define MULTICHOICE_BROKER_WARES                               65
+#define MULTICHOICE_BERRY_PAYMENT                              66
 
 #define MULTICHOICE_NONE                                      255
 
@@ -79,6 +81,7 @@
 #define LISTMENU_WIRELESS_LECTURE_HEADERS  4
 #define LISTMENU_BERRY_POWDER              5
 #define LISTMENU_TRAINER_TOWER_FLOORS      6
+#define LISTMENU_EV_BERRIES                7
 
 // Std String Ids
 #define STDSTRING_COOL              0
