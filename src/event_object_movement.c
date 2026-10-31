@@ -1346,7 +1346,8 @@ u8 GetFirstInactiveObjectEventId(void)
 
 u8 GetObjectEventIdByLocalIdAndMap(u8 localId, u8 mapNum, u8 mapGroupId)
 {
-    if (localId < LOCALID_PLAYER)
+    // followers-expanded-id: the follower (254) is found by local id on any map, like the player
+    if (localId < LOCALID_FOLLOWING_POKEMON)
     {
         return GetObjectEventIdByLocalIdAndMapInternal(localId, mapNum, mapGroupId);
     }
