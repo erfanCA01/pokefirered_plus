@@ -10336,6 +10336,11 @@ static void (*const sGroundEffectTracksFuncs[])(struct ObjectEvent *objEvent, st
     DoTracksGroundEffect_None,
     DoTracksGroundEffect_Footprints,
     DoTracksGroundEffect_BikeTireTracks,
+    // followers-expanded-id: Emerald's slither/spot/bug track sprites were not ported; follower species using
+    // these track types fall back to footprints so the table is total (no out-of-bounds function pointer)
+    [TRACKS_SLITHER] = DoTracksGroundEffect_Footprints,
+    [TRACKS_SPOT] = DoTracksGroundEffect_Footprints,
+    [TRACKS_BUG] = DoTracksGroundEffect_Footprints,
 };
 
 void GroundEffect_SandTracks(struct ObjectEvent *objEvent, struct Sprite *sprite)
