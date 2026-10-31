@@ -1610,6 +1610,9 @@ static void RemoveObjectEvent(struct ObjectEvent *objectEvent)
 {
     objectEvent->active = FALSE;
     RemoveObjectEventInternal(objectEvent);
+    // followers-expanded-id: zero potential species info, so LoadObjectEvents does not
+    // resurrect a removed follower from its dead slot on Continue
+    objectEvent->graphicsId = objectEvent->shiny = 0;
 }
 
 void RemoveObjectEventByLocalIdAndMap(u8 localId, u8 mapNum, u8 mapGroup)
@@ -1625,9 +1628,25 @@ void RemoveObjectEventByLocalIdAndMap(u8 localId, u8 mapNum, u8 mapGroup)
 static void RemoveObjectEventInternal(struct ObjectEvent *objectEvent)
 {
     struct SpriteFrameImage image;
-    image.size = GetObjectEventGraphicsInfo(objectEvent->graphicsId)->size;
-    gSprites[objectEvent->spriteId].images = &image;
-    DestroySprite(&gSprites[objectEvent->spriteId]);
+    struct Sprite *sprite = &gSprites[objectEvent->spriteId];
+    const struct ObjectEventGraphicsInfo *graphicsInfo = GetObjectEventGraphicsInfo(objectEvent->graphicsId);
+    // followers-expanded-id: during map resume the sprite may be a blank dummy; don't free anything then
+    bool32 isDummy = (!sprite->inUse && !sprite->oam.paletteNum && sprite->callback == SpriteCallbackDummy);
+    u8 paletteNum = sprite->oam.paletteNum;
+    u16 tileStart = sprite->usingSheet ? sprite->sheetTileStart : 0;
+
+    image.size = graphicsInfo->size;
+    sprite->images = &image;
+    DestroySprite(sprite);
+    // followers-expanded-id: release the follower's dynamic palette and compressed tile sheet
+    // (both helpers only free when no other in-use sprite references them)
+    if (!isDummy)
+    {
+        if (graphicsInfo->paletteTag == OBJ_EVENT_PAL_TAG_DYNAMIC)
+            FieldEffectFreePaletteIfUnused(paletteNum);
+        if (OW_GFX_COMPRESS && tileStart)
+            FieldEffectFreeTilesIfUnused(tileStart);
+    }
 }
 
 void Unref_RemoveAllObjectEventsExceptPlayer(void)
