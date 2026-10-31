@@ -17,6 +17,11 @@ Text_SwordsDanceTaught::
     .string "If only we could keep getting\n"
     .string "stronger and stronger, eh?$"
 
+Text_SwordsDanceTeachAgain::
+    .string "How about another POKéMON getting\n"
+    .string "stronger and stronger, too?\p"
+    .string "Shall I teach SWORDS DANCE again?$"
+
 SevenIsland_Text_IslandSign::
     .string "SEVEN ISLAND\n"
     .string "Quest Island of Infinity$"

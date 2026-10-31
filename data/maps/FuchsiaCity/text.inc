@@ -104,6 +104,12 @@ Text_SubstituteTaught::
     .string "Boy, what I'd give to crawl inside\n"
     .string "a KANGASKHAN belly pouch…$"
 
+Text_SubstituteTeachAgain::
+    .string "…Sigh…\n"
+    .string "If I can't be the substitute…\p"
+    .string "Want me to teach SUBSTITUTE to\n"
+    .string "another POKéMON instead?$"
+
 FuchsiaCity_Text_MyFatherIsGymLeader::
     .string "My father is the GYM LEADER of\n"
     .string "this town.\p"

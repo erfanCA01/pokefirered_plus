@@ -46,6 +46,12 @@ Text_MegaPunchTaught::
     .string "by the misguided fool who trains\l"
     .string "only his silly kicking over there.$"
 
+Text_MegaPunchTeachAgain::
+    .string "Hm? You wish to bring another\n"
+    .string "comrade into the fold?\p"
+    .string "Very well!\n"
+    .string "Shall I teach MEGA PUNCH again?$"
+
 Text_MegaKickTeach::
     .string "A kick of brutal ferocity!\p"
     .string "Packed with destructive power!\p"
@@ -69,6 +75,12 @@ Text_MegaKickTaught::
     .string "You should run before you're seen\n"
     .string "by the deluded nitwit who trains\l"
     .string "only simple punching over there.$"
+
+Text_MegaKickTeachAgain::
+    .string "Huh? You want another soul mate\n"
+    .string "in the way of kicking?\p"
+    .string "All right!\n"
+    .string "Should I teach MEGA KICK again?$"
 
 Route4_Text_PeopleLikeAndRespectBrock::
     .string "Oh, wow, that's the BOULDERBADGE!\n"

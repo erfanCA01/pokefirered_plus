@@ -68,3 +68,9 @@ Text_CounterWhichMon::
 Text_CounterTaught::
     .string "Are you using that COUNTER move\n"
     .string "I taught your POKéMON?$"
+
+Text_CounterTeachAgain::
+    .string "Still not done with POKéMON?\n"
+    .string "Then I'll teach COUNTER again.\p"
+    .string "Not like the one I'm leaning on,\n"
+    .string "mind you! Okay?$"

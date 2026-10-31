@@ -104,6 +104,12 @@ Text_SoftboiledWhichMon::
 Text_SoftboiledTaught::
     .string "I wish you the best of luck!$"
 
+Text_SoftboiledTeachAgain::
+    .string "Oh, and since good luck brought\n"
+    .string "us together again…\p"
+    .string "Shall I teach SOFTBOILED to\n"
+    .string "another POKéMON?$"
+
 CeladonCity_Text_SomeoneStoleSilphScope::
     .string "Oh, what am I to do…\p"
     .string "Someone stole our SILPH SCOPE.\p"

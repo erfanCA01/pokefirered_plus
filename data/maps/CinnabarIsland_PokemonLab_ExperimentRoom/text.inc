@@ -19,6 +19,12 @@ Text_MetronomeTaught::
     .string "It tweaks your POKéMON's brain into\n"
     .string "using moves it doesn't even know.$"
 
+Text_MetronomeTeachAgain::
+    .string "Want to watch the fun unfold\n"
+    .string "again?\p"
+    .string "Shall I teach METRONOME to\n"
+    .string "another POKéMON?$"
+
 CinnabarIsland_PokemonLab_ExperimentRoom_Text_HaveYouAFossilForMe::
     .string "Hiya!\p"
     .string "I am important doctor.\n"

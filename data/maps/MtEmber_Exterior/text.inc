@@ -20,6 +20,11 @@ Text_ExplosionTaught::
     .string "volcano…\p"
     .string "What a terrifying thrill!$"
 
+Text_ExplosionTeachAgain::
+    .string "…You want to feel it again?\p"
+    .string "While we're still terrified,\n"
+    .string "shall I teach EXPLOSION again?$"
+
 @ Below 4 are unused JP versions of the above texts
 Text_ExplosionTeachJP::
     .string "こ　この　かざんが\n"

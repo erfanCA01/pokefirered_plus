@@ -19,6 +19,12 @@ Text_RockSlideTaught::
     .string "It might be scary to use it in this\n"
     .string "tunnel…$"
 
+Text_RockSlideTeachAgain::
+    .string "…But you still don't seem to be\n"
+    .string "scared.\p"
+    .string "Want to try teaching ROCK SLIDE\n"
+    .string "to another POKéMON?$"
+
 SeafoamIslands_B4F_Text_BouldersMightChangeWaterFlow::
     .string "Hint: Boulders might change the\n"
     .string "flow of water.$"

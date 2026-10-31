@@ -20,6 +20,14 @@ Text_DreamEaterTaught::
     .string "…ZZZ…\n"
     .string "I…can't eat…anymore…$"
 
+Text_DreamEaterTeachAgain::
+    .string "…Hm? Wh-what?\n"
+    .string "Oh, it's you again.\p"
+    .string "That DROWZEE ate my dream again…\n"
+    .string "I still know how to eat dreams!\p"
+    .string "Let me teach DREAM EATER to\n"
+    .string "another POKéMON, okay?$"
+
 PewterCity_Text_ClefairyCameFromMoon::
     .string "CLEFAIRY came from the moon.\n"
     .string "That's what the rumor is.\p"
