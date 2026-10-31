@@ -3880,6 +3880,8 @@ static bool8 MovementType_Wander_Step3(struct ObjectEvent *objectEvent, struct S
 {
     if (WaitForMovementDelay(sprite))
     {
+        // followers-expanded-id: resets a mid-movement sprite (OW mon walk-in-place while waiting)
+        ClearObjectEventMovement(objectEvent, sprite);
         sprite->data[1] = 4;
         return TRUE;
     }
@@ -6057,6 +6059,11 @@ static bool8 MovementType_MoveInPlace_Step1(struct ObjectEvent *objectEvent, str
     if (ObjectEventExecSingleMovementAction(objectEvent, sprite))
     {
         sprite->data[1] = 0;
+    }
+    // followers-expanded-id: similar to UpdateMonMoveInPlace
+    else if (OW_MON_BOBBING == TRUE && IS_OW_MON_OBJ(objectEvent) && (sprite->data[3] & 7) == 2)
+    {
+        sprite->y2 ^= 1;
     }
     return FALSE;
 }
@@ -11018,10 +11025,11 @@ u8 DoJumpSpecialSpriteMovement(struct Sprite *sprite)
 #undef sJumpDistance
 #undef tDirection
 
-#define tDelay data[3]
+#define tDelay data[7] // followers-expanded-id: real timer; data[3] is used by UpdateMonMoveInPlace
 
 void SetMovementDelay(struct Sprite *sprite, s16 delay)
 {
+    sprite->data[3] = delay; // kept for legacy reasons
     sprite->tDelay = delay;
 }
 
@@ -11030,7 +11038,10 @@ bool8 WaitForMovementDelay(struct Sprite *sprite)
     sprite->tDelay--;
 
     if (sprite->tDelay == 0)
+    {
+        sprite->data[3] = 0; // reset animation timer
         return TRUE;
+    }
     else
         return FALSE;
 }
