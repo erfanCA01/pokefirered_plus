@@ -100,6 +100,8 @@ static void PrintLinkStandbyMsg(void);
 static u32 CopyPlayerMonData(u8 monId, u8 *dst);
 static void SetPlayerMonData(u8 monId);
 static void DoSwitchOutAnimation(void);
+static void DoSlideOutAnimation(void);
+static bool8 ShouldDoSlideInAnim(void);
 static void PlayerDoMoveAnimation(void);
 static void Task_StartSendOutAnim(u8 taskId);
 static void PreviewDeterminativeMoveTargets(void);
@@ -2100,7 +2102,7 @@ static void PlayerHandleSwitchInAnim(void)
     BattleLoadPlayerMonSpriteGfx(&gPlayerParty[gBattlerPartyIndexes[gActiveBattler]], gActiveBattler);
     gActionSelectionCursor[gActiveBattler] = 0;
     gMoveSelectionCursor[gActiveBattler] = 0;
-    StartSendOutAnim(gActiveBattler, gBattleBufferA[gActiveBattler][2], FALSE);
+    StartSendOutAnim(gActiveBattler, gBattleBufferA[gActiveBattler][2], ShouldDoSlideInAnim());
     gBattlerControllerFuncs[gActiveBattler] = SwitchIn_TryShinyAnimShowHealthbox;
 }
 
@@ -2119,10 +2121,26 @@ static bool8 IsSentOutMonTheSurfer(void)
         && (GetMonData(&gPlayerParty[gBattlerPartyIndexes[gActiveBattler]], MON_DATA_PERSONALITY) & 0xFFFF) == surferId;
 }
 
-static bool8 ShouldDoSlideInAnim(void)
+// The follower is normally "the first live party Pokemon", which changes the moment it faints, so the
+// Pokemon that was following when the battle started is remembered in the (per-battle, heap)
+// battlerData bitfield instead. The party is not reordered during a single battle, so its slot is stable.
+static void RememberBattleFollower(void)
 {
     struct ObjectEvent *followerObj = GetFollowerObject();
+    struct Pokemon *mon = GetFirstLiveFollowMon();
+    u8 partyId = 0;
 
+    if (followerObj != NULL && !followerObj->invisible && mon != NULL)
+        partyId = (mon - gPlayerParty) + 1;
+    gBattleSpritesDataPtr->battlerData[gActiveBattler].followerPartyId = partyId;
+}
+
+// TRUE when the Pokemon at gBattlerPartyIndexes[gActiveBattler] is the following/surfing one and should
+// slide in/out instead of using a Poke Ball. Used for the first send-out, every switch-in and every
+// voluntary switch-out; a fainted Pokemon never gets here (it uses the faint animation) and every other
+// Pokemon keeps the ball.
+static bool8 ShouldDoSlideInAnim(void)
+{
     if (gBattleTypeFlags & (BATTLE_TYPE_LINK | BATTLE_TYPE_DOUBLE | BATTLE_TYPE_MULTI
                           | BATTLE_TYPE_SAFARI | BATTLE_TYPE_BATTLE_TOWER | BATTLE_TYPE_TRAINER_TOWER
                           | BATTLE_TYPE_FIRST_BATTLE | BATTLE_TYPE_OLD_MAN_TUTORIAL
@@ -2132,13 +2150,7 @@ static bool8 ShouldDoSlideInAnim(void)
     if (IsSentOutMonTheSurfer())
         return TRUE;
 
-    if (followerObj == NULL || followerObj->invisible)
-        return FALSE;
-
-    if (GetFirstLiveFollowMon() != &gPlayerParty[gBattlerPartyIndexes[gActiveBattler]])
-        return FALSE;
-
-    return TRUE;
+    return gBattleSpritesDataPtr->battlerData[gActiveBattler].followerPartyId == gBattlerPartyIndexes[gActiveBattler] + 1;
 }
 
 static void StartSendOutAnim(u8 battlerId, bool8 dontClearSubstituteBit, bool8 doSlideIn)
@@ -2169,7 +2181,7 @@ static void PlayerHandleReturnMonToBall(void)
     if (gBattleBufferA[gActiveBattler][1] == 0)
     {
         gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].animationState = 0;
-        gBattlerControllerFuncs[gActiveBattler] = DoSwitchOutAnimation;
+        gBattlerControllerFuncs[gActiveBattler] = ShouldDoSlideInAnim() ? DoSlideOutAnimation : DoSwitchOutAnimation;
     }
     else
     {
@@ -2199,6 +2211,47 @@ static void DoSwitchOutAnimation(void)
         break;
     }
 }
+
+// followers-expanded-id: the following/surfing Pokemon slides off to the left instead of shrinking into
+// a Poke Ball. Same distance/duration as Task_PlayerMonSlideIn in pokeball.c, played backwards.
+// healthBoxesData.animationState: 0/1 = leave a substitute first, 2.. = slide frame + 2.
+#define SLIDE_OUT_FRAMES 26
+#define SLIDE_OUT_END_X (-33)
+
+static void DoSlideOutAnimation(void)
+{
+    struct Sprite *monSprite = &gSprites[gBattlerSpriteIds[gActiveBattler]];
+    u8 *state = &gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].animationState;
+
+    switch (*state)
+    {
+    case 0:
+        if (gBattleSpritesDataPtr->battlerData[gActiveBattler].behindSubstitute)
+            InitAndLaunchSpecialAnimation(gActiveBattler, gActiveBattler, gActiveBattler, B_ANIM_SUBSTITUTE_TO_MON);
+        *state = 1;
+        break;
+    case 1:
+        if (!gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].specialAnimActive)
+        {
+            monSprite->callback = SpriteCallbackDummy; // stop the idle bobbing while it slides
+            PlaySE(SE_BALL_TRAY_EXIT);
+            *state = 2;
+        }
+        break;
+    default:
+        (*state)++;
+        monSprite->x2 = -((monSprite->x - SLIDE_OUT_END_X) * (*state - 2)) / SLIDE_OUT_FRAMES;
+        if (*state - 2 >= SLIDE_OUT_FRAMES)
+        {
+            *state = 0;
+            gBattlerControllerFuncs[gActiveBattler] = FreeMonSpriteAfterSwitchOutAnim;
+        }
+        break;
+    }
+}
+
+#undef SLIDE_OUT_FRAMES
+#undef SLIDE_OUT_END_X
 
 static void PlayerHandleDrawTrainerPic(void)
 {
@@ -2750,6 +2803,7 @@ static void PlayerHandleIntroTrainerBallThrow(void)
     u8 paletteNum;
     u8 taskId;
 
+    RememberBattleFollower();
     SetSpritePrimaryCoordsFromSecondaryCoords(&gSprites[gBattlerSpriteIds[gActiveBattler]]);
     gSprites[gBattlerSpriteIds[gActiveBattler]].data[0] = 50;
     gSprites[gBattlerSpriteIds[gActiveBattler]].data[2] = -40;
