@@ -317,6 +317,8 @@ static void Task_SetSacredAshCB(u8 taskId);
 static void CB2_ReturnToBagMenu(void);
 static u8 GetPartyIdFromBattleSlot(u8 slot);
 static void Task_DisplayHPRestoredMessage(u8 taskId);
+static TaskFunc GetFieldItemUseNextTask(u16 item, TaskFunc func);
+static void Task_ReturnToUseOnWhichMonAfterText(u8 taskId);
 static u16 ItemEffectToMonEv(struct Pokemon *mon, u8 effectType);
 static void ItemEffectToStatString(u8 effectType, u8 *dest);
 static void SetSelectedMoveForPPItem(u8 taskId);
@@ -4508,7 +4510,7 @@ void ItemUseCB_Medicine(u8 taskId, TaskFunc func)
         gPartyMenuUseExitCallback = FALSE;
         DisplayPartyMenuMessage(gText_WontHaveEffect, TRUE);
         ScheduleBgCopyTilemapToVram(2);
-        gTasks[taskId].func = func;
+        gTasks[taskId].func = GetFieldItemUseNextTask(item, func);
     }
     else
     {
@@ -4547,7 +4549,7 @@ void ItemUseCB_MedicineStep(u8 taskId, TaskFunc func)
         PlaySE(SE_SELECT);
         DisplayPartyMenuMessage(gText_WontHaveEffect, TRUE);
         ScheduleBgCopyTilemapToVram(2);
-        gTasks[taskId].func = func;
+        gTasks[taskId].func = GetFieldItemUseNextTask(item, func);
     }
     else
     {
@@ -4577,7 +4579,7 @@ void ItemUseCB_MedicineStep(u8 taskId, TaskFunc func)
             GetMedicineItemEffectMessage(item);
             DisplayPartyMenuMessage(gStringVar4, TRUE);
             ScheduleBgCopyTilemapToVram(2);
-            gTasks[taskId].func = func;
+            gTasks[taskId].func = GetFieldItemUseNextTask(item, func);
         }
     }
 }
@@ -4589,7 +4591,32 @@ static void Task_DisplayHPRestoredMessage(u8 taskId)
     DisplayPartyMenuMessage(gStringVar4, FALSE);
     ScheduleBgCopyTilemapToVram(2);
     HandleBattleLowHpMusicChange();
-    gTasks[taskId].func = Task_ClosePartyMenuAfterText;
+    gTasks[taskId].func = GetFieldItemUseNextTask(gSpecialVar_ItemId, Task_ClosePartyMenuAfterText);
+}
+
+// In the field, medicine keeps the party menu open while the player still has the item.
+// Flutes are never used up, so they close as in vanilla.
+static TaskFunc GetFieldItemUseNextTask(u16 item, TaskFunc func)
+{
+    if (gPartyMenu.menuType == PARTY_MENU_TYPE_FIELD && !IsItemFlute(item) && CheckBagHasItem(item, 1))
+        return Task_ReturnToUseOnWhichMonAfterText;
+    return func;
+}
+
+static void Task_ReturnToUseOnWhichMonAfterText(u8 taskId)
+{
+    if (IsPartyMenuTextPrinterActive() != TRUE)
+    {
+        ClearStdWindowAndFrameToTransparent(6, FALSE);
+        ClearWindowTilemap(6);
+        // The item use animation reopens the party menu as PARTY_ACTION_CHOOSE_MON with
+        // ItemUseCB_MedicineStep, so set the item use state back up
+        gPartyMenu.action = PARTY_ACTION_USE_ITEM;
+        if (gItemUseCB == ItemUseCB_MedicineStep)
+            gItemUseCB = ItemUseCB_Medicine;
+        DisplayPartyMenuStdMessage(PARTY_MSG_USE_ON_WHICH_MON);
+        gTasks[taskId].func = Task_HandleChooseMonInput;
+    }
 }
 
 static void Task_ClosePartyMenuAfterText(u8 taskId)
@@ -4620,7 +4647,7 @@ void ItemUseCB_ReduceEV(u8 taskId, TaskFunc func)
         PlaySE(SE_SELECT);
         DisplayPartyMenuMessage(gText_WontHaveEffect, TRUE);
         ScheduleBgCopyTilemapToVram(2);
-        gTasks[taskId].func = func;
+        gTasks[taskId].func = GetFieldItemUseNextTask(item, func);
     }
     else
     {
@@ -4643,7 +4670,7 @@ void ItemUseCB_ReduceEV(u8 taskId, TaskFunc func)
         }
         DisplayPartyMenuMessage(gStringVar4, TRUE);
         ScheduleBgCopyTilemapToVram(2);
-        gTasks[taskId].func = func;
+        gTasks[taskId].func = GetFieldItemUseNextTask(item, func);
     }
 }
 

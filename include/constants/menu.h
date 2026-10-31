@@ -71,6 +71,7 @@
 #define MULTICHOICE_TRAINER_TOWER_MODE                         64
 #define MULTICHOICE_BROKER_WARES                               65
 #define MULTICHOICE_BERRY_PAYMENT                              66
+#define MULTICHOICE_REPELS                                     67
 
 #define MULTICHOICE_NONE                                      255
 

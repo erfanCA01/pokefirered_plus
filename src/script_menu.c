@@ -517,6 +517,13 @@ static const struct MenuAction sMultichoiceList_BerryPayment[] = {
     { gOtherText_Exit }
 };
 
+static const struct MenuAction sMultichoiceList_Repels[] = {
+    { gItems[ITEM_REPEL].name },
+    { gItems[ITEM_SUPER_REPEL].name },
+    { gItems[ITEM_MAX_REPEL].name },
+    { gOtherText_Exit }
+};
+
 static const struct MultichoiceListStruct sMultichoiceLists[] = {
     [MULTICHOICE_YES_NO]                                     = MULTICHOICE(sMultichoiceList_YesNo),
     [MULTICHOICE_EEVEELUTIONS]                               = MULTICHOICE(sMultichoiceList_Eeveelutions),
@@ -585,6 +592,7 @@ static const struct MultichoiceListStruct sMultichoiceLists[] = {
     [MULTICHOICE_TRAINER_TOWER_MODE]                         = MULTICHOICE(sMultichoiceList_TrainerTowerMode),
     [MULTICHOICE_BROKER_WARES]                               = MULTICHOICE(sMultichoiceList_BrokerWares),
     [MULTICHOICE_BERRY_PAYMENT]                              = MULTICHOICE(sMultichoiceList_BerryPayment),
+    [MULTICHOICE_REPELS]                                     = MULTICHOICE(sMultichoiceList_Repels),
 };
 
 // From Cool to Berries goes unused

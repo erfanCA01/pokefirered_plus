@@ -454,4 +454,5 @@ gSpecials::
 	def_special CreateEnemyEventMon
 	def_special BuildSpecialShopItems
 	def_special CreateSpecialShop
+	def_special UseRepelFromScript
 gSpecialsEnd::
