@@ -183,6 +183,9 @@ static void LoadPartyMenuAilmentGfx(void);
 static bool8 RenderPartyMenuBoxes(void);
 static void CreateCancelConfirmPokeballSprites(void);
 static void CreateCancelConfirmWindows(bool8 chooseMultiple);
+static bool8 CanQuickSwitchPartyMons(void);
+static void CreateQuickSwitchWindow(void);
+static void HandleChooseMonQuickSwitch(u8 taskId, s8 *slotPtr);
 static void Task_ExitPartyMenu(u8 taskId);
 static void FreePartyPointers(void);
 static void PartyPaletteBufferCopy(u8 offset);
@@ -578,6 +581,8 @@ static bool8 ShowPartyMenu(void)
         break;
     case 18:
         CreateCancelConfirmWindows(sPartyMenuInternal->chooseMultiple);
+        if (CanQuickSwitchPartyMons())
+            CreateQuickSwitchWindow();
         ++gMain.state;
         break;
     case 19:
@@ -1130,6 +1135,9 @@ void Task_HandleChooseMonInput(u8 taskId)
         case B_BUTTON: // also handles pressing A_BUTTON on Cancel
             HandleChooseMonCancel(taskId, slotPtr);
             break;
+        case SELECT_BUTTON:
+            HandleChooseMonQuickSwitch(taskId, slotPtr);
+            break;
         case START_BUTTON:
             if (sPartyMenuInternal->chooseMultiple)
             {
@@ -1213,6 +1221,21 @@ static void HandleChooseMonSelection(u8 taskId, s8 *slotPtr)
             Task_TryCreateSelectionWindow(taskId);
             break;
         }
+    }
+}
+
+static void HandleChooseMonQuickSwitch(u8 taskId, s8 *slotPtr)
+{
+    if (*slotPtr >= PARTY_SIZE)
+        return;
+    if (gPartyMenu.action == PARTY_ACTION_CHOOSE_MON)
+    {
+        CursorCB_Switch(taskId);
+    }
+    else if (gPartyMenu.action == PARTY_ACTION_SWITCH)
+    {
+        PlaySE(SE_SELECT);
+        SwitchSelectedMons(taskId);
     }
 }
 
@@ -1329,6 +1352,8 @@ static u16 PartyMenuButtonHandler(s8 *slotPtr)
     }
     if (JOY_NEW(START_BUTTON))
         return START_BUTTON;
+    if (JOY_NEW(SELECT_BUTTON) && CanQuickSwitchPartyMons())
+        return SELECT_BUTTON;
     if (movementDir)
     {
         UpdateCurrentPartySelection(slotPtr, movementDir);
@@ -2162,6 +2187,36 @@ static void CreateCancelConfirmWindows(bool8 chooseMultiple)
         CopyWindowToVram(cancelWindowId, COPYWIN_GFX);
         ScheduleBgCopyTilemapToVram(0);
     }
+}
+
+// SELECT starts/confirms SWITCH, only in the party menu opened from the start menu
+static bool8 CanQuickSwitchPartyMons(void)
+{
+    return gPartyMenu.menuType == PARTY_MENU_TYPE_FIELD
+        && gPartyMenu.exitCallback == CB2_ReturnToFieldWithOpenMenu
+        && GetMonData(&gPlayerParty[1], MON_DATA_SPECIES) != SPECIES_NONE;
+}
+
+static void CreateQuickSwitchWindow(void)
+{
+    u8 windowId = AddWindow(&sQuickSwitchWindowTemplate);
+    u8 y, width;
+
+    LoadPalette(GetTextWindowPalette(0), BG_PLTT_ID(QUICK_SWITCH_PAL), PLTT_SIZE_4BPP);
+    LoadPalette(&gPlttBufferUnfaded[BG_PLTT_ID(1) + 3], BG_PLTT_ID(QUICK_SWITCH_PAL) + QUICK_SWITCH_COLOR_FRAME, PLTT_SIZEOF(1));
+    LoadPalette(&gPlttBufferUnfaded[BG_PLTT_ID(1) + 5], BG_PLTT_ID(QUICK_SWITCH_PAL) + QUICK_SWITCH_COLOR_EDGE, PLTT_SIZEOF(1));
+    FillWindowPixelBuffer(windowId, PIXEL_FILL(0));
+    // Right edge slopes 1px per row, like the frame's corner
+    for (y = QUICK_SWITCH_FRAME_HEIGHT; y < QUICK_SWITCH_TAB_BOTTOM; y++)
+    {
+        width = QUICK_SWITCH_TAB_WIDTH - (y - QUICK_SWITCH_FRAME_HEIGHT);
+        FillWindowPixelRect(windowId, PIXEL_FILL(QUICK_SWITCH_COLOR_FRAME), 0, y, width, 1);
+        FillWindowPixelRect(windowId, PIXEL_FILL(QUICK_SWITCH_COLOR_EDGE), width, y, 1, 1);
+    }
+    DrawKeypadIcon(windowId, CHAR_SELECT_BUTTON, 2, 2);
+    AddTextPrinterParameterized3(windowId, FONT_SMALL, 29, 1, sQuickSwitchFontColors, TEXT_SKIP_DRAW, gText_Switch2);
+    PutWindowTilemap(windowId);
+    CopyWindowToVram(windowId, COPYWIN_FULL);
 }
 
 static u16 *GetPartyMenuPalBufferPtr(u8 paletteId)
