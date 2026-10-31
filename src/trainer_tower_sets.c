@@ -11149,6 +11149,12 @@ const struct EReaderTrainerTowerSetSubstruct gTrainerTowerLocalHeader = {
     .id = 1
 };
 
+// Header for the vanilla (standard) challenges, chosen at the lobby counter
+const struct EReaderTrainerTowerSetSubstruct gTrainerTowerLocalHeader_Standard = {
+    .numFloors = MAX_TRAINER_TOWER_FLOORS,
+    .id = 1
+};
+
 const struct TrainerTowerFloor *const gTrainerTowerFloors[NUM_TOWER_CHALLENGE_TYPES][MAX_TRAINER_TOWER_FLOORS] = {
     [CHALLENGE_TYPE_SINGLE] = {
         &sTrainerTowerFloor_Single_1,
