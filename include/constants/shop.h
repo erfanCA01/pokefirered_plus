@@ -9,4 +9,7 @@
 #define COIN_SHOP_TM_PRICE     4000
 #define COIN_SHOP_BERRY_PRICE  200
 
+// Seven Island Mart sells LUXURY BALLs once SELPHY is rescued
+#define LUXURY_BALL_MART_PRICE 9999
+
 #endif // GUARD_CONSTANTS_SHOP_H

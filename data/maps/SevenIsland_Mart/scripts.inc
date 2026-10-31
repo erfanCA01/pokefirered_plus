@@ -7,10 +7,32 @@ SevenIsland_Mart_EventScript_Clerk::
 	faceplayer
 	message Text_MayIHelpYou
 	waitmessage
+	goto_if_set FLAG_HIDE_LOST_CAVE_SELPHY, SevenIsland_Mart_EventScript_ShopWithLuxuryBall
 	pokemart SevenIsland_Mart_Items
 	msgbox Text_PleaseComeAgain
 	release
 	end
+
+@ Once SELPHY has been rescued from the LOST CAVE
+SevenIsland_Mart_EventScript_ShopWithLuxuryBall::
+	pokemart SevenIsland_Mart_ItemsWithLuxuryBall
+	msgbox Text_PleaseComeAgain
+	release
+	end
+
+	.align 2
+SevenIsland_Mart_ItemsWithLuxuryBall::
+	.2byte ITEM_ULTRA_BALL
+	.2byte ITEM_GREAT_BALL
+	.2byte ITEM_LUXURY_BALL
+	.2byte ITEM_FULL_RESTORE
+	.2byte ITEM_MAX_POTION
+	.2byte ITEM_HYPER_POTION
+	.2byte ITEM_REVIVE
+	.2byte ITEM_FULL_HEAL
+	.2byte ITEM_ESCAPE_ROPE
+	.2byte ITEM_MAX_REPEL
+	.2byte ITEM_NONE
 
 	.align 2
 SevenIsland_Mart_Items::

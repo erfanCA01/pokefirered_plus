@@ -341,6 +341,9 @@ static u32 GetShopItemPrice(u16 itemId)
             return COIN_SHOP_TM_PRICE;
         return COIN_SHOP_BERRY_PRICE;
     default:
+        // Buy price only, so selling one back still pays half the item's price
+        if (itemId == ITEM_LUXURY_BALL)
+            return LUXURY_BALL_MART_PRICE;
         return ItemId_GetPrice(itemId);
     }
 }
@@ -790,7 +793,7 @@ static void BuyMenuPrintPriceInList(u8 windowId, u32 item, u8 y)
         }
         else
         {
-            ConvertIntToDecimalStringN(gStringVar1, ItemId_GetPrice(item), 0, 4);
+            ConvertIntToDecimalStringN(gStringVar1, GetShopItemPrice(item), 0, 4);
             x = 4 - StringLength(gStringVar1);
         }
         loc = gStringVar4;
@@ -1210,10 +1213,31 @@ static void BuyMenuSubtractMoney(u8 taskId)
 
 static void Task_ReturnToItemListAfterItemPurchase(u8 taskId)
 {
+    s16 *data = gTasks[taskId].data;
+
     if (JOY_NEW(A_BUTTON) || JOY_NEW(B_BUTTON))
     {
         PlaySE(SE_SELECT);
-        BuyMenuReturnToItemList(taskId);
+
+        // Purchasing 10+ Poke Balls gets the player a Premier Ball, as in Emerald,
+        // plus another for every further 10
+        if (tItemId == ITEM_POKE_BALL && tItemCount >= 10 && AddBagItem(ITEM_PREMIER_BALL, tItemCount / 10) == TRUE)
+        {
+            if (tItemCount / 10 == 1)
+            {
+                BuyMenuDisplayMessage(taskId, gText_ThrowInPremierBall, BuyMenuReturnToItemList);
+            }
+            else
+            {
+                ConvertIntToDecimalStringN(gStringVar1, tItemCount / 10, STR_CONV_MODE_LEFT_ALIGN, 1);
+                StringExpandPlaceholders(gStringVar4, gText_ThrowInPremierBalls);
+                BuyMenuDisplayMessage(taskId, gStringVar4, BuyMenuReturnToItemList);
+            }
+        }
+        else
+        {
+            BuyMenuReturnToItemList(taskId);
+        }
     }
 }
 
@@ -1307,7 +1331,10 @@ void RecordItemTransaction(u16 itemId, u16 quantity, u8 logEventId)
     {
         // logEventId will either be 1 (bought) or 2 (sold)
         // so for buying it will add the full price and selling will add half price
-        history->totalMoney += (ItemId_GetPrice(itemId) >> (logEventId - 1)) * quantity;
+        if (logEventId == QL_EVENT_BOUGHT_ITEM - QL_EVENT_USED_POKEMART)
+            history->totalMoney += GetShopItemPrice(itemId) * quantity;
+        else
+            history->totalMoney += (ItemId_GetPrice(itemId) >> (logEventId - 1)) * quantity;
         if (history->totalMoney > 999999)
             history->totalMoney = 999999;
     }
