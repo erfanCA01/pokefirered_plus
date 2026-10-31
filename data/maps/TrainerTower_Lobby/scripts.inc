@@ -148,13 +148,6 @@ TrainerTower_Lobby_EventScript_EntryTrigger::
 	@ (chosen in the mode menu below) and is kept until the next visit to the counter.
 	clearflag FLAG_TRAINER_TOWER_EREADER
 	msgbox TrainerTower_Lobby_Text_WelcomeToTrainerTower
-	ttower_getnumfloors
-	goto_if_eq VAR_RESULT, FALSE, TrainerTower_Lobby_EventScript_AllFloorsUsed
-	msgbox TrainerTower_Lobby_Text_TrainersUpToFloorNum
-	goto TrainerTower_Lobby_EventScript_AskEnterChallenge
-
-TrainerTower_Lobby_EventScript_AllFloorsUsed::
-	msgbox TrainerTower_Lobby_Text_TrainersUpEighthFloor
 TrainerTower_Lobby_EventScript_AskEnterChallenge::
 	message TrainerTower_Lobby_Text_LikeToChallengeTrainers
 	waitmessage
@@ -187,7 +180,9 @@ TrainerTower_Lobby_EventScript_ChooseChallenge::
 TrainerTower_Lobby_EventScript_BeginEReaderChallenge::
 	setflag FLAG_TRAINER_TOWER_EREADER
 	ttower_getnumfloors
-	call_if_eq VAR_RESULT, TRUE, TrainerTower_Lobby_EventScript_EReaderNumFloors
+	goto_if_eq VAR_RESULT, FALSE, TrainerTower_Lobby_EventScript_EReaderAllFloors
+	msgbox TrainerTower_Lobby_Text_TrainersUpToFloorNum
+TrainerTower_Lobby_EventScript_EReaderStart::
 	setvar VAR_MAP_SCENE_TRAINER_TOWER, 1
 	special HealPlayerParty
 	msgbox TrainerTower_Lobby_Text_StartClockGetSetGo
@@ -197,6 +192,7 @@ TrainerTower_Lobby_EventScript_BeginEReaderChallenge::
 
 TrainerTower_Lobby_EventScript_BeginChallenge::
 	copyvar VAR_0x8005, VAR_RESULT
+	msgbox TrainerTower_Lobby_Text_TrainersUpEighthFloor
 	setvar VAR_MAP_SCENE_TRAINER_TOWER, 1
 	special HealPlayerParty
 	msgbox TrainerTower_Lobby_Text_StartClockGetSetGo
@@ -204,9 +200,9 @@ TrainerTower_Lobby_EventScript_BeginChallenge::
 	releaseall
 	end
 
-TrainerTower_Lobby_EventScript_EReaderNumFloors::
-	msgbox TrainerTower_Lobby_Text_TrainersUpToFloorNum
-	return
+TrainerTower_Lobby_EventScript_EReaderAllFloors::
+	msgbox TrainerTower_Lobby_Text_TrainersUpEighthFloor
+	goto TrainerTower_Lobby_EventScript_EReaderStart
 
 TrainerTower_Lobby_EventScript_DeclineChallenge::
 	msgbox TrainerTower_Lobby_Text_PleaseVisitUsAgain
