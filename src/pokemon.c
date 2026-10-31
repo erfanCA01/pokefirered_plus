@@ -5017,6 +5017,35 @@ u8 GetNature(struct Pokemon *mon)
     return GetMonData(mon, MON_DATA_PERSONALITY, NULL) % NUM_NATURES;
 }
 
+// Collects the given bit of each IV in the order HP, Atk, Def, Speed, Sp.Atk, Sp.Def,
+// as Cmd_hiddenpowercalc does.
+static u8 GetHiddenPowerIVBits(struct Pokemon *mon, u8 bit)
+{
+    u8 bits = 0;
+    u8 i;
+
+    for (i = 0; i < NUM_STATS; i++)
+        bits |= ((GetMonData(mon, MON_DATA_HP_IV + i, NULL) >> bit) & 1) << i;
+    return bits;
+}
+
+// Same type as Cmd_hiddenpowercalc gives in battle
+u8 GetMonHiddenPowerType(struct Pokemon *mon)
+{
+    // Skips TYPE_NORMAL and TYPE_MYSTERY
+    u8 type = ((NUMBER_OF_MON_TYPES - 3) * GetHiddenPowerIVBits(mon, 0)) / 63 + 1;
+
+    if (type >= TYPE_MYSTERY)
+        type++;
+    return type;
+}
+
+// Same base power as Cmd_hiddenpowercalc gives in battle (30-70)
+u8 GetMonHiddenPowerPower(struct Pokemon *mon)
+{
+    return (40 * GetHiddenPowerIVBits(mon, 1)) / 63 + 30;
+}
+
 static u8 GetNatureFromPersonality(u32 personality)
 {
     return personality % NUM_NATURES;
