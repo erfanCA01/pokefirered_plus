@@ -144,6 +144,9 @@ TrainerTower_Lobby_EventScript_EntryTrigger::
 	lockall
 	applymovement LOCALID_PLAYER, TrainerTower_Lobby_Movement_FaceReceptionist
 	textcolor NPC_TEXT_COLOR_FEMALE
+	@ This trigger only runs between challenges. FLAG_TRAINER_TOWER_EREADER marks an e-Reader run
+	@ (chosen in the mode menu below) and is kept until the next visit to the counter.
+	clearflag FLAG_TRAINER_TOWER_EREADER
 	msgbox TrainerTower_Lobby_Text_WelcomeToTrainerTower
 	ttower_getnumfloors
 	goto_if_eq VAR_RESULT, FALSE, TrainerTower_Lobby_EventScript_AllFloorsUsed
@@ -169,6 +172,22 @@ TrainerTower_Lobby_EventScript_ChallengeInfo::
 	end
 
 TrainerTower_Lobby_EventScript_ChooseChallenge::
+	multichoice 13, 2, MULTICHOICE_TRAINER_TOWER_MODE, FALSE
+	switch VAR_RESULT
+	case CHALLENGE_TYPE_SINGLE, TrainerTower_Lobby_EventScript_BeginChallenge
+	case CHALLENGE_TYPE_DOUBLE, TrainerTower_Lobby_EventScript_BeginChallenge
+	case CHALLENGE_TYPE_KNOCKOUT, TrainerTower_Lobby_EventScript_BeginChallenge
+	case CHALLENGE_TYPE_MIXED, TrainerTower_Lobby_EventScript_BeginChallenge
+	case CHALLENGE_TYPE_EREADER, TrainerTower_Lobby_EventScript_BeginEReaderChallenge
+	case 5, TrainerTower_Lobby_EventScript_DeclineChallenge
+	case SCR_MENU_CANCEL, TrainerTower_Lobby_EventScript_DeclineChallenge
+	end
+
+@ The e-Reader trainers (scanned card, else the built-in e-Card floors) may use fewer floors
+TrainerTower_Lobby_EventScript_BeginEReaderChallenge::
+	setflag FLAG_TRAINER_TOWER_EREADER
+	ttower_getnumfloors
+	call_if_eq VAR_RESULT, TRUE, TrainerTower_Lobby_EventScript_EReaderNumFloors
 	setvar VAR_MAP_SCENE_TRAINER_TOWER, 1
 	special HealPlayerParty
 	msgbox TrainerTower_Lobby_Text_StartClockGetSetGo
@@ -184,6 +203,10 @@ TrainerTower_Lobby_EventScript_BeginChallenge::
 	ttower_startchallenge
 	releaseall
 	end
+
+TrainerTower_Lobby_EventScript_EReaderNumFloors::
+	msgbox TrainerTower_Lobby_Text_TrainersUpToFloorNum
+	return
 
 TrainerTower_Lobby_EventScript_DeclineChallenge::
 	msgbox TrainerTower_Lobby_Text_PleaseVisitUsAgain

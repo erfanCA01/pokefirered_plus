@@ -495,6 +495,7 @@ static const struct MenuAction sMultichoiceList_TrainerTowerMode[] = {
     { gOtherText_Double },
     { gOtherText_Knockout },
     { gOtherText_Mixed },
+    { gOtherText_EReader },
     { gOtherText_Exit }
 };
 

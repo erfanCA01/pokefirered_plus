@@ -96,6 +96,7 @@ static void HasSpokenToOwner(void);
 static void BuildEnemyParty(void);
 static s32 GetPartyMaxLevel(void);
 static void ValidateOrResetCurTrainerTowerRecord(void);
+static u32 GetTrainerTowerSavedChallengeId(void);
 static u32 GetTrainerTowerRecordTime(u32 *);
 static void SetTrainerTowerRecordTime(u32 *, u32);
 
@@ -434,6 +435,7 @@ static const u8 sKnockoutChallengeMonIdxs[MAX_TRAINER_TOWER_FLOORS][3] = {
 };
 
 extern const struct EReaderTrainerTowerSetSubstruct gTrainerTowerLocalHeader;
+extern const struct EReaderTrainerTowerSetSubstruct gTrainerTowerLocalHeader_Standard;
 extern const struct TrainerTowerFloor *const gTrainerTowerFloors[][MAX_TRAINER_TOWER_FLOORS];
 
 void CallTrainerTowerFunc(void)
@@ -519,14 +521,25 @@ static void SetUpTrainerTowerDataStruct(void)
 
     sTrainerTowerState = AllocZeroed(sizeof(*sTrainerTowerState));
     sTrainerTowerState->floorIdx = gMapHeader.mapLayoutId - LAYOUT_TRAINER_TOWER_1F;
-    if (ReadTrainerTowerAndValidate() == TRUE)
+    if (IsTrainerTowerEReaderChallenge() && ReadTrainerTowerAndValidate() == TRUE)
         CEReaderTool_LoadTrainerTower(&sTrainerTowerState->data);
     else
     {
         struct TrainerTowerState * ttstate_p = sTrainerTowerState;
-        const struct EReaderTrainerTowerSetSubstruct * header_p = &gTrainerTowerLocalHeader;
+        const struct EReaderTrainerTowerSetSubstruct * header_p;
+
+        // e-Reader trainers: the built-in e-Card floors. Standard: the vanilla floors of the chosen challenge type
+        if (IsTrainerTowerEReaderChallenge())
+        {
+            header_p = &gTrainerTowerLocalHeader;
+            floors_p = gTrainerTowerFloors[CHALLENGE_TYPE_EREADER];
+        }
+        else
+        {
+            header_p = &gTrainerTowerLocalHeader_Standard;
+            floors_p = gTrainerTowerFloors[GetTrainerTowerSavedChallengeId()];
+        }
         memcpy(&ttstate_p->data, header_p, sizeof(struct EReaderTrainerTowerSetSubstruct));
-        floors_p = gTrainerTowerFloors[CHALLENGE_TYPE_EREADER];
         for (i = 0; i < MAX_TRAINER_TOWER_FLOORS; i++)
         {
             *(sTrainerTowerState->data.floors + i) = *(floors_p[i]); // manual pointer arithmetic needed to match
@@ -768,10 +781,14 @@ static void GetFloorAlreadyCleared(void)
 
 static void StartTrainerTowerChallenge(void)
 {
-    // Vanilla indexes trainerTower[] with this unchecked, so never store the e-Reader type
-    gSaveBlock1Ptr->towerChallengeId = CHALLENGE_TYPE_SINGLE;
+    // Vanilla indexes trainerTower[] with this unchecked, so never store the e-Reader type. The e-Reader
+    // challenge is marked by FLAG_TRAINER_TOWER_EREADER (set by the lobby script) and keeps Single here.
+    if (IsTrainerTowerEReaderChallenge() || gSpecialVar_0x8005 >= NUM_TOWER_CHALLENGE_TYPES_SAVED)
+        gSaveBlock1Ptr->towerChallengeId = CHALLENGE_TYPE_SINGLE;
+    else
+        gSaveBlock1Ptr->towerChallengeId = gSpecialVar_0x8005;
     ValidateOrResetCurTrainerTowerRecord();
-    if (!ReadTrainerTowerAndValidate())
+    if (!IsTrainerTowerEReaderChallenge() || !ReadTrainerTowerAndValidate())
         TRAINER_TOWER.validated = TRUE;
     else
         TRAINER_TOWER.validated = FALSE;
@@ -1091,12 +1108,26 @@ struct TrainerTower *GetTrainerTowerRecord(u32 challengeType)
     return record;
 }
 
-struct TrainerTower *GetCurrentTrainerTowerRecord(void)
+bool32 IsTrainerTowerEReaderChallenge(void)
+{
+    return FlagGet(FLAG_TRAINER_TOWER_EREADER);
+}
+
+static u32 GetTrainerTowerSavedChallengeId(void)
 {
     // Older saves may hold the e-Reader type here
     if (gSaveBlock1Ptr->towerChallengeId >= NUM_TOWER_CHALLENGE_TYPES_SAVED)
         gSaveBlock1Ptr->towerChallengeId = CHALLENGE_TYPE_SINGLE;
-    return GetTrainerTowerRecord(CHALLENGE_TYPE_EREADER);
+    return gSaveBlock1Ptr->towerChallengeId;
+}
+
+struct TrainerTower *GetCurrentTrainerTowerRecord(void)
+{
+    u32 challengeId = GetTrainerTowerSavedChallengeId();
+
+    if (IsTrainerTowerEReaderChallenge())
+        return GetTrainerTowerRecord(CHALLENGE_TYPE_EREADER);
+    return GetTrainerTowerRecord(challengeId);
 }
 
 static u32 GetTrainerTowerRecordTime(u32 *counter)
