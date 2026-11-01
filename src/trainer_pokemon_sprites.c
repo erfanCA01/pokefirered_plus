@@ -85,8 +85,13 @@ void LoadPicPaletteByTagOrSlot(u16 species, u32 otId, u32 personality, u8 palett
         }
         else
         {
+            // followers-expanded-id: a caller may ask for a tag other than the species' own so
+            // the palette does not collide with a follower's overworld palette (see CreateMonSprite_FieldMove)
+            struct CompressedSpritePalette palette = *GetMonSpritePalStructFromOtIdPersonality(species, otId, personality);
+
             sCreatingSpriteTemplate.paletteTag = paletteTag;
-            LoadCompressedSpritePalette(GetMonSpritePalStructFromOtIdPersonality(species, otId, personality));
+            palette.tag = paletteTag;
+            LoadCompressedSpritePalette(&palette);
         }
     }
     else

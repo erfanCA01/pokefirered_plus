@@ -605,21 +605,32 @@ static u8 AddNewGameBirchObject(s16 x, s16 y, u8 subpriority)
     return CreateSprite(&sNewGameOakObjectTemplate, x, y, subpriority);
 }
 
+// followers-expanded-id: see FIELD_MOVE_PIC_PAL_TAG_OFFSET below; the picture uses its own palette tag so
+// a follower of the same species (out during the script) cannot hand it its overworld palette.
 u8 CreateMonSprite_PicBox(u16 species, s16 x, s16 y, u8 subpriority)
 {
-    u16 spriteId = CreateMonPicSprite_HandleDeoxys(species, 0, 0x8000, TRUE, x, y, 0, gMonPaletteTable[species].tag);
-    PreservePaletteInWeather(IndexOfSpritePaletteTag(gMonPaletteTable[species].tag) + 0x10);
+    u16 paletteTag = gMonPaletteTable[species].tag + 0x2000;
+    u16 spriteId = CreateMonPicSprite_HandleDeoxys(species, 0, 0x8000, TRUE, x, y, 0, paletteTag);
+    PreservePaletteInWeather(IndexOfSpritePaletteTag(paletteTag) + 0x10);
     if (spriteId == 0xFFFF)
         return MAX_SPRITES;
     else
         return spriteId;
 }
 
+// followers-expanded-id: the follower's overworld sprite keeps a palette loaded under the species tag
+// (species, or species + SPECIES_SHINY_TAG), the same tag the front-sprite palette of this picture
+// uses. LoadSpritePalette would then reuse the overworld palette and the picture would be drawn in
+// the wrong colors (a shiny Charizard's belly turned red). The picture therefore loads its palette
+// under its own tag (see LoadPicPaletteByTagOrSlot).
+#define FIELD_MOVE_PIC_PAL_TAG_OFFSET 0x2000
+
 static u8 CreateMonSprite_FieldMove(u16 species, u32 otId, u32 personality, s16 x, s16 y, u8 subpriority)
 {
     const struct CompressedSpritePalette * spritePalette = GetMonSpritePalStructFromOtIdPersonality(species, otId, personality);
-    u16 spriteId = CreateMonPicSprite_HandleDeoxys(species, otId, personality, 1, x, y, 0, spritePalette->tag);
-    PreservePaletteInWeather(IndexOfSpritePaletteTag(spritePalette->tag) + 0x10);
+    u16 paletteTag = spritePalette->tag + FIELD_MOVE_PIC_PAL_TAG_OFFSET;
+    u16 spriteId = CreateMonPicSprite_HandleDeoxys(species, otId, personality, 1, x, y, 0, paletteTag);
+    PreservePaletteInWeather(IndexOfSpritePaletteTag(paletteTag) + 0x10);
     if (spriteId == 0xFFFF)
         return MAX_SPRITES;
     else
