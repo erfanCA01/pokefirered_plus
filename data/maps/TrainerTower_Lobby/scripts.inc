@@ -176,8 +176,10 @@ TrainerTower_Lobby_EventScript_ChooseChallenge::
 	case SCR_MENU_CANCEL, TrainerTower_Lobby_EventScript_DeclineChallenge
 	end
 
-@ The e-Reader trainers (scanned card, else the built-in e-Card floors) may use fewer floors
+@ The e-Reader trainers (a scanned card is required) may use fewer floors
 TrainerTower_Lobby_EventScript_BeginEReaderChallenge::
+	ttower_hasereaderdata
+	goto_if_eq VAR_RESULT, FALSE, TrainerTower_Lobby_EventScript_NoEReaderTrainers
 	setflag FLAG_TRAINER_TOWER_EREADER
 	ttower_getnumfloors
 	goto_if_eq VAR_RESULT, FALSE, TrainerTower_Lobby_EventScript_EReaderAllFloors
@@ -198,6 +200,11 @@ TrainerTower_Lobby_EventScript_BeginChallenge::
 	msgbox TrainerTower_Lobby_Text_StartClockGetSetGo
 	ttower_startchallenge
 	releaseall
+	end
+
+TrainerTower_Lobby_EventScript_NoEReaderTrainers::
+	msgbox TrainerTower_Lobby_Text_NoEReaderTrainers
+	goto TrainerTower_Lobby_EventScript_ChooseChallenge
 	end
 
 TrainerTower_Lobby_EventScript_EReaderAllFloors::

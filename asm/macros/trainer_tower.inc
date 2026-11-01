@@ -114,6 +114,12 @@
 	special CallTrainerTowerFunc
 	.endm
 
+	@ Returns TRUE if a valid e-Reader Trainer Tower card is saved, otherwise FALSE
+	.macro ttower_hasereaderdata
+	setvar VAR_0x8004, TRAINER_TOWER_FUNC_HAS_EREADER_TRAINERS
+	special CallTrainerTowerFunc
+	.endm
+
 	@ Dummied, always returns FALSE
 	.macro ttower_shouldexit
 	setvar VAR_0x8004, TRAINER_TOWER_FUNC_SHOULD_WARP_TO_COUNTER

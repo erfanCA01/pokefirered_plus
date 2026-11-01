@@ -90,6 +90,7 @@ static void ShowResultsBoard(void);
 static void CloseResultsBoard(void);
 static void TrainerTowerGetDoublesEligiblity(void);
 static void TrainerTowerGetNumFloors(void);
+static void HasEReaderTrainers(void);
 static void ShouldWarpToCounter(void);
 static void PlayTrainerTowerEncounterMusic(void);
 static void HasSpokenToOwner(void);
@@ -348,7 +349,8 @@ static void (*const sTrainerTowerFunctions[])(void) = {
     [TRAINER_TOWER_FUNC_GET_NUM_FLOORS]         = TrainerTowerGetNumFloors,
     [TRAINER_TOWER_FUNC_SHOULD_WARP_TO_COUNTER] = ShouldWarpToCounter,
     [TRAINER_TOWER_FUNC_ENCOUNTER_MUSIC]        = PlayTrainerTowerEncounterMusic,
-    [TRAINER_TOWER_FUNC_GET_BEAT_CHALLENGE]     = HasSpokenToOwner
+    [TRAINER_TOWER_FUNC_GET_BEAT_CHALLENGE]     = HasSpokenToOwner,
+    [TRAINER_TOWER_FUNC_HAS_EREADER_TRAINERS]   = HasEReaderTrainers
 };
 
 // - 1 excludes Mixed challenge, which just uses one of the 3 other types
@@ -949,6 +951,11 @@ static void TrainerTowerGetDoublesEligiblity(void)
     gSpecialVar_Result = GetMonsStateToDoubles();
 }
 
+
+static void HasEReaderTrainers(void)
+{
+    gSpecialVar_Result = ReadTrainerTowerAndValidate();
+}
 
 static void TrainerTowerGetNumFloors(void)
 {
