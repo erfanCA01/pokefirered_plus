@@ -38,10 +38,33 @@ bool8 CheckObjectGraphicsInFrontOfPlayer(u16 graphicsId)
     return TRUE;
 }
 
+// followers-expanded-id: TRUE if the Pokemon in the given party slot is the one the player sees out
+// (the follower that is out of its ball, or the Pokemon floating under the player while surfing).
+// That Pokemon performs the field move itself, so the player does not do the ball-raising pose.
+static bool8 IsFieldMoveUserOutOfBall(u32 slot)
+{
+    struct ObjectEvent *followerObject;
+    u16 surferId;
+
+    if (slot >= PARTY_SIZE)
+        return FALSE;
+    followerObject = GetFollowerObject();
+    if (followerObject != NULL && !followerObject->invisible && GetFirstLiveFollowMon() == &gPlayerParty[slot])
+        return TRUE;
+    surferId = VarGet(VAR_FOLLOWER_SURFER_ID);
+    return TestPlayerAvatarFlags(PLAYER_AVATAR_FLAG_SURFING) && surferId != 0
+        && (GetMonData(&gPlayerParty[slot], MON_DATA_PERSONALITY) & 0xFFFF) == surferId;
+}
+
+// Expects gFieldEffectArguments[0] to be the party slot of the Pokemon using the move.
 u8 CreateFieldEffectShowMon(void)
 {
+    u8 taskId;
+
     GetXYCoordsOneStepInFrontOfPlayer(&gPlayerFacingPosition.x, &gPlayerFacingPosition.y);
-    return CreateTask(Task_FieldEffectShowMon_Init, 8);
+    taskId = CreateTask(Task_FieldEffectShowMon_Init, 8);
+    gTasks[taskId].tSkipPose = IsFieldMoveUserOutOfBall(gFieldEffectArguments[0]);
+    return taskId;
 }
 
 // followers-expanded-id: same as above, but if skipPose is set the player's field move pose is

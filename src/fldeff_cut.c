@@ -162,8 +162,9 @@ bool8 SetUpFieldMove_Cut(void)
 
 static void FieldCallback_CutGrass(void)
 {
-    FieldEffectStart(FLDEFF_USE_CUT_ON_GRASS);
+    // followers-expanded-id: set before the effect starts, CreateFieldEffectShowMon reads it
     gFieldEffectArguments[0] = GetCursorSelectionMonId();
+    FieldEffectStart(FLDEFF_USE_CUT_ON_GRASS);
 }
 
 bool8 FldEff_UseCutOnGrass(void)

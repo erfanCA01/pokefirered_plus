@@ -176,8 +176,11 @@ bool8 SetUpFieldMove_Flash(void)
 
 static void FieldCallback_Flash(void)
 {
-    u8 taskId = CreateFieldEffectShowMon();
+    u8 taskId;
+
+    // followers-expanded-id: set before the effect starts, CreateFieldEffectShowMon reads it
     gFieldEffectArguments[0] = GetCursorSelectionMonId();
+    taskId = CreateFieldEffectShowMon();
     gTasks[taskId].data[8] = ((uintptr_t)FldEff_UseFlash) >> 16;
     gTasks[taskId].data[9] = ((uintptr_t)FldEff_UseFlash);
 }

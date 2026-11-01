@@ -23,8 +23,9 @@ bool8 SetUpFieldMove_Dig(void)
 static void FieldCallback_Dig(void)
 {
     Overworld_ResetStateAfterDigEscRope();
-    FieldEffectStart(FLDEFF_USE_DIG);
+    // followers-expanded-id: set before the effect starts, CreateFieldEffectShowMon reads it
     gFieldEffectArguments[0] = GetCursorSelectionMonId();
+    FieldEffectStart(FLDEFF_USE_DIG);
 }
 
 bool8 FldEff_UseDig(void)

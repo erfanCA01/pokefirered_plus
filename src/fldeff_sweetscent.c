@@ -32,8 +32,9 @@ bool8 SetUpFieldMove_SweetScent(void)
 
 static void FieldCallback_SweetScent(void)
 {
-    FieldEffectStart(FLDEFF_SWEET_SCENT);
+    // followers-expanded-id: set before the effect starts, CreateFieldEffectShowMon reads it
     gFieldEffectArguments[0] = GetCursorSelectionMonId();
+    FieldEffectStart(FLDEFF_SWEET_SCENT);
 }
 
 bool8 FldEff_SweetScent(void)

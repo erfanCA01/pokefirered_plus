@@ -23,8 +23,9 @@ static void FieldCallback_Teleport(void)
 {
     Overworld_ResetStateAfterTeleport();
     HideFollowerForFieldEffect(); // recall the follower into its ball (animated) before teleporting
-    FieldEffectStart(FLDEFF_USE_TELEPORT);
+    // followers-expanded-id: set before the effect starts, CreateFieldEffectShowMon reads it
     gFieldEffectArguments[0] = (u32)GetCursorSelectionMonId();
+    FieldEffectStart(FLDEFF_USE_TELEPORT);
 }
 
 bool8 FldEff_UseTeleport(void)
