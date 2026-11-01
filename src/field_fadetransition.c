@@ -581,7 +581,7 @@ static const u16 sGateBuildingMaps[] = {
 
 static bool8 IsCurrentMapGateBuilding(void)
 {
-    u16 currentMap = gSaveBlock1Ptr->location.mapNum | (gSaveBlock1Ptr->location.mapGroup << 8);
+    u16 currentMap = GetCurrentMapId();
     u32 i;
 
     for (i = 0; i < NELEMS(sGateBuildingMaps); i++)

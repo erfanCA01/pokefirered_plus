@@ -605,11 +605,17 @@ static u8 AddNewGameBirchObject(s16 x, s16 y, u8 subpriority)
     return CreateSprite(&sNewGameOakObjectTemplate, x, y, subpriority);
 }
 
-// followers-expanded-id: see FIELD_MOVE_PIC_PAL_TAG_OFFSET below; the picture uses its own palette tag so
-// a follower of the same species (out during the script) cannot hand it its overworld palette.
+// followers-expanded-id: the follower's overworld sprite keeps a palette loaded under the species tag
+// (species, or species + SPECIES_SHINY_TAG), the same tag the front-sprite palette of a Pokemon picture
+// uses. LoadSpritePalette would then reuse the overworld palette and the picture would be drawn in
+// the wrong colors (a shiny Charizard's belly turned red). The pictures below therefore load their
+// palette under their own tag (see LoadPicPaletteByTagOrSlot). 0x2000 is taken by the follower's
+// reflection palette (PAL_TAG_REFLECTION_OFFSET in field_effect_helpers.c), so this uses 0x3000.
+#define FIELD_MOVE_PIC_PAL_TAG_OFFSET 0x3000
+
 u8 CreateMonSprite_PicBox(u16 species, s16 x, s16 y, u8 subpriority)
 {
-    u16 paletteTag = gMonPaletteTable[species].tag + 0x2000;
+    u16 paletteTag = gMonPaletteTable[species].tag + FIELD_MOVE_PIC_PAL_TAG_OFFSET;
     u16 spriteId = CreateMonPicSprite_HandleDeoxys(species, 0, 0x8000, TRUE, x, y, 0, paletteTag);
     PreservePaletteInWeather(IndexOfSpritePaletteTag(paletteTag) + 0x10);
     if (spriteId == 0xFFFF)
@@ -617,13 +623,6 @@ u8 CreateMonSprite_PicBox(u16 species, s16 x, s16 y, u8 subpriority)
     else
         return spriteId;
 }
-
-// followers-expanded-id: the follower's overworld sprite keeps a palette loaded under the species tag
-// (species, or species + SPECIES_SHINY_TAG), the same tag the front-sprite palette of this picture
-// uses. LoadSpritePalette would then reuse the overworld palette and the picture would be drawn in
-// the wrong colors (a shiny Charizard's belly turned red). The picture therefore loads its palette
-// under its own tag (see LoadPicPaletteByTagOrSlot).
-#define FIELD_MOVE_PIC_PAL_TAG_OFFSET 0x2000
 
 static u8 CreateMonSprite_FieldMove(u16 species, u32 otId, u32 personality, s16 x, s16 y, u8 subpriority)
 {
@@ -1096,9 +1095,9 @@ static u32 GetFlyUserPartyIndex(void)
     return slot >= PARTY_SIZE ? 0 : slot;
 }
 
-// followers-expanded-id: if the Pokemon using Fly is the one following the player (and it is out),
-// returns its object event, otherwise NULL.
-static struct ObjectEvent *GetFollowerObjectIfFieldMoveUser(u32 slot)
+// followers-expanded-id: if the Pokemon in the given party slot (the field move user) is the one
+// following the player and it is out, returns its object event, otherwise NULL.
+struct ObjectEvent *GetFollowerObjectIfFieldMoveUser(u32 slot)
 {
     struct ObjectEvent *followerObject = GetFollowerObject();
 

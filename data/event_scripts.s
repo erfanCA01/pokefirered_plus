@@ -43,12 +43,6 @@
 	.include "asm/macros.inc"
 	.include "asm/macros/event.inc"
 
-@ QoL field moves: QOL_AUTO_OFF / QOL_AUTO_MSG / QOL_AUTO_SILENT (see constants/qol_field_moves.h)
-	.macro QolAutoUseMode var:req
-		callfunc ScrFunc_QolAutoUseMode
-		.2byte \var
-	.endm
-
 	.set FALSE, 0
 	.set TRUE,  1
 

@@ -21,9 +21,7 @@
 // (HM02/HM05 in the bag) even if it does not know the move. Both are only ever started from the
 // party menu; nothing is triggered automatically.
 
-// Values returned by QolAutoUseMode (script side)
-#define QOL_AUTO_OFF    0 // vanilla: ask "Would you like to ...?"
-#define QOL_AUTO_MSG    1 // no prompt, show "<MON> used <MOVE>!"
-#define QOL_AUTO_SILENT 2 // no prompt, no text
+// The scripts (data/scripts/field_moves.inc, surf.inc) pick the prompt/text with assembler .if blocks,
+// so these must stay plain TRUE/FALSE.
 
 #endif // GUARD_CONSTANTS_QOL_FIELD_MOVES_H

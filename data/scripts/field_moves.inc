@@ -19,14 +19,15 @@ EventScript_CutTree::
 	setfieldeffectargument 0, VAR_RESULT
 	bufferpartymonnick STR_VAR_1, VAR_RESULT
 	buffermovename STR_VAR_2, MOVE_CUT
-	QolAutoUseMode VAR_0x8008
-	goto_if_ne VAR_0x8008, QOL_AUTO_OFF, EventScript_CutTreeAuto
+	@ QoL field moves (constants/qol_field_moves.h): no yes/no prompt, optionally no text either
+.if QOL_FIELD_MOVES == FALSE
 	msgbox Text_CutTreeDown, MSGBOX_YESNO
 	goto_if_eq VAR_RESULT, NO, EventScript_DontCutTree
+.endif
+.if QOL_FIELD_MOVES == FALSE || QOL_FIELD_MOVES_NO_MESSAGING == FALSE
 	msgbox Text_MonUsedMove
 	closemessage
-EventScript_CutTreeAuto:
-	call_if_eq VAR_0x8008, QOL_AUTO_MSG, EventScript_QolMonUsedMove
+.endif
 EventScript_CutTreeCommon:
 	@ followers-expanded-id: if the follower is the Cut user it performs the move
 	@ instead of the player (arg 3 = skip the player's pose)
@@ -54,11 +55,6 @@ EventScript_CutTreeDown::
 Movement_CutTreeDown::
 	cut_tree
 	step_end
-
-EventScript_QolMonUsedMove::
-	msgbox Text_MonUsedMove
-	closemessage
-	return
 
 EventScript_CantCutTree::
 	msgbox Text_TreeCanBeCutDown, MSGBOX_SIGN
@@ -91,14 +87,15 @@ EventScript_RockSmash::
 	setfieldeffectargument 0, VAR_RESULT
 	bufferpartymonnick STR_VAR_1, VAR_RESULT
 	buffermovename STR_VAR_2, MOVE_ROCK_SMASH
-	QolAutoUseMode VAR_0x8008
-	goto_if_ne VAR_0x8008, QOL_AUTO_OFF, EventScript_RockSmashAuto
+	@ QoL field moves: see EventScript_CutTree
+.if QOL_FIELD_MOVES == FALSE
 	msgbox Text_UseRockSmash, MSGBOX_YESNO
 	goto_if_eq VAR_RESULT, NO, EventScript_DontSmashRock
+.endif
+.if QOL_FIELD_MOVES == FALSE || QOL_FIELD_MOVES_NO_MESSAGING == FALSE
 	msgbox Text_MonUsedMove
 	closemessage
-EventScript_RockSmashAuto:
-	call_if_eq VAR_0x8008, QOL_AUTO_MSG, EventScript_QolMonUsedMove
+.endif
 EventScript_RockSmashCommon:
 	@ followers-expanded-id: see EventScript_CutTreeCommon
 	IsFollowerFieldMoveUser VAR_0x8004
@@ -264,12 +261,12 @@ EventScript_StrengthBoulder::
 	checkpartymove MOVE_STRENGTH
 	goto_if_eq VAR_RESULT, PARTY_SIZE, EventScript_CantMoveBoulder
 	setfieldeffectargument 0, VAR_RESULT
-	QolAutoUseMode VAR_0x8008
-	goto_if_ne VAR_0x8008, QOL_AUTO_OFF, EventScript_StrengthAuto
+	@ QoL field moves: see EventScript_CutTree
+.if QOL_FIELD_MOVES == FALSE
 	msgbox Text_UseStrength, MSGBOX_YESNO
 	goto_if_eq VAR_RESULT, NO, EventScript_DontUseStrength
 	closemessage
-EventScript_StrengthAuto:
+.endif
 	dofieldeffect FLDEFF_USE_STRENGTH
 	waitstate
 	goto EventScript_UseStrength
@@ -325,22 +322,16 @@ EventScript_Waterfall::
 	goto_if_eq VAR_RESULT, PARTY_SIZE, EventScript_WaterCrashingDown
 	bufferpartymonnick STR_VAR_1, VAR_RESULT
 	setfieldeffectargument 0, VAR_RESULT
-	QolAutoUseMode VAR_0x8008
-	goto_if_ne VAR_0x8008, QOL_AUTO_OFF, EventScript_WaterfallAuto
+	@ QoL field moves: see EventScript_CutTree
+.if QOL_FIELD_MOVES == FALSE
 	msgbox Text_UseWaterfall, MSGBOX_YESNO
 	goto_if_eq VAR_RESULT, NO, EventScript_EndWaterfall
+.endif
+.if QOL_FIELD_MOVES == FALSE || QOL_FIELD_MOVES_NO_MESSAGING == FALSE
 	msgbox Text_MonUsedWaterfall
+.endif
 	dofieldeffect FLDEFF_USE_WATERFALL
 	goto EventScript_EndWaterfall
-
-EventScript_WaterfallAuto:
-	call_if_eq VAR_0x8008, QOL_AUTO_MSG, EventScript_QolMonUsedWaterfall
-	dofieldeffect FLDEFF_USE_WATERFALL
-	goto EventScript_EndWaterfall
-
-EventScript_QolMonUsedWaterfall:
-	msgbox Text_MonUsedWaterfall
-	return
 
 EventScript_CantUseWaterfall::
 	lockall

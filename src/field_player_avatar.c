@@ -1202,6 +1202,16 @@ bool8 PartyHasMonWithSurf(void)
     return FALSE;
 }
 
+// followers-expanded-id: TRUE while surfing if the Pokemon is the one on the float (the Surf user,
+// remembered in VAR_FOLLOWER_SURFER_ID as the low 16 bits of its personality, 0 = none).
+bool8 IsPartyMonTheSurfer(struct Pokemon *mon)
+{
+    u16 surferId = VarGet(VAR_FOLLOWER_SURFER_ID);
+
+    return TestPlayerAvatarFlags(PLAYER_AVATAR_FLAG_SURFING) && surferId != 0
+        && (GetMonData(mon, MON_DATA_PERSONALITY) & 0xFFFF) == surferId;
+}
+
 bool8 IsPlayerSurfingNorth(void)
 {
     if (GetPlayerMovementDirection() == DIR_NORTH && TestPlayerAvatarFlags(PLAYER_AVATAR_FLAG_SURFING))

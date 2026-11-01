@@ -1,36 +1,39 @@
 #include "global.h"
-#include "event_data.h"
 #include "event_object_movement.h"
 #include "item.h"
 #include "party_menu.h"
 #include "pokemon.h"
-#include "script.h"
 #include "qol_field_moves.h"
 #include "constants/items.h"
 #include "constants/moves.h"
 #include "constants/qol_field_moves.h"
 
-// Returns the HM item that teaches the given move, or ITEM_NONE.
-static u16 GetHmItemForMove(u16 move)
+// The prompt/text part of QoL field moves is chosen at build time in the scripts
+// (data/scripts/field_moves.inc, surf.inc); this file only finds a Pokemon that can use the move.
+
+#if QOL_FIELD_MOVES
+// Returns the HM that teaches the given move if it is in the bag, or ITEM_NONE.
+static u16 GetHmInBagForMove(u16 move)
 {
     u16 item;
 
     for (item = ITEM_HM01; item <= ITEM_HM08; item++)
     {
         if (ItemIdToBattleMoveId(item) == move)
-            return item;
+            return CheckBagHasItem(item, 1) ? item : ITEM_NONE;
     }
     return ITEM_NONE;
 }
+#endif
 
 // TRUE if the Pokemon does not need to know the move: the matching HM is in the bag and the
 // Pokemon is compatible with it.
 bool8 QolMonCanUseFieldMove(struct Pokemon *mon, u16 move)
 {
 #if QOL_FIELD_MOVES
-    u16 item = GetHmItemForMove(move);
+    u16 item = GetHmInBagForMove(move);
 
-    return item != ITEM_NONE && CheckBagHasItem(item, 1) && CanMonLearnTMHM(mon, item - ITEM_TM01);
+    return item != ITEM_NONE && CanMonLearnTMHM(mon, item - ITEM_TM01);
 #else
     return FALSE;
 #endif
@@ -42,38 +45,25 @@ bool8 QolMonCanUseFieldMove(struct Pokemon *mon, u16 move)
 u8 QolFindFieldMoveUser(u16 move)
 {
 #if QOL_FIELD_MOVES
-    u8 i;
+    u8 i, tm;
+    u16 item = GetHmInBagForMove(move);
     struct Pokemon *follower;
 
-    if (GetHmItemForMove(move) == ITEM_NONE || !CheckBagHasItem(GetHmItemForMove(move), 1))
+    if (item == ITEM_NONE)
         return PARTY_SIZE;
+    tm = item - ITEM_TM01;
 
     follower = GetFirstLiveFollowMon();
-    if (follower != NULL && QolMonCanUseFieldMove(follower, move))
+    if (follower != NULL && CanMonLearnTMHM(follower, tm))
         return follower - gPlayerParty;
 
     for (i = 0; i < PARTY_SIZE; i++)
     {
         if (GetMonData(&gPlayerParty[i], MON_DATA_SPECIES) == SPECIES_NONE)
             break;
-        if (QolMonCanUseFieldMove(&gPlayerParty[i], move))
+        if (CanMonLearnTMHM(&gPlayerParty[i], tm))
             return i;
     }
 #endif
     return PARTY_SIZE;
-}
-
-// callfunc: writes the QOL_AUTO_* mode to the given script variable.
-bool8 ScrFunc_QolAutoUseMode(struct ScriptContext *ctx)
-{
-    u16 *var = GetVarPointer(ScriptReadHalfword(ctx));
-
-    if (var == NULL)
-        return FALSE;
-#if QOL_FIELD_MOVES
-    *var = QOL_FIELD_MOVES_NO_MESSAGING ? QOL_AUTO_SILENT : QOL_AUTO_MSG;
-#else
-    *var = QOL_AUTO_OFF;
-#endif
-    return FALSE;
 }

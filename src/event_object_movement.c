@@ -2857,18 +2857,18 @@ void MarkFollowerRecalledForWhiteout(void)
 // (Colosseum, Trade Center), and stays away while the player is inside.
 static bool8 IsCurrentMapLinkRoom(void)
 {
-    u16 currentMap = gSaveBlock1Ptr->location.mapNum | (gSaveBlock1Ptr->location.mapGroup << 8);
+    u16 currentMap = GetCurrentMapId();
 
     return currentMap == MAP_BATTLE_COLOSSEUM_2P
         || currentMap == MAP_BATTLE_COLOSSEUM_4P
         || currentMap == MAP_TRADE_CENTER;
 }
 
-// The follower stays in its ball inside elevators and during a Trainer Tower challenge (the
-// lobby script recalls it just before the challenge starts). It comes back on leaving them.
+// The follower stays in its ball inside elevators and on the Trainer Tower floors (the warp
+// from the lobby already recalls it). It comes back on leaving them.
 static bool8 IsCurrentMapNoFollower(void)
 {
-    u16 currentMap = gSaveBlock1Ptr->location.mapNum | (gSaveBlock1Ptr->location.mapGroup << 8);
+    u16 currentMap = GetCurrentMapId();
 
     return currentMap == MAP_CELADON_CITY_DEPARTMENT_STORE_ELEVATOR
         || currentMap == MAP_SILPH_CO_ELEVATOR
@@ -2898,7 +2898,7 @@ static bool8 IsRoomyIndoorLayout(u16 layoutId)
 
 static bool8 IsPokemonTower(void)
 {
-    u16 currentMap = gSaveBlock1Ptr->location.mapNum | (gSaveBlock1Ptr->location.mapGroup << 8);
+    u16 currentMap = GetCurrentMapId();
 
     return currentMap >= MAP_POKEMON_TOWER_1F && currentMap <= MAP_POKEMON_TOWER_7F;
 }
@@ -3315,17 +3315,10 @@ bool8 ScrFunc_getfolloweraction(struct ScriptContext *ctx) // Essentially a big 
 bool8 ScrFunc_IsFollowerFieldMoveUser(struct ScriptContext *ctx)
 {
     u16 *var = GetVarPointer(ScriptReadHalfword(ctx));
-    u16 userIndex = gFieldEffectArguments[0]; // field move user index
-    struct Pokemon *follower = GetFirstLiveFollowMon();
-    struct ObjectEvent *obj = GetFollowerObject();
+
     if (var == NULL)
         return FALSE;
-    *var = FALSE;
-    if (follower && obj && !obj->invisible)
-    {
-        u16 followIndex = ((u32)follower - (u32)gPlayerParty) / sizeof(struct Pokemon);
-        *var = userIndex == followIndex;
-    }
+    *var = GetFollowerObjectIfFieldMoveUser((u16)gFieldEffectArguments[0]) != NULL;
     return FALSE;
 }
 

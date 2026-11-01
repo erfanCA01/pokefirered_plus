@@ -2,6 +2,7 @@
 #include "gflib.h"
 #include "data.h"
 #include "event_data.h"
+#include "field_player_avatar.h"
 #include "event_object_movement.h"
 #include "item.h"
 #include "item_menu.h"
@@ -2114,11 +2115,7 @@ static void PlayerHandleSwitchInAnim(void)
 // VAR_FOLLOWER_SURFER_ID) is already out, so it slides in instead of being thrown from a ball.
 static bool8 IsSentOutMonTheSurfer(void)
 {
-    u16 surferId = VarGet(VAR_FOLLOWER_SURFER_ID);
-
-    return (gPlayerAvatar.flags & PLAYER_AVATAR_FLAG_SURFING)
-        && surferId != 0
-        && (GetMonData(&gPlayerParty[gBattlerPartyIndexes[gActiveBattler]], MON_DATA_PERSONALITY) & 0xFFFF) == surferId;
+    return IsPartyMonTheSurfer(&gPlayerParty[gBattlerPartyIndexes[gActiveBattler]]);
 }
 
 // The follower is normally "the first live party Pokemon", which changes the moment it faints, so the

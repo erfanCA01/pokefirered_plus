@@ -1,6 +1,6 @@
 // followers-expanded-id: shiny-palette overrides for species whose FireRed-native shiny
 // battle palette (src/data/graphics/pokemon.h, gMonShinyPaletteTable) differs from the shiny
-// colors Emerald's followers-expanded-id branch ships (arrant's own Gen-3-wide shiny color
+// colors Emerald's followers-expanded-id branch ships (aarant's own Gen-3-wide shiny color
 // corrections). These are OW-follower-only overrides via gFollowerPalettes
 // (src/data/object_events/object_event_graphics_info_followers.h) -- FireRed's own native
 // shiny battle palettes are untouched and still used everywhere else, including battles.

@@ -137,6 +137,7 @@ bool32 Overworld_IsBikingAllowed(void);
 void Overworld_ResetStateAfterDigEscRope(void);
 bool32 Overworld_LinkRecvQueueLengthMoreThan2(void);
 u8 GetCurrentMapType(void);
+u16 GetCurrentMapId(void);
 
 u8 GetLastUsedWarpMapType(void);
 const struct MapHeader *const GetDestinationWarpMapHeader(void);
