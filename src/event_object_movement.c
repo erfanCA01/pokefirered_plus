@@ -33,6 +33,7 @@
 #include "constants/battle.h"
 #include "constants/event_object_movement.h"
 #include "constants/event_objects.h"
+#include "constants/layouts.h"
 #include "constants/metatile_behaviors.h"
 #include "constants/region_map_sections.h"
 #include "constants/songs.h"
@@ -2756,8 +2757,15 @@ static bool8 GetFollowerInfo(u16 *species, u8 *form, u8 *shiny)
 // form | shiny << 5 in varForm (the variable the Day Care object events read their shininess from).
 // If indoors, a mon that is too big for the Day Care's small room is left out: one whose overworld
 // sprite is larger than 32x32 (like the follower itself, see UpdateFollowingPokemon), or one that is
-// 2.0 m tall or more according to its Pokedex entry (heights are in decimeters).
-#define DAYCARE_INDOOR_MAX_HEIGHT 20
+// 2.1 m tall or more according to its Pokedex entry (heights are in decimeters).
+#define DAYCARE_INDOOR_MAX_HEIGHT 21
+
+// Shared by the Day Care mons and the follower: too big for an indoor map.
+static bool8 IsMonTooBigForIndoors(u16 species, u8 form)
+{
+    return SpeciesToGraphicsInfo(species, form)->oam->size > ST_OAM_SIZE_2
+        || gPokedexEntries[SpeciesToNationalPokedexNum(species)].height >= DAYCARE_INDOOR_MAX_HEIGHT;
+}
 
 static bool8 SetDaycareMonGfxVars(struct BoxPokemon *boxMon, u16 varGfx, u16 varForm, bool8 indoors)
 {
@@ -2770,9 +2778,7 @@ static bool8 SetDaycareMonGfxVars(struct BoxPokemon *boxMon, u16 varGfx, u16 var
     GetMonInfo((struct Pokemon *)boxMon, &species, &form, &shiny);
     if (species == SPECIES_NONE)
         return FALSE;
-    if (indoors
-     && (SpeciesToGraphicsInfo(species, form)->oam->size > ST_OAM_SIZE_2
-      || gPokedexEntries[SpeciesToNationalPokedexNum(species)].height >= DAYCARE_INDOOR_MAX_HEIGHT))
+    if (indoors && IsMonTooBigForIndoors(species, form))
         return FALSE;
     graphicsId = (OBJ_EVENT_GFX_MON_BASE + species) & OBJ_EVENT_GFX_SPECIES_MASK;
     graphicsId |= form << OBJ_EVENT_GFX_SPECIES_BITS;
@@ -2858,6 +2864,54 @@ static bool8 IsCurrentMapLinkRoom(void)
         || currentMap == MAP_TRADE_CENTER;
 }
 
+// The follower stays in its ball inside elevators and during a Trainer Tower challenge (the
+// lobby script recalls it just before the challenge starts). It comes back on leaving them.
+static bool8 IsCurrentMapNoFollower(void)
+{
+    u16 currentMap = gSaveBlock1Ptr->location.mapNum | (gSaveBlock1Ptr->location.mapGroup << 8);
+
+    return currentMap == MAP_CELADON_CITY_DEPARTMENT_STORE_ELEVATOR
+        || currentMap == MAP_SILPH_CO_ELEVATOR
+        || currentMap == MAP_ROCKET_HIDEOUT_ELEVATOR
+        || currentMap == MAP_TRAINER_TOWER_ELEVATOR
+        || (currentMap >= MAP_TRAINER_TOWER_1F && currentMap <= MAP_TRAINER_TOWER_ROOF);
+}
+
+// MAP_TYPE_INDOOR also covers roomy places where a big follower is fine. Maps that allow running
+// (Silph Co, Pokemon Mansion, Rocket Hideout, SS Anne, Trainer Tower, most route gates, ...) are
+// exempted by IsFollowerTooLargeForIndoors; the gates and tunnels that do not allow running are
+// matched by layout here (the gate maps share a few layouts).
+static bool8 IsRoomyIndoorLayout(u16 layoutId)
+{
+    return layoutId == LAYOUT_ENTRANCE_1F
+        || layoutId == LAYOUT_ENTRANCE_2F
+        || layoutId == LAYOUT_ROUTE12_NORTH_ENTRANCE_1F
+        || layoutId == LAYOUT_ROUTE16_NORTH_ENTRANCE_1F
+        || layoutId == LAYOUT_ROUTE2_ENTRANCE
+        || layoutId == LAYOUT_ROUTE22_NORTH_ENTRANCE
+        || layoutId == LAYOUT_SAFFRON_CITY_NORTH_SOUTH_ENTRANCE
+        || layoutId == LAYOUT_SAFFRON_CITY_EAST_WEST_ENTRANCE
+        || layoutId == LAYOUT_UNDERGROUND_PATH_ENTRANCE
+        || layoutId == LAYOUT_UNDERGROUND_PATH_EAST_WEST_TUNNEL
+        || layoutId == LAYOUT_UNDERGROUND_PATH_NORTH_SOUTH_TUNNEL;
+}
+
+static bool8 IsPokemonTower(void)
+{
+    u16 currentMap = gSaveBlock1Ptr->location.mapNum | (gSaveBlock1Ptr->location.mapGroup << 8);
+
+    return currentMap >= MAP_POKEMON_TOWER_1F && currentMap <= MAP_POKEMON_TOWER_7F;
+}
+
+static bool8 IsFollowerTooLargeForIndoors(u16 species, u8 form)
+{
+    return gMapHeader.mapType == MAP_TYPE_INDOOR
+        && !IsPokemonTower()
+        && !gMapHeader.allowRunning
+        && !IsRoomyIndoorLayout(gMapHeader.mapLayoutId)
+        && IsMonTooBigForIndoors(species, form);
+}
+
 static void UpdateFollowingPokemonInternal(bool8 appearWithoutBall)
 {
     struct ObjectEvent *objEvent;
@@ -2873,15 +2927,17 @@ static void UpdateFollowingPokemonInternal(bool8 appearWithoutBall)
     objEvent = GetFollowerObject();
     // Don't spawn follower if:
     // 1. GetFollowerInfo returns FALSE (no eligible party mon)
-    // 2. Map is indoors and gfx is larger than 32x32
+    // 2. Map is indoors and the mon is too big for it (IsMonTooBigForIndoors, same rule as the Day Care)
     // 3. FLAG_TEMP_HIDE_FOLLOWER is set
     // 4. We are in the Union Room or a Cable Club link room (remote player avatars need the object slots; gotcha #3)
     // 5. The player is in Safari mode (no Pokemon battles there, so no follower)
+    // 6. Elevators and Trainer Tower floors (IsCurrentMapNoFollower)
     if (!GetFollowerInfo(&species, &form, &shiny)
-        || (gMapHeader.mapType == MAP_TYPE_INDOOR && SpeciesToGraphicsInfo(species, 0)->oam->size > ST_OAM_SIZE_2)
+        || IsFollowerTooLargeForIndoors(species, form)
         || FlagGet(FLAG_TEMP_HIDE_FOLLOWER)
         || InUnionRoom()
         || IsCurrentMapLinkRoom()
+        || IsCurrentMapNoFollower()
         || FlagGet(FLAG_SYS_SAFARI_MODE))
     {
         RemoveFollowingPokemon();
