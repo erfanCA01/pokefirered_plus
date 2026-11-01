@@ -1,6 +1,11 @@
 #ifndef GUARD_TRAINER_TOWER_H
 #define GUARD_TRAINER_TOWER_H
 
+struct TrainerTower;
+
+struct TrainerTower *GetTrainerTowerRecord(u32 challengeType);
+struct TrainerTower *GetCurrentTrainerTowerRecord(void);
+bool32 IsTrainerTowerEReaderChallenge(void);
 void PrintTrainerTowerRecords(void);
 void InitTrainerTowerBattleStruct(void);
 void FreeTrainerTowerBattleStruct(void);

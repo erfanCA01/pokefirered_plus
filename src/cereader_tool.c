@@ -84,7 +84,7 @@ static bool32 CEReaderTool_LoadTrainerTower_r(struct EReaderTrainerTowerSet * tt
 
 bool32 CEReaderTool_LoadTrainerTower(struct EReaderTrainerTowerSet * ttdata)
 {
-    void *buffer = AllocZeroed(SECTOR_SIZE);
+    void *buffer = AllocZeroed(SECTOR_SIZE * 2);
     bool32 success = CEReaderTool_LoadTrainerTower_r(ttdata, buffer);
     Free(buffer);
     return success;
@@ -92,6 +92,8 @@ bool32 CEReaderTool_LoadTrainerTower(struct EReaderTrainerTowerSet * ttdata)
 
 bool32 ReadTrainerTowerAndValidate(void)
 {
-    // Stubbed out. Populated in Emerald
-    return FALSE;
+    struct EReaderTrainerTowerSet *ttdata = AllocZeroed(SECTOR_SIZE * 2);
+    bool32 success = CEReaderTool_LoadTrainerTower(ttdata);
+    Free(ttdata);
+    return success;
 }

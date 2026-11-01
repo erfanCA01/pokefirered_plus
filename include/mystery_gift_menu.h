@@ -8,6 +8,7 @@ void AddTextPrinterToWindow1(const u8 *str);
 void MainCB_FreeAllBuffersAndReturnToInitTitleScreen(void);
 void PrintMysteryGiftOrEReaderTopMenu(bool8, bool32);
 void CB2_InitMysteryGift(void);
+void CB2_InitEReader(void);
 void CB2_MysteryGiftEReader(void);
 s8 DoMysteryGiftYesNo(u8 * textState, u16 * windowId, bool8 yesNoBoxPlacement, const u8 * str);
 void MG_DrawTextBorder(u8 windowId);

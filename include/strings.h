@@ -707,6 +707,7 @@ extern const u8 gText_Other[];
 extern const u8 gOtherText_Double[];
 extern const u8 gOtherText_Knockout[];
 extern const u8 gOtherText_Mixed[];
+extern const u8 gOtherText_EReader[];
 extern const u8 gOtherText_Single[];
 extern const u8 gText_Info[];
 extern const u8 gText_Eggs[];
@@ -1544,5 +1545,12 @@ extern const u8 gText_PokeSum_EggOrigin_Trade[];
 extern const u8 gText_PokeSum_EggOrigin_NicePlace[];
 extern const u8 gText_PokeSum_EggOrigin_Spa[];
 extern const u8 gText_PokeSum_EggOrigin_Trade[];
+
+extern const u8 gText_LinkStandby2[];
+extern const u8 gText_EventSafelyLoaded[];
+extern const u8 gText_LoadErrorEndingSession[];
+extern const u8 gText_PressAToLoadEvent[];
+extern const u8 gText_LoadingEvent[];
+extern const u8 gText_DontRemoveCableTurnOff[];
 
 #endif //GUARD_STRINGS_H

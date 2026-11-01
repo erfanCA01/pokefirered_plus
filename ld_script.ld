@@ -311,6 +311,7 @@ SECTIONS {
         src/berry_powder.o(.text);
         src/minigame_countdown.o(.text);
         src/berry_fix_program.o(.text);
+        src/mystery_event_menu.o(.text);
     } > ROM =0
 
     script_data :
@@ -607,6 +608,7 @@ SECTIONS {
         src/keyboard_text.o(.rodata);
         src/trainer_tower_sets.o(.rodata);
         src/move_descriptions.o(.rodata);
+        src/mystery_event_menu.o(.rodata);
 
         /* These should not be moved to C files */
         src/mystery_event_msg.o(.rodata);

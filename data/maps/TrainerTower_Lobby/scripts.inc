@@ -144,14 +144,10 @@ TrainerTower_Lobby_EventScript_EntryTrigger::
 	lockall
 	applymovement LOCALID_PLAYER, TrainerTower_Lobby_Movement_FaceReceptionist
 	textcolor NPC_TEXT_COLOR_FEMALE
+	@ This trigger only runs between challenges. FLAG_TRAINER_TOWER_EREADER marks an e-Reader run
+	@ (chosen in the mode menu below) and is kept until the next visit to the counter.
+	clearflag FLAG_TRAINER_TOWER_EREADER
 	msgbox TrainerTower_Lobby_Text_WelcomeToTrainerTower
-	ttower_getnumfloors
-	goto_if_eq VAR_RESULT, FALSE, TrainerTower_Lobby_EventScript_AllFloorsUsed
-	msgbox TrainerTower_Lobby_Text_TrainersUpToFloorNum
-	goto TrainerTower_Lobby_EventScript_AskEnterChallenge
-
-TrainerTower_Lobby_EventScript_AllFloorsUsed::
-	msgbox TrainerTower_Lobby_Text_TrainersUpEighthFloor
 TrainerTower_Lobby_EventScript_AskEnterChallenge::
 	message TrainerTower_Lobby_Text_LikeToChallengeTrainers
 	waitmessage
@@ -169,24 +165,44 @@ TrainerTower_Lobby_EventScript_ChallengeInfo::
 	end
 
 TrainerTower_Lobby_EventScript_ChooseChallenge::
-	multichoice 13, 3, MULTICHOICE_TRAINER_TOWER_MODE, FALSE
+	multichoice 13, 2, MULTICHOICE_TRAINER_TOWER_MODE, FALSE
 	switch VAR_RESULT
-	case 0, TrainerTower_Lobby_EventScript_BeginChallenge
-	case 1, TrainerTower_Lobby_EventScript_BeginChallenge
-	case 2, TrainerTower_Lobby_EventScript_BeginChallenge
-	case 3, TrainerTower_Lobby_EventScript_BeginChallenge
-	case 4, TrainerTower_Lobby_EventScript_DeclineChallenge
+	case CHALLENGE_TYPE_SINGLE, TrainerTower_Lobby_EventScript_BeginChallenge
+	case CHALLENGE_TYPE_DOUBLE, TrainerTower_Lobby_EventScript_BeginChallenge
+	case CHALLENGE_TYPE_KNOCKOUT, TrainerTower_Lobby_EventScript_BeginChallenge
+	case CHALLENGE_TYPE_MIXED, TrainerTower_Lobby_EventScript_BeginChallenge
+	case CHALLENGE_TYPE_EREADER, TrainerTower_Lobby_EventScript_BeginEReaderChallenge
+	case 5, TrainerTower_Lobby_EventScript_DeclineChallenge
 	case SCR_MENU_CANCEL, TrainerTower_Lobby_EventScript_DeclineChallenge
 	end
 
-TrainerTower_Lobby_EventScript_BeginChallenge::
-	copyvar VAR_0x8005, VAR_RESULT
+@ The e-Reader trainers (scanned card, else the built-in e-Card floors) may use fewer floors
+TrainerTower_Lobby_EventScript_BeginEReaderChallenge::
+	setflag FLAG_TRAINER_TOWER_EREADER
+	ttower_getnumfloors
+	goto_if_eq VAR_RESULT, FALSE, TrainerTower_Lobby_EventScript_EReaderAllFloors
+	msgbox TrainerTower_Lobby_Text_TrainersUpToFloorNum
+TrainerTower_Lobby_EventScript_EReaderStart::
 	setvar VAR_MAP_SCENE_TRAINER_TOWER, 1
 	special HealPlayerParty
 	msgbox TrainerTower_Lobby_Text_StartClockGetSetGo
 	ttower_startchallenge
 	releaseall
 	end
+
+TrainerTower_Lobby_EventScript_BeginChallenge::
+	copyvar VAR_0x8005, VAR_RESULT
+	msgbox TrainerTower_Lobby_Text_TrainersUpEighthFloor
+	setvar VAR_MAP_SCENE_TRAINER_TOWER, 1
+	special HealPlayerParty
+	msgbox TrainerTower_Lobby_Text_StartClockGetSetGo
+	ttower_startchallenge
+	releaseall
+	end
+
+TrainerTower_Lobby_EventScript_EReaderAllFloors::
+	msgbox TrainerTower_Lobby_Text_TrainersUpEighthFloor
+	goto TrainerTower_Lobby_EventScript_EReaderStart
 
 TrainerTower_Lobby_EventScript_DeclineChallenge::
 	msgbox TrainerTower_Lobby_Text_PleaseVisitUsAgain

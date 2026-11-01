@@ -80,7 +80,9 @@
 
 #define QUEST_LOG_SCENE_COUNT 4
 
-#define NUM_TOWER_CHALLENGE_TYPES 4
+#define NUM_TOWER_CHALLENGE_TYPES 5
+// Challenge types with a record in SaveBlock1.trainerTower[]; the e-Reader record is stored separately
+#define NUM_TOWER_CHALLENGE_TYPES_SAVED 4
 
 #define MALE   0
 #define FEMALE 1
