@@ -1095,9 +1095,9 @@ static u32 GetFlyUserPartyIndex(void)
     return slot >= PARTY_SIZE ? 0 : slot;
 }
 
-// followers-expanded-id: if the Pokemon using Fly is the one following the player (and it is out),
-// returns its object event, otherwise NULL.
-static struct ObjectEvent *GetFollowerObjectIfFieldMoveUser(u32 slot)
+// followers-expanded-id: if the Pokemon in the given party slot (the field move user) is the one
+// following the player and it is out, returns its object event, otherwise NULL.
+struct ObjectEvent *GetFollowerObjectIfFieldMoveUser(u32 slot)
 {
     struct ObjectEvent *followerObject = GetFollowerObject();
 

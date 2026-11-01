@@ -43,17 +43,9 @@ bool8 CheckObjectGraphicsInFrontOfPlayer(u16 graphicsId)
 // That Pokemon performs the field move itself, so the player does not do the ball-raising pose.
 static bool8 IsFieldMoveUserOutOfBall(u32 slot)
 {
-    struct ObjectEvent *followerObject;
-    u16 surferId;
-
     if (slot >= PARTY_SIZE)
         return FALSE;
-    followerObject = GetFollowerObject();
-    if (followerObject != NULL && !followerObject->invisible && GetFirstLiveFollowMon() == &gPlayerParty[slot])
-        return TRUE;
-    surferId = VarGet(VAR_FOLLOWER_SURFER_ID);
-    return TestPlayerAvatarFlags(PLAYER_AVATAR_FLAG_SURFING) && surferId != 0
-        && (GetMonData(&gPlayerParty[slot], MON_DATA_PERSONALITY) & 0xFFFF) == surferId;
+    return GetFollowerObjectIfFieldMoveUser(slot) != NULL || IsPartyMonTheSurfer(&gPlayerParty[slot]);
 }
 
 // Expects gFieldEffectArguments[0] to be the party slot of the Pokemon using the move.

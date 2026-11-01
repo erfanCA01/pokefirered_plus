@@ -1218,6 +1218,12 @@ static u8 GetMapTypeByWarpData(struct WarpData *warp)
     return GetMapTypeByGroupAndId(warp->mapGroup, warp->mapNum);
 }
 
+// followers-expanded-id: the current map as a MAP_* constant (mapNum | mapGroup << 8)
+u16 GetCurrentMapId(void)
+{
+    return gSaveBlock1Ptr->location.mapNum | (gSaveBlock1Ptr->location.mapGroup << 8);
+}
+
 u8 GetCurrentMapType(void)
 {
     return GetMapTypeByWarpData(&gSaveBlock1Ptr->location);
