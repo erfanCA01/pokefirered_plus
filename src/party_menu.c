@@ -64,6 +64,7 @@
 #include "constants/items.h"
 #include "constants/maps.h"
 #include "constants/moves.h"
+#include "qol_field_moves.h"
 #include "constants/pokemon.h"
 #include "constants/quest_log.h"
 #include "constants/songs.h"
@@ -2960,6 +2961,20 @@ static void SetPartyMonSelectionActions(struct Pokemon *mons, u8 slotId, u8 acti
     }
 }
 
+static const u16 sQolMenuFieldMoves[] = {MOVE_FLASH, MOVE_FLY};
+
+static bool8 PartyMenuActionListHas(u8 action)
+{
+    u8 i;
+
+    for (i = 0; i < sPartyMenuInternal->numActions; i++)
+    {
+        if (sPartyMenuInternal->actions[i] == action)
+            return TRUE;
+    }
+    return FALSE;
+}
+
 static void SetPartyMonFieldSelectionActions(struct Pokemon *mons, u8 slotId)
 {
     u8 i, j;
@@ -2977,6 +2992,20 @@ static void SetPartyMonFieldSelectionActions(struct Pokemon *mons, u8 slotId)
                 break;
             }
         }
+    }
+    // QoL field moves: Fly and Flash for a Pokemon that can use them through the HM in the bag.
+    // The list holds 8 entries and the menu always adds Switch, Item and Cancel, so stop at 5.
+    for (i = 0; i < ARRAY_COUNT(sQolMenuFieldMoves); ++i)
+    {
+        for (j = 0; sFieldMoves[j] != FIELD_MOVE_END; ++j)
+        {
+            if (sFieldMoves[j] == sQolMenuFieldMoves[i])
+                break;
+        }
+        if (sPartyMenuInternal->numActions < 5
+         && !PartyMenuActionListHas(j + CURSOR_OPTION_FIELD_MOVES)
+         && QolMonCanUseFieldMove(&mons[slotId], sQolMenuFieldMoves[i]))
+            AppendToList(sPartyMenuInternal->actions, &sPartyMenuInternal->numActions, j + CURSOR_OPTION_FIELD_MOVES);
     }
     if (GetMonData(&mons[1], MON_DATA_SPECIES) != SPECIES_NONE)
         AppendToList(sPartyMenuInternal->actions, &sPartyMenuInternal->numActions, CURSOR_OPTION_SWITCH);

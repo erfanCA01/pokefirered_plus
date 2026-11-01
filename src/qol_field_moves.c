@@ -10,6 +10,32 @@
 #include "constants/moves.h"
 #include "constants/qol_field_moves.h"
 
+// Returns the HM item that teaches the given move, or ITEM_NONE.
+static u16 GetHmItemForMove(u16 move)
+{
+    u16 item;
+
+    for (item = ITEM_HM01; item <= ITEM_HM08; item++)
+    {
+        if (ItemIdToBattleMoveId(item) == move)
+            return item;
+    }
+    return ITEM_NONE;
+}
+
+// TRUE if the Pokemon does not need to know the move: the matching HM is in the bag and the
+// Pokemon is compatible with it.
+bool8 QolMonCanUseFieldMove(struct Pokemon *mon, u16 move)
+{
+#if QOL_FIELD_MOVES
+    u16 item = GetHmItemForMove(move);
+
+    return item != ITEM_NONE && CheckBagHasItem(item, 1) && CanMonLearnTMHM(mon, item - ITEM_TM01);
+#else
+    return FALSE;
+#endif
+}
+
 // Returns the party index of a Pokemon that can perform the given field move without
 // knowing it (the matching HM is in the bag and the Pokemon is compatible with it),
 // or PARTY_SIZE if there is none. The live follower is preferred so it can animate the move.
@@ -17,26 +43,20 @@ u8 QolFindFieldMoveUser(u16 move)
 {
 #if QOL_FIELD_MOVES
     u8 i;
-    u16 item;
     struct Pokemon *follower;
 
-    for (item = ITEM_HM01; item <= ITEM_HM08; item++)
-    {
-        if (ItemIdToBattleMoveId(item) == move)
-            break;
-    }
-    if (item > ITEM_HM08 || !CheckBagHasItem(item, 1))
+    if (GetHmItemForMove(move) == ITEM_NONE || !CheckBagHasItem(GetHmItemForMove(move), 1))
         return PARTY_SIZE;
 
     follower = GetFirstLiveFollowMon();
-    if (follower != NULL && CanMonLearnTMHM(follower, item - ITEM_TM01))
+    if (follower != NULL && QolMonCanUseFieldMove(follower, move))
         return follower - gPlayerParty;
 
     for (i = 0; i < PARTY_SIZE; i++)
     {
         if (GetMonData(&gPlayerParty[i], MON_DATA_SPECIES) == SPECIES_NONE)
             break;
-        if (CanMonLearnTMHM(&gPlayerParty[i], item - ITEM_TM01))
+        if (QolMonCanUseFieldMove(&gPlayerParty[i], move))
             return i;
     }
 #endif
