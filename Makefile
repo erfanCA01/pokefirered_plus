@@ -46,7 +46,7 @@ else
 endif
 
 # This fork's builds carry a _plus suffix so they can't be mistaken for vanilla ROMs (they are not hash-identical)
-ROM := poke$(BUILD_NAME)_plus.gba
+ROM := poke$(BUILD_NAME).gba
 OBJ_DIR := $(BUILD_DIR)/$(BUILD_NAME)
 
 ELF := $(ROM:.gba=.elf)
