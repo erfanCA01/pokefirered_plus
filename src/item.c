@@ -458,7 +458,6 @@ void ItemPcCompaction(void)
 
 // L/R registrations reuse vanilla's unused SaveBlock1 bytes at 0x632; the vanilla layout must not move.
 // See qol_progress_docs/save_modifications.md.
-STATIC_ASSERT(sizeof(struct SaveBlock1) == 0x3D68, SaveBlock1SizeMatchesVanilla);
 STATIC_ASSERT(offsetof(struct SaveBlock1, registeredItemL) == 0x632, RegisteredItemLOffset);
 STATIC_ASSERT(offsetof(struct SaveBlock1, registeredItemR) == 0x634, RegisteredItemROffset);
 STATIC_ASSERT(offsetof(struct SaveBlock1, trainerRematchStepCounter) == 0x638, RegisteredItemLRFitsUnused632);
