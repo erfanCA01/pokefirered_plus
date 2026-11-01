@@ -26,6 +26,7 @@
 #include "constants/metatile_behaviors.h"
 #include "constants/moves.h"
 #include "constants/trainer_types.h"
+#include "qol_field_moves.h"
 
 static EWRAM_DATA struct ObjectEvent * sPlayerObjectPtr = NULL;
 static EWRAM_DATA u8 sTeleportSavedFacingDirection = DIR_NONE;
@@ -1194,6 +1195,9 @@ bool8 PartyHasMonWithSurf(void)
             if (MonKnowsMove(&gPlayerParty[i], MOVE_SURF))
                 return TRUE;
         }
+        // QoL field moves: HM03 in the bag and a compatible party member
+        if (QolFindFieldMoveUser(MOVE_SURF) != PARTY_SIZE)
+            return TRUE;
     }
     return FALSE;
 }

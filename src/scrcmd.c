@@ -41,6 +41,7 @@
 #include "constants/maps.h"
 #include "constants/sound.h"
 #include "sloopsvc.h"
+#include "qol_field_moves.h"
 
 extern u16 (*const gSpecials[])(void);
 extern u16 (*const gSpecialsEnd[])(void);
@@ -1885,6 +1886,16 @@ bool8 ScrCmd_checkpartymove(struct ScriptContext * ctx)
             gSpecialVar_Result = i;
             gSpecialVar_0x8004 = species;
             break;
+        }
+    }
+    // QoL field moves: no Pokemon knows the move, so look for one that can use it via the HM in the bag
+    if (gSpecialVar_Result == PARTY_SIZE)
+    {
+        i = QolFindFieldMoveUser(moveId);
+        if (i != PARTY_SIZE)
+        {
+            gSpecialVar_Result = i;
+            gSpecialVar_0x8004 = GetMonData(&gPlayerParty[i], MON_DATA_SPECIES, NULL);
         }
     }
     return FALSE;
