@@ -455,4 +455,5 @@ gSpecials::
 	def_special BuildSpecialShopItems
 	def_special CreateSpecialShop
 	def_special UseRepelFromScript
+	def_special HasUnlockedAllFlavorTextsForSpecialVar
 gSpecialsEnd::

@@ -1,15 +1,41 @@
 ViridianCity_Gym_MapScripts::
+	map_script MAP_SCRIPT_ON_TRANSITION, ViridianCity_Gym_OnTransition
 	.byte 0
+
+@ Giovanni hides himself after his post-battle speech. He returns for rematches
+@ once the game is clear.
+ViridianCity_Gym_OnTransition::
+	call_if_set FLAG_SYS_GAME_CLEAR, ViridianCity_Gym_EventScript_ShowGiovanni
+	end
+
+ViridianCity_Gym_EventScript_ShowGiovanni::
+	clearflag FLAG_HIDE_VIRIDIAN_GIOVANNI
+	return
 
 ViridianCity_Gym_EventScript_Giovanni::
 	famechecker FAMECHECKER_GIOVANNI, FCPICKSTATE_COLORED, UpdatePickStateFromSpecialVar8005
 	trainerbattle_single TRAINER_LEADER_GIOVANNI, ViridianCity_Gym_Text_GiovanniIntro, ViridianCity_Gym_Text_GiovanniDefeat, ViridianCity_Gym_EventScript_DefeatedGiovanni, NO_MUSIC
 	goto_if_unset FLAG_GOT_TM26_FROM_GIOVANNI, ViridianCity_Gym_EventScript_GiveTM26
+	goto_if_set FLAG_SYS_GAME_CLEAR, ViridianCity_Gym_EventScript_GiovanniRematch
 	msgbox ViridianCity_Gym_Text_GiovanniPostBattle
 	closemessage
 	fadescreen FADE_TO_BLACK
 	removeobject LOCALID_VIRIDIAN_GIOVANNI
 	fadescreen FADE_FROM_BLACK
+	release
+	end
+
+ViridianCity_Gym_EventScript_GiovanniRematch::
+	setvar VAR_0x8004, FAMECHECKER_GIOVANNI
+	setvar VAR_0x8005, TRAINER_LEADER_GIOVANNI_REMATCH
+	call EventScript_TryGymLeaderRematch
+	goto_if_eq VAR_RESULT, FALSE, EventScript_ReleaseEnd
+	trainerbattle_single TRAINER_LEADER_GIOVANNI_REMATCH, ViridianCity_Gym_Text_GiovanniRematchIntro, ViridianCity_Gym_Text_GiovanniRematchDefeat, ViridianCity_Gym_EventScript_DefeatedGiovanniRematch, NO_MUSIC
+	release
+	end
+
+ViridianCity_Gym_EventScript_DefeatedGiovanniRematch::
+	msgbox ViridianCity_Gym_Text_GiovanniRematchPostBattle
 	release
 	end
 

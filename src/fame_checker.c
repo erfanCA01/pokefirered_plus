@@ -1243,16 +1243,28 @@ void UpdatePickStateFromSpecialVar8005(void)
     }
 }
 
-static bool8 HasUnlockedAllFlavorTextsForCurrentPerson(void)
+static bool8 HasUnlockedAllFlavorTexts(u8 who)
 {
     u8 i;
-    u8 who = sFameCheckerData->unlockedPersons[FameCheckerGetCursorY()];
     for (i = 0; i < 6; i++)
     {
         if (!((gSaveBlock1Ptr->fameChecker[who].flavorTextFlags >> i) & 1))
             return FALSE;
     }
     return TRUE;
+}
+
+static bool8 HasUnlockedAllFlavorTextsForCurrentPerson(void)
+{
+    return HasUnlockedAllFlavorTexts(sFameCheckerData->unlockedPersons[FameCheckerGetCursorY()]);
+}
+
+// gSpecialVar_0x8004: FAMECHECKER_* person to check
+bool8 HasUnlockedAllFlavorTextsForSpecialVar(void)
+{
+    if (gSpecialVar_0x8004 >= NUM_FAMECHECKER_PERSONS)
+        return FALSE;
+    return HasUnlockedAllFlavorTexts(gSpecialVar_0x8004);
 }
 
 static void FreeSelectionCursorSpriteResources(void)

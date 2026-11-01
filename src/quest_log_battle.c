@@ -9,6 +9,32 @@
 
 static void GetLinkMultiBattlePlayerIndexes(s32 *, s32 *);
 
+// The gym leader rematches reuse the unused RS leader slots. The quest log is
+// saved, so record the original leader to keep the log readable by vanilla.
+static u16 GetQuestLogTrainerId(u16 trainerId)
+{
+    switch (trainerId)
+    {
+    case TRAINER_LEADER_BROCK_REMATCH:
+        return TRAINER_LEADER_BROCK;
+    case TRAINER_LEADER_MISTY_REMATCH:
+        return TRAINER_LEADER_MISTY;
+    case TRAINER_LEADER_LT_SURGE_REMATCH:
+        return TRAINER_LEADER_LT_SURGE;
+    case TRAINER_LEADER_ERIKA_REMATCH:
+        return TRAINER_LEADER_ERIKA;
+    case TRAINER_LEADER_KOGA_REMATCH:
+        return TRAINER_LEADER_KOGA;
+    case TRAINER_LEADER_SABRINA_REMATCH:
+        return TRAINER_LEADER_SABRINA;
+    case TRAINER_LEADER_BLAINE_REMATCH:
+        return TRAINER_LEADER_BLAINE;
+    case TRAINER_LEADER_GIOVANNI_REMATCH:
+        return TRAINER_LEADER_GIOVANNI;
+    }
+    return trainerId;
+}
+
 void TrySetQuestLogBattleEvent(void)
 {
     if (!(gBattleTypeFlags & (BATTLE_TYPE_LINK | BATTLE_TYPE_OLD_MAN_TUTORIAL | BATTLE_TYPE_POKEDUDE)) && (gBattleOutcome == B_OUTCOME_WON || gBattleOutcome == B_OUTCOME_CAUGHT))
@@ -37,7 +63,7 @@ void TrySetQuestLogBattleEvent(void)
                 eventId = QL_EVENT_DEFEATED_TRAINER;
                 break;
             }
-            trainerData->trainerId = gTrainerBattleOpponent_A;
+            trainerData->trainerId = GetQuestLogTrainerId(gTrainerBattleOpponent_A);
             if (gBattleTypeFlags & BATTLE_TYPE_DOUBLE)
             {
                 trainerData->speciesOpponent = gBattleResults.lastOpponentSpecies;

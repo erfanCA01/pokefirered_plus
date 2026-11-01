@@ -5,7 +5,22 @@ FuchsiaCity_Gym_EventScript_Koga::
 	famechecker FAMECHECKER_KOGA, FCPICKSTATE_COLORED, UpdatePickStateFromSpecialVar8005
 	trainerbattle_single TRAINER_LEADER_KOGA, FuchsiaCity_Gym_Text_KogaIntro, FuchsiaCity_Gym_Text_KogaDefeat, FuchsiaCity_Gym_EventScript_DefeatedKoga, NO_MUSIC
 	goto_if_unset FLAG_GOT_TM06_FROM_KOGA, FuchsiaCity_Gym_EventScript_GiveTM06
+	goto_if_set FLAG_SYS_GAME_CLEAR, FuchsiaCity_Gym_EventScript_KogaRematch
 	msgbox FuchsiaCity_Gym_Text_KogaPostBattle
+	release
+	end
+
+FuchsiaCity_Gym_EventScript_KogaRematch::
+	setvar VAR_0x8004, FAMECHECKER_KOGA
+	setvar VAR_0x8005, TRAINER_LEADER_KOGA_REMATCH
+	call EventScript_TryGymLeaderRematch
+	goto_if_eq VAR_RESULT, FALSE, EventScript_ReleaseEnd
+	trainerbattle_single TRAINER_LEADER_KOGA_REMATCH, FuchsiaCity_Gym_Text_KogaRematchIntro, FuchsiaCity_Gym_Text_KogaRematchDefeat, FuchsiaCity_Gym_EventScript_DefeatedKogaRematch, NO_MUSIC
+	release
+	end
+
+FuchsiaCity_Gym_EventScript_DefeatedKogaRematch::
+	msgbox FuchsiaCity_Gym_Text_KogaRematchPostBattle
 	release
 	end
 

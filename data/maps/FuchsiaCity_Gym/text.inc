@@ -24,6 +24,24 @@ FuchsiaCity_Gym_Text_KogaPostBattle::
     .string "battle wears on!\p"
     .string "It will surely terrorize foes!$"
 
+FuchsiaCity_Gym_Text_KogaRematchIntro::
+    .string "Fwahahaha!\n"
+    .string "So, the CHAMPION returns!\p"
+    .string "My ninja techniques have been\n"
+    .string "honed even further!\p"
+    .string "Despair at the true art of\n"
+    .string "POISON-type POKéMON!{PLAY_BGM}{MUS_ENCOUNTER_GYM_LEADER}$"
+
+FuchsiaCity_Gym_Text_KogaRematchDefeat::
+    .string "Humph!\n"
+    .string "Your skill is beyond reproach!$"
+
+FuchsiaCity_Gym_Text_KogaRematchPostBattle::
+    .string "You have mastered the ways of a\n"
+    .string "TRAINER.\p"
+    .string "I must hone my techniques\n"
+    .string "harder still.$"
+
 FuchsiaCity_Gym_Text_KogaExplainSoulBadge::
     .string "Now that you have the SOULBADGE,\n"
     .string "the DEFENSE of your POKéMON rises.\p"

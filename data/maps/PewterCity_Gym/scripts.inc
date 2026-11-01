@@ -5,7 +5,22 @@ PewterCity_Gym_EventScript_Brock::
 	famechecker FAMECHECKER_BROCK, FCPICKSTATE_COLORED, UpdatePickStateFromSpecialVar8005
 	trainerbattle_single TRAINER_LEADER_BROCK, PewterCity_Gym_Text_BrockIntro, PewterCity_Gym_Text_BrockDefeat, PewterCity_Gym_EventScript_DefeatedBrock, NO_MUSIC
 	goto_if_unset FLAG_GOT_TM39_FROM_BROCK, PewterCity_Gym_EventScript_GiveTM39
+	goto_if_set FLAG_SYS_GAME_CLEAR, PewterCity_Gym_EventScript_BrockRematch
 	msgbox PewterCity_Gym_Text_BrockPostBattle
+	release
+	end
+
+PewterCity_Gym_EventScript_BrockRematch::
+	setvar VAR_0x8004, FAMECHECKER_BROCK
+	setvar VAR_0x8005, TRAINER_LEADER_BROCK_REMATCH
+	call EventScript_TryGymLeaderRematch
+	goto_if_eq VAR_RESULT, FALSE, EventScript_ReleaseEnd
+	trainerbattle_single TRAINER_LEADER_BROCK_REMATCH, PewterCity_Gym_Text_BrockRematchIntro, PewterCity_Gym_Text_BrockRematchDefeat, PewterCity_Gym_EventScript_DefeatedBrockRematch, NO_MUSIC
+	release
+	end
+
+PewterCity_Gym_EventScript_DefeatedBrockRematch::
+	msgbox PewterCity_Gym_Text_BrockRematchPostBattle
 	release
 	end
 

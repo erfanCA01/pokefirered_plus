@@ -27,6 +27,22 @@ ViridianCity_Gym_Text_GiovanniPostBattle::
     .string "Let us meet again someday!\n"
     .string "Farewell!$"
 
+ViridianCity_Gym_Text_GiovanniRematchIntro::
+    .string "So, we meet again.\p"
+    .string "Far from TEAM ROCKET, I have\n"
+    .string "dedicated myself to training.\p"
+    .string "Now, face the full power of the\n"
+    .string "EARTH!{PLAY_BGM}{MUS_ENCOUNTER_ROCKET}$"
+
+ViridianCity_Gym_Text_GiovanniRematchDefeat::
+    .string "Ha!\n"
+    .string "Beaten once again...$"
+
+ViridianCity_Gym_Text_GiovanniRematchPostBattle::
+    .string "Your strength is undeniable.\p"
+    .string "It seems I still have much to\n"
+    .string "learn as a TRAINER.$"
+
 ViridianCity_Gym_Text_ExplainEarthBadgeTakeThis::
     .string "The EARTHBADGE makes POKéMON of\n"
     .string "any level obey without question.\p"

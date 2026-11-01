@@ -29,9 +29,11 @@
 #define TRAINER_RS_GENTLEMAN                      24
 #define TRAINER_ELITE_FOUR_SIDNEY                 25
 #define TRAINER_ELITE_FOUR_PHOEBE                 26
-#define TRAINER_LEADER_ROXANNE                    27
-#define TRAINER_LEADER_BRAWLY                     28
-#define TRAINER_LEADER_TATE_LIZA                  29
+// The unused RS leader slots hold the post-game Kanto gym leader rematches.
+// Vanilla never battles them, so their trainer flags are free to use.
+#define TRAINER_LEADER_BROCK_REMATCH              27
+#define TRAINER_LEADER_MISTY_REMATCH              28
+#define TRAINER_LEADER_LT_SURGE_REMATCH           29
 #define TRAINER_SCHOOL_KID_M                      30
 #define TRAINER_SCHOOL_KID_F                      31
 #define TRAINER_SR_AND_JR                         32
@@ -84,11 +86,11 @@
 #define TRAINER_AQUA_ADMIN_SHELLY                 79
 #define TRAINER_MAGMA_ADMIN_TABITHA               80
 #define TRAINER_MAGMA_ADMIN_COURTNEY              81
-#define TRAINER_LEADER_WATTSON                    82
-#define TRAINER_LEADER_FLANNERY                   83
-#define TRAINER_LEADER_NORMAN                     84
-#define TRAINER_LEADER_WINONA                     85
-#define TRAINER_LEADER_WALLACE                    86
+#define TRAINER_LEADER_ERIKA_REMATCH              82
+#define TRAINER_LEADER_KOGA_REMATCH               83
+#define TRAINER_LEADER_SABRINA_REMATCH            84
+#define TRAINER_LEADER_BLAINE_REMATCH             85
+#define TRAINER_LEADER_GIOVANNI_REMATCH           86
 #define TRAINER_ELITE_FOUR_GLACIA                 87
 #define TRAINER_ELITE_FOUR_DRAKE                  88
 // Actual FRLG trainers start here

@@ -62,6 +62,21 @@ PewterCity_Gym_Text_BrockPostBattle::
     .string "Go to the GYM in CERULEAN and test\n"
     .string "your abilities.$"
 
+PewterCity_Gym_Text_BrockRematchIntro::
+    .string "My rock-hard willpower has only\n"
+    .string "grown harder since then!\p"
+    .string "Show me how far you've come,\n"
+    .string "CHAMPION!{PLAY_BGM}{MUS_ENCOUNTER_GYM_LEADER}$"
+
+PewterCity_Gym_Text_BrockRematchDefeat::
+    .string "Your strength is as solid\n"
+    .string "as ever!$"
+
+PewterCity_Gym_Text_BrockRematchPostBattle::
+    .string "Thanks for the rematch!\p"
+    .string "I'll keep training my rock-solid\n"
+    .string "POKéMON even harder.$"
+
 PewterCity_Gym_Text_DontHaveRoomForThis::
     .string "You don't have room for this.$"
 

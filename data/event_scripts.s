@@ -1356,6 +1356,7 @@ Text_TestMsg::
 	.include "data/scripts/hole.inc"
 	.include "data/text/trainers.inc"
 	.include "data/scripts/move_tutors.inc"
+	.include "data/scripts/gym_leader_rematch.inc"
 	.include "data/scripts/trainer_tower.inc"
 	.include "data/scripts/test.inc"
 	.include "data/text/save.inc"

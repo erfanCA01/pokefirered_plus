@@ -11,6 +11,21 @@ CeruleanCity_Gym_Text_ExplainTM03::
     .string "TM03 teaches WATER PULSE.\p"
     .string "Use it on an aquatic POKéMON!$"
 
+CeruleanCity_Gym_Text_MistyRematchIntro::
+    .string "I've been training with WATER-type\n"
+    .string "POKéMON from all over!\p"
+    .string "This time, my all-out offensive\n"
+    .string "will wash you away!{PLAY_BGM}{MUS_ENCOUNTER_GYM_LEADER}$"
+
+CeruleanCity_Gym_Text_MistyRematchDefeat::
+    .string "Wow!\n"
+    .string "You're still way too strong!$"
+
+CeruleanCity_Gym_Text_MistyRematchPostBattle::
+    .string "That was so much fun!\p"
+    .string "I'm going to keep working on my\n"
+    .string "water POKéMON!$"
+
 CeruleanCity_Gym_Text_ExplainCascadeBadge::
     .string "The CASCADEBADGE makes all\n"
     .string "POKéMON up to Lv. 30 obey.\p"
