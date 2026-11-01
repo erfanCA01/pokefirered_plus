@@ -12,6 +12,11 @@ TrainerTower_Lobby_Text_TrainersUpToFloorNum::
     .string "Right now, there are TRAINERS only\n"
     .string "up to Floor {STR_VAR_1}.$"
 
+TrainerTower_Lobby_Text_NoEReaderTrainers::
+    .string "I'm sorry, but there are no TRAINERS\n"
+    .string "available from the e-Reader right now.\p"
+    .string "Please choose a different challenge.$"
+
 TrainerTower_Lobby_Text_TrainersUpEighthFloor::
     .string "TRAINERS are awaiting your\n"
     .string "challenge up to the eighth floor.$"
