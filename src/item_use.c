@@ -301,7 +301,10 @@ static void Task_BicycleMountAfterFollowerRecall(u8 taskId)
 {
     struct ObjectEvent *follower = GetFollowerObject();
 
-    if (follower != NULL && !follower->invisible && !ObjectEventClearHeldMovementIfFinished(follower))
+    // Wait for the recall to finish and clear it. The last step of the recall already sets the
+    // follower invisible, so don't stop on that: a held movement left behind blocks the follower's
+    // own movement, and it would never come back out after dismounting.
+    if (follower != NULL && !ObjectEventClearHeldMovementIfFinished(follower))
         return;
     PlaySE(SE_BIKE_BELL);
     GetOnOffBike(PLAYER_AVATAR_FLAG_MACH_BIKE | PLAYER_AVATAR_FLAG_ACRO_BIKE);
