@@ -2864,8 +2864,8 @@ static bool8 IsCurrentMapLinkRoom(void)
         || currentMap == MAP_TRADE_CENTER;
 }
 
-// The follower stays in its ball inside elevators and during a Trainer Tower challenge (the
-// lobby script recalls it just before the challenge starts). It comes back on leaving them.
+// The follower stays in its ball inside elevators and on the Trainer Tower floors (the warp
+// from the lobby already recalls it). It comes back on leaving them.
 static bool8 IsCurrentMapNoFollower(void)
 {
     u16 currentMap = gSaveBlock1Ptr->location.mapNum | (gSaveBlock1Ptr->location.mapGroup << 8);
