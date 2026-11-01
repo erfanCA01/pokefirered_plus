@@ -68,6 +68,12 @@ Text_ThunderWaveTaught::
     .string "It's an ELECTRIC-type move, so it\n"
     .string "won't work on some POKéMON.$"
 
+Text_ThunderWaveTeachAgain::
+    .string "Oh, and thanks again for coming\n"
+    .string "to our rescue.\p"
+    .string "Shall I teach THUNDER WAVE to\n"
+    .string "another POKéMON?$"
+
 SilphCo_2F_Text_FloorSign::
     .string "SILPH CO. HEAD OFFICE\n"
     .string "2F$"

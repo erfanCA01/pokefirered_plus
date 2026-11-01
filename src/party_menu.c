@@ -184,6 +184,9 @@ static void LoadPartyMenuAilmentGfx(void);
 static bool8 RenderPartyMenuBoxes(void);
 static void CreateCancelConfirmPokeballSprites(void);
 static void CreateCancelConfirmWindows(bool8 chooseMultiple);
+static bool8 CanQuickSwitchPartyMons(void);
+static void CreateQuickSwitchWindow(void);
+static void HandleChooseMonQuickSwitch(u8 taskId, s8 *slotPtr);
 static void Task_ExitPartyMenu(u8 taskId);
 static void FreePartyPointers(void);
 static void PartyPaletteBufferCopy(u8 offset);
@@ -315,6 +318,10 @@ static void Task_SetSacredAshCB(u8 taskId);
 static void CB2_ReturnToBagMenu(void);
 static u8 GetPartyIdFromBattleSlot(u8 slot);
 static void Task_DisplayHPRestoredMessage(u8 taskId);
+static TaskFunc GetFieldItemUseNextTask(u16 item, TaskFunc func);
+static void Task_ReturnToUseOnWhichMonAfterText(u8 taskId);
+static u16 ItemEffectToMonEv(struct Pokemon *mon, u8 effectType);
+static void ItemEffectToStatString(u8 effectType, u8 *dest);
 static void SetSelectedMoveForPPItem(u8 taskId);
 static void ReturnToUseOnWhichMon(u8 taskId);
 static void TryUsePPItemInBattle(u8 taskId);
@@ -579,6 +586,8 @@ static bool8 ShowPartyMenu(void)
         break;
     case 18:
         CreateCancelConfirmWindows(sPartyMenuInternal->chooseMultiple);
+        if (CanQuickSwitchPartyMons())
+            CreateQuickSwitchWindow();
         ++gMain.state;
         break;
     case 19:
@@ -1131,6 +1140,9 @@ void Task_HandleChooseMonInput(u8 taskId)
         case B_BUTTON: // also handles pressing A_BUTTON on Cancel
             HandleChooseMonCancel(taskId, slotPtr);
             break;
+        case SELECT_BUTTON:
+            HandleChooseMonQuickSwitch(taskId, slotPtr);
+            break;
         case START_BUTTON:
             if (sPartyMenuInternal->chooseMultiple)
             {
@@ -1214,6 +1226,21 @@ static void HandleChooseMonSelection(u8 taskId, s8 *slotPtr)
             Task_TryCreateSelectionWindow(taskId);
             break;
         }
+    }
+}
+
+static void HandleChooseMonQuickSwitch(u8 taskId, s8 *slotPtr)
+{
+    if (*slotPtr >= PARTY_SIZE)
+        return;
+    if (gPartyMenu.action == PARTY_ACTION_CHOOSE_MON)
+    {
+        CursorCB_Switch(taskId);
+    }
+    else if (gPartyMenu.action == PARTY_ACTION_SWITCH)
+    {
+        PlaySE(SE_SELECT);
+        SwitchSelectedMons(taskId);
     }
 }
 
@@ -1330,6 +1357,8 @@ static u16 PartyMenuButtonHandler(s8 *slotPtr)
     }
     if (JOY_NEW(START_BUTTON))
         return START_BUTTON;
+    if (JOY_NEW(SELECT_BUTTON) && CanQuickSwitchPartyMons())
+        return SELECT_BUTTON;
     if (movementDir)
     {
         UpdateCurrentPartySelection(slotPtr, movementDir);
@@ -2163,6 +2192,36 @@ static void CreateCancelConfirmWindows(bool8 chooseMultiple)
         CopyWindowToVram(cancelWindowId, COPYWIN_GFX);
         ScheduleBgCopyTilemapToVram(0);
     }
+}
+
+// SELECT starts/confirms SWITCH, only in the party menu opened from the start menu
+static bool8 CanQuickSwitchPartyMons(void)
+{
+    return gPartyMenu.menuType == PARTY_MENU_TYPE_FIELD
+        && gPartyMenu.exitCallback == CB2_ReturnToFieldWithOpenMenu
+        && GetMonData(&gPlayerParty[1], MON_DATA_SPECIES) != SPECIES_NONE;
+}
+
+static void CreateQuickSwitchWindow(void)
+{
+    u8 windowId = AddWindow(&sQuickSwitchWindowTemplate);
+    u8 y, width;
+
+    LoadPalette(GetTextWindowPalette(0), BG_PLTT_ID(QUICK_SWITCH_PAL), PLTT_SIZE_4BPP);
+    LoadPalette(&gPlttBufferUnfaded[BG_PLTT_ID(1) + 3], BG_PLTT_ID(QUICK_SWITCH_PAL) + QUICK_SWITCH_COLOR_FRAME, PLTT_SIZEOF(1));
+    LoadPalette(&gPlttBufferUnfaded[BG_PLTT_ID(1) + 5], BG_PLTT_ID(QUICK_SWITCH_PAL) + QUICK_SWITCH_COLOR_EDGE, PLTT_SIZEOF(1));
+    FillWindowPixelBuffer(windowId, PIXEL_FILL(0));
+    // Right edge slopes 1px per row, like the frame's corner
+    for (y = QUICK_SWITCH_FRAME_HEIGHT; y < QUICK_SWITCH_TAB_BOTTOM; y++)
+    {
+        width = QUICK_SWITCH_TAB_WIDTH - (y - QUICK_SWITCH_FRAME_HEIGHT);
+        FillWindowPixelRect(windowId, PIXEL_FILL(QUICK_SWITCH_COLOR_FRAME), 0, y, width, 1);
+        FillWindowPixelRect(windowId, PIXEL_FILL(QUICK_SWITCH_COLOR_EDGE), width, y, 1, 1);
+    }
+    DrawKeypadIcon(windowId, CHAR_SELECT_BUTTON, 2, 2);
+    AddTextPrinterParameterized3(windowId, FONT_SMALL, 29, 1, sQuickSwitchFontColors, TEXT_SKIP_DRAW, gText_Switch2);
+    PutWindowTilemap(windowId);
+    CopyWindowToVram(windowId, COPYWIN_FULL);
 }
 
 static u16 *GetPartyMenuPalBufferPtr(u8 paletteId)
@@ -4480,7 +4539,7 @@ void ItemUseCB_Medicine(u8 taskId, TaskFunc func)
         gPartyMenuUseExitCallback = FALSE;
         DisplayPartyMenuMessage(gText_WontHaveEffect, TRUE);
         ScheduleBgCopyTilemapToVram(2);
-        gTasks[taskId].func = func;
+        gTasks[taskId].func = GetFieldItemUseNextTask(item, func);
     }
     else
     {
@@ -4519,7 +4578,7 @@ void ItemUseCB_MedicineStep(u8 taskId, TaskFunc func)
         PlaySE(SE_SELECT);
         DisplayPartyMenuMessage(gText_WontHaveEffect, TRUE);
         ScheduleBgCopyTilemapToVram(2);
-        gTasks[taskId].func = func;
+        gTasks[taskId].func = GetFieldItemUseNextTask(item, func);
     }
     else
     {
@@ -4549,7 +4608,7 @@ void ItemUseCB_MedicineStep(u8 taskId, TaskFunc func)
             GetMedicineItemEffectMessage(item);
             DisplayPartyMenuMessage(gStringVar4, TRUE);
             ScheduleBgCopyTilemapToVram(2);
-            gTasks[taskId].func = func;
+            gTasks[taskId].func = GetFieldItemUseNextTask(item, func);
         }
     }
 }
@@ -4561,7 +4620,32 @@ static void Task_DisplayHPRestoredMessage(u8 taskId)
     DisplayPartyMenuMessage(gStringVar4, FALSE);
     ScheduleBgCopyTilemapToVram(2);
     HandleBattleLowHpMusicChange();
-    gTasks[taskId].func = Task_ClosePartyMenuAfterText;
+    gTasks[taskId].func = GetFieldItemUseNextTask(gSpecialVar_ItemId, Task_ClosePartyMenuAfterText);
+}
+
+// In the field, medicine keeps the party menu open while the player still has the item.
+// Flutes are never used up, so they close as in vanilla.
+static TaskFunc GetFieldItemUseNextTask(u16 item, TaskFunc func)
+{
+    if (gPartyMenu.menuType == PARTY_MENU_TYPE_FIELD && !IsItemFlute(item) && CheckBagHasItem(item, 1))
+        return Task_ReturnToUseOnWhichMonAfterText;
+    return func;
+}
+
+static void Task_ReturnToUseOnWhichMonAfterText(u8 taskId)
+{
+    if (IsPartyMenuTextPrinterActive() != TRUE)
+    {
+        ClearStdWindowAndFrameToTransparent(6, FALSE);
+        ClearWindowTilemap(6);
+        // The item use animation reopens the party menu as PARTY_ACTION_CHOOSE_MON with
+        // ItemUseCB_MedicineStep, so set the item use state back up
+        gPartyMenu.action = PARTY_ACTION_USE_ITEM;
+        if (gItemUseCB == ItemUseCB_MedicineStep)
+            gItemUseCB = ItemUseCB_Medicine;
+        DisplayPartyMenuStdMessage(PARTY_MSG_USE_ON_WHICH_MON);
+        gTasks[taskId].func = Task_HandleChooseMonInput;
+    }
 }
 
 static void Task_ClosePartyMenuAfterText(u8 taskId)
@@ -4571,6 +4655,98 @@ static void Task_ClosePartyMenuAfterText(u8 taskId)
         if (gPartyMenuUseExitCallback == FALSE)
             sPartyMenuInternal->exitCallback = NULL;
         Task_ClosePartyMenu(taskId);
+    }
+}
+
+// EV-lowering berries, as in Emerald
+void ItemUseCB_ReduceEV(u8 taskId, TaskFunc func)
+{
+    struct Pokemon *mon = &gPlayerParty[gPartyMenu.slotId];
+    u16 item = gSpecialVar_ItemId;
+    u8 effectType = GetItemEffectType(item);
+    u16 friendship = GetMonData(mon, MON_DATA_FRIENDSHIP);
+    u16 ev = ItemEffectToMonEv(mon, effectType);
+    bool8 cannotUseEffect = ExecuteTableBasedItemEffect_(gPartyMenu.slotId, item, 0);
+    u16 newFriendship = GetMonData(mon, MON_DATA_FRIENDSHIP);
+    u16 newEv = ItemEffectToMonEv(mon, effectType);
+
+    if (cannotUseEffect || (friendship == newFriendship && ev == newEv))
+    {
+        gPartyMenuUseExitCallback = FALSE;
+        PlaySE(SE_SELECT);
+        DisplayPartyMenuMessage(gText_WontHaveEffect, TRUE);
+        ScheduleBgCopyTilemapToVram(2);
+        gTasks[taskId].func = GetFieldItemUseNextTask(item, func);
+    }
+    else
+    {
+        ItemUse_SetQuestLogEvent(QL_EVENT_USED_ITEM, mon, item, 0xFFFF);
+        gPartyMenuUseExitCallback = TRUE;
+        PlaySE(SE_USE_ITEM);
+        RemoveBagItem(item, 1);
+        GetMonNickname(mon, gStringVar1);
+        ItemEffectToStatString(effectType, gStringVar2);
+        if (friendship != newFriendship)
+        {
+            if (ev != newEv)
+                StringExpandPlaceholders(gStringVar4, gText_PkmnFriendlyBaseVar2Fell);
+            else
+                StringExpandPlaceholders(gStringVar4, gText_PkmnFriendlyBaseVar2CantFall);
+        }
+        else
+        {
+            StringExpandPlaceholders(gStringVar4, gText_PkmnAdoresBaseVar2Fell);
+        }
+        DisplayPartyMenuMessage(gStringVar4, TRUE);
+        ScheduleBgCopyTilemapToVram(2);
+        gTasks[taskId].func = GetFieldItemUseNextTask(item, func);
+    }
+}
+
+static u16 ItemEffectToMonEv(struct Pokemon *mon, u8 effectType)
+{
+    switch (effectType)
+    {
+    case ITEM_EFFECT_HP_EV:
+        if (GetMonData(mon, MON_DATA_SPECIES) != SPECIES_SHEDINJA)
+            return GetMonData(mon, MON_DATA_HP_EV);
+        break;
+    case ITEM_EFFECT_ATK_EV:
+        return GetMonData(mon, MON_DATA_ATK_EV);
+    case ITEM_EFFECT_DEF_EV:
+        return GetMonData(mon, MON_DATA_DEF_EV);
+    case ITEM_EFFECT_SPEED_EV:
+        return GetMonData(mon, MON_DATA_SPEED_EV);
+    case ITEM_EFFECT_SPATK_EV:
+        return GetMonData(mon, MON_DATA_SPATK_EV);
+    case ITEM_EFFECT_SPDEF_EV:
+        return GetMonData(mon, MON_DATA_SPDEF_EV);
+    }
+    return 0;
+}
+
+static void ItemEffectToStatString(u8 effectType, u8 *dest)
+{
+    switch (effectType)
+    {
+    case ITEM_EFFECT_HP_EV:
+        StringCopy(dest, gText_ItemEffect_HP);
+        break;
+    case ITEM_EFFECT_ATK_EV:
+        StringCopy(dest, gText_ItemEffect_Attack);
+        break;
+    case ITEM_EFFECT_DEF_EV:
+        StringCopy(dest, gText_ItemEffect_Defense);
+        break;
+    case ITEM_EFFECT_SPEED_EV:
+        StringCopy(dest, gText_ItemEffect_Speed);
+        break;
+    case ITEM_EFFECT_SPATK_EV:
+        StringCopy(dest, gText_ItemEffect_SpAtk);
+        break;
+    case ITEM_EFFECT_SPDEF_EV:
+        StringCopy(dest, gText_ItemEffect_SpDef);
+        break;
     }
 }
 

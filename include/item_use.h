@@ -14,6 +14,8 @@ void FieldUseFunc_PowderJar(u8 taskId);
 void FieldUseFunc_PokeFlute(u8 taskId);
 void FieldUseFunc_Medicine(u8 taskId);
 void FieldUseFunc_Ether(u8 taskId);
+void FieldUseFunc_ReduceEV(u8 taskId);
+void UseRepelFromScript(void);
 void FieldUseFunc_PpUp(u8 taskId);
 void FieldUseFunc_RareCandy(u8 taskId);
 void FieldUseFunc_EvoItem(u8 taskId);

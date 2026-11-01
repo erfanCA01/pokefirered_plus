@@ -21,6 +21,21 @@ SaffronCity_Gym_Text_SabrinaPostBattle::
     .string "Everyone has psychic power.\n"
     .string "People just don't realize it.$"
 
+SaffronCity_Gym_Text_SabrinaRematchIntro::
+    .string "I foresaw your return...\p"
+    .string "But the outcome of this battle\n"
+    .string "is hidden even from me.\p"
+    .string "Let my psychic power decide it!{PLAY_BGM}{MUS_ENCOUNTER_GYM_LEADER}$"
+
+SaffronCity_Gym_Text_SabrinaRematchDefeat::
+    .string "Even my visions failed me...\n"
+    .string "You are truly strong.$"
+
+SaffronCity_Gym_Text_SabrinaRematchPostBattle::
+    .string "Your power is beyond what my\n"
+    .string "psychic sight can see.\p"
+    .string "Remarkable.$"
+
 SaffronCity_Gym_Text_ExplainMarshBadgeTakeThis::
     .string "The MARSHBADGE makes POKéMON up\n"
     .string "to Lv. 70 obey you.\p"

@@ -21,6 +21,12 @@ Text_DoubleEdgeTaught::
     .string "Take a run at them and knock 'em\n"
     .string "out!$"
 
+Text_DoubleEdgeTeachAgain::
+    .string "If another of your POKéMON wants\n"
+    .string "to take a run at them, too…\p"
+    .string "I'll gladly teach it DOUBLE-EDGE.\n"
+    .string "How about it?$"
+
 VictoryRoad_3F_Text_GeorgeIntro::
     .string "I heard rumors of a child prodigy.$"
 

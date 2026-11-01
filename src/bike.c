@@ -7,6 +7,7 @@
 #include "field_camera.h"
 #include "overworld.h"
 #include "constants/map_types.h"
+#include "constants/maps.h"
 #include "constants/songs.h"
 
 static u8 GetBikeTransitionId(u8 *, u16, u16);
@@ -250,9 +251,56 @@ bool8 RS_IsRunningDisallowed(u8 r0)
         return TRUE;
 }
 
+struct NoRunningArea
+{
+    u16 map;
+    u8 left;
+    u8 top;
+    u8 right;
+    u8 bottom;
+};
+
+#define NO_RUNNING_WHOLE_MAP(map) {map, 0, 0, 0xFF, 0xFF}
+
+// Indoor running is allowed everywhere except in these areas. Coords are inclusive.
+static const struct NoRunningArea sNoRunningAreas[] =
+{
+    NO_RUNNING_WHOLE_MAP(MAP_VIRIDIAN_CITY_GYM),
+    NO_RUNNING_WHOLE_MAP(MAP_PEWTER_CITY_GYM),
+    NO_RUNNING_WHOLE_MAP(MAP_CERULEAN_CITY_GYM),
+    NO_RUNNING_WHOLE_MAP(MAP_VERMILION_CITY_GYM),
+    NO_RUNNING_WHOLE_MAP(MAP_CELADON_CITY_GYM),
+    NO_RUNNING_WHOLE_MAP(MAP_FUCHSIA_CITY_GYM),
+    NO_RUNNING_WHOLE_MAP(MAP_SAFFRON_CITY_GYM),
+    NO_RUNNING_WHOLE_MAP(MAP_CINNABAR_ISLAND_GYM),
+    NO_RUNNING_WHOLE_MAP(MAP_POKEMON_LEAGUE_LORELEIS_ROOM),
+    NO_RUNNING_WHOLE_MAP(MAP_POKEMON_LEAGUE_BRUNOS_ROOM),
+    NO_RUNNING_WHOLE_MAP(MAP_POKEMON_LEAGUE_AGATHAS_ROOM),
+    {MAP_POKEMON_LEAGUE_LANCES_ROOM, 0, 0, 11, 13},     // Arena only, not the dragon statue corridor
+    {MAP_POKEMON_LEAGUE_CHAMPIONS_ROOM, 0, 0, 12, 13},  // Room only, not the entry corridor
+    NO_RUNNING_WHOLE_MAP(MAP_POKEMON_LEAGUE_HALL_OF_FAME),
+};
+
+static bool8 IsPlayerInNoRunningArea(void)
+{
+    u16 map = (gSaveBlock1Ptr->location.mapGroup << 8) | gSaveBlock1Ptr->location.mapNum;
+    s16 x = gObjectEvents[gPlayerAvatar.objectEventId].currentCoords.x - MAP_OFFSET;
+    s16 y = gObjectEvents[gPlayerAvatar.objectEventId].currentCoords.y - MAP_OFFSET;
+    u8 i;
+
+    for (i = 0; i < ARRAY_COUNT(sNoRunningAreas); i++)
+    {
+        if (sNoRunningAreas[i].map == map
+         && x >= sNoRunningAreas[i].left && x <= sNoRunningAreas[i].right
+         && y >= sNoRunningAreas[i].top && y <= sNoRunningAreas[i].bottom)
+            return TRUE;
+    }
+    return FALSE;
+}
+
 bool32 IsRunningDisallowed(u8 metatileBehavior)
 {
-    if (!gMapHeader.allowRunning)
+    if (!gMapHeader.allowRunning && IsPlayerInNoRunningArea())
         return TRUE;
     if (MetatileBehaviorForbidsBiking(metatileBehavior) != TRUE)
         return FALSE;

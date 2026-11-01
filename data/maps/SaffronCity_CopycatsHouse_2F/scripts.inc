@@ -22,6 +22,7 @@ SaffronCity_CopycatsHouse_2F_EventScript_Copycat::
 	special QuestLog_CutRecording
 	lock
 	faceplayer
+	goto_if_set FLAG_TUTOR_MIMIC, EventScript_MimicTutor
 	checkitem ITEM_POKE_DOLL
 	goto_if_eq VAR_RESULT, TRUE, EventScript_MimicTutor
 	checkplayergender

@@ -289,6 +289,7 @@ extern struct Pokemon gEnemyParty[PARTY_SIZE];
 extern const struct SpeciesInfo gSpeciesInfo[];
 extern const u8 *const gItemEffectTable[];
 extern const u8 gStatStageRatios[][2];
+extern const s8 gNatureStatTable[NUM_NATURES][NUM_NATURE_STATS];
 extern struct SpriteTemplate gMultiuseSpriteTemplate;
 extern struct PokemonStorage* gPokemonStoragePtr;
 extern const u32 gExperienceTables[][MAX_LEVEL + 1];
@@ -369,6 +370,9 @@ bool8 PokemonItemUseNoEffect(struct Pokemon *mon, u16 item, u8 partyIndex, u8 mo
 u8 GetItemEffectParamOffset(u16 itemId, u8 effectByte, u8 effectBit);
 const u8 *Battle_PrintStatBoosterEffectMessage(u16 itemId);
 u8 GetNature(struct Pokemon *mon);
+u8 GetMonHiddenPowerType(struct Pokemon *mon);
+u8 GetMonHiddenPowerPower(struct Pokemon *mon);
+u8 GetMonFriendshipMovePower(struct Pokemon *mon, u16 move);
 u16 GetEvolutionTargetSpecies(struct Pokemon *mon, u8 type, u16 evolutionItem);
 u16 NationalPokedexNumToSpecies(u16 nationalNum);
 u16 SpeciesToNationalPokedexNum(u16 species);

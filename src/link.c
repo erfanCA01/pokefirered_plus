@@ -425,6 +425,12 @@ void CloseLink(void)
     DisableSerial();
 }
 
+// TRUE while a cable link is open (InitLink until CloseLink)
+bool8 IsCableLinkOpen(void)
+{
+    return sLinkOpen;
+}
+
 static void TestBlockTransfer(u8 unused0, u8 unused1, u8 unused2)
 {
     u8 i;

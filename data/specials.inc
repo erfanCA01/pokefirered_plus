@@ -452,4 +452,8 @@ gSpecials::
 	def_special UpdateLoreleiDollCollection
 	def_special LoopWingFlapSound
 	def_special CreateEnemyEventMon
+	def_special BuildSpecialShopItems
+	def_special CreateSpecialShop
+	def_special UseRepelFromScript
+	def_special HasUnlockedAllFlavorTextsForSpecialVar
 gSpecialsEnd::

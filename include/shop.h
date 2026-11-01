@@ -9,6 +9,8 @@
 void CreatePokemartMenu(const u16 *itemsForSale);
 void CreateDecorationShop1Menu(const u16 *);
 void CreateDecorationShop2Menu(const u16 *);
+u16 BuildSpecialShopItems(void);
+void CreateSpecialShop(void);
 u8 GetMartFontId(void);
 void RecordItemTransaction(u16 itemId, u16 quantity, u8 logEventId);
 

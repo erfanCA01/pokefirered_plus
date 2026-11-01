@@ -20,6 +20,12 @@ Text_BodySlamWhichMon::
 Text_BodySlamTaught::
     .string "Boioing!$"
 
+Text_BodySlamTeachAgain::
+    .string "Ready for another round?\n"
+    .string "Boing!\p"
+    .string "How about I teach BODY SLAM to\n"
+    .string "another POKéMON of yours?$"
+
 FourIsland_House1_Text_FatMan::
     .string "それ　ぼよーん！\n"
     .string "おまえ　おもいなあー！$"

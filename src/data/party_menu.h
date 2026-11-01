@@ -417,6 +417,28 @@ static const struct WindowTemplate sConfirmButtonWindowTemplate =
     .baseBlock = 0x1D3,
 };
 
+// The SELECT SWITCH tab extends the bg frame (bg pal 1) down below its top band
+#define QUICK_SWITCH_PAL           11 // Unused by the party menu
+#define QUICK_SWITCH_COLOR_FRAME   10 // Copied from bg pal 1, color 3
+#define QUICK_SWITCH_COLOR_EDGE    11 // Copied from bg pal 1, color 5
+#define QUICK_SWITCH_FRAME_HEIGHT  6  // Height of the bg frame's top band
+#define QUICK_SWITCH_TAB_BOTTOM    16
+#define QUICK_SWITCH_TAB_WIDTH     66
+
+// Above the first slot. Tiles are past the item/mail/field move windows (end 0x3AE)
+static const struct WindowTemplate sQuickSwitchWindowTemplate =
+{
+    .bg = 0,
+    .tilemapLeft = 0,
+    .tilemapTop = 0,
+    .width = 9,
+    .height = 2,
+    .paletteNum = QUICK_SWITCH_PAL,
+    .baseBlock = 0x3AF,
+};
+
+static const u8 sQuickSwitchFontColors[] = {TEXT_COLOR_TRANSPARENT, TEXT_COLOR_WHITE, TEXT_COLOR_DARK_GRAY};
+
 static const struct WindowTemplate sDefaultPartyMsgWindowTemplate =
 {
     .bg = 2,

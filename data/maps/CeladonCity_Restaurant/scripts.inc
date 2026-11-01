@@ -28,6 +28,47 @@ CeladonCity_Restaurant_EventScript_NoRoomForCoinCase::
 
 CeladonCity_Restaurant_EventScript_AlreadyGotCoinCase::
 	msgbox CeladonCity_Restaurant_Text_ThoughtIdWinItBack
+	goto_if_unset FLAG_BADGE08_GET, CeladonCity_Restaurant_EventScript_CoinCaseManEnd
+	goto_if_questlog EventScript_ReleaseEnd
+	msgbox CeladonCity_Restaurant_Text_WannaSeeWhatIveGot, MSGBOX_YESNO
+	goto_if_eq VAR_RESULT, NO, CeladonCity_Restaurant_EventScript_DeclineBroker
+	message CeladonCity_Restaurant_Text_WhatllItBe
+	waitmessage
+	multichoice 20, 6, MULTICHOICE_BROKER_WARES, FALSE
+	switch VAR_RESULT
+	case 0, CeladonCity_Restaurant_EventScript_BrokerTms
+	case 1, CeladonCity_Restaurant_EventScript_BrokerBerries
+	goto CeladonCity_Restaurant_EventScript_DeclineBroker
+	end
+
+CeladonCity_Restaurant_EventScript_BrokerTms::
+	setvar VAR_0x8004, SPECIAL_SHOP_BROKER_TMS
+	specialvar VAR_RESULT, BuildSpecialShopItems
+	goto_if_eq VAR_RESULT, 0, CeladonCity_Restaurant_EventScript_NoTmsToDeal
+	goto CeladonCity_Restaurant_EventScript_OpenBrokerShop
+	end
+
+CeladonCity_Restaurant_EventScript_BrokerBerries::
+	setvar VAR_0x8004, SPECIAL_SHOP_BROKER_BERRIES
+	specialvar VAR_RESULT, BuildSpecialShopItems
+CeladonCity_Restaurant_EventScript_OpenBrokerShop::
+	special CreateSpecialShop
+	waitstate
+	msgbox CeladonCity_Restaurant_Text_YouNeverSawMe
+	release
+	end
+
+CeladonCity_Restaurant_EventScript_NoTmsToDeal::
+	msgbox CeladonCity_Restaurant_Text_NoTmsForYou
+	release
+	end
+
+CeladonCity_Restaurant_EventScript_DeclineBroker::
+	msgbox CeladonCity_Restaurant_Text_SuitYourself
+	release
+	end
+
+CeladonCity_Restaurant_EventScript_CoinCaseManEnd::
 	release
 	end
 

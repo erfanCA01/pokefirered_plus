@@ -51,6 +51,12 @@ Text_MimicTaughtFemale::
     .string "COPYCAT: You bet!\n"
     .string "It's a scream!$"
 
+Text_MimicTeachAgain::
+    .string "COPYCAT: Ooh! I know!\n"
+    .string "I'll copy what I did before!\p"
+    .string "I'll teach MIMIC again!\n"
+    .string "You want me to, right?$"
+
 SaffronCity_CopycatsHouse_2F_Text_TooMuchInBag::
     .string "にもつが　いっぱいね！$"
 

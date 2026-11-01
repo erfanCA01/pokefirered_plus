@@ -445,6 +445,12 @@ void FieldUseFunc_Ether(u8 taskId)
     DoSetUpItemUseCallback(taskId);
 }
 
+void FieldUseFunc_ReduceEV(u8 taskId)
+{
+    gItemUseCB = ItemUseCB_ReduceEV;
+    DoSetUpItemUseCallback(taskId);
+}
+
 void FieldUseFunc_PpUp(u8 taskId)
 {
     gItemUseCB = ItemUseCB_PPUp;
@@ -572,6 +578,14 @@ static void Task_InitTeachyTvFromField(u8 taskId)
         InitTeachyTvController(0, CB2_ReturnToField);
         DestroyTask(taskId);
     }
+}
+
+// For EventScript_RepelWoreOff: uses the Repel in VAR_0x8004 the same way Task_UseRepel does
+void UseRepelFromScript(void)
+{
+    ItemUse_SetQuestLogEvent(QL_EVENT_USED_ITEM, NULL, gSpecialVar_0x8004, 0xFFFF);
+    VarSet(VAR_REPEL_STEP_COUNT, ItemId_GetHoldEffectParam(gSpecialVar_0x8004));
+    RemoveBagItem(gSpecialVar_0x8004, 1);
 }
 
 void FieldUseFunc_Repel(u8 taskId)

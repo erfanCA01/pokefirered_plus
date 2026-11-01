@@ -1357,7 +1357,7 @@ static const struct SpindaSpot sSpindaSpotGraphics[] =
 
 #include "data/pokemon/item_effects.h"
 
-static const s8 sNatureStatTable[NUM_NATURES][NUM_NATURE_STATS] =
+const s8 gNatureStatTable[NUM_NATURES][NUM_NATURE_STATS] =
 {                      // Attack  Defense  Speed  Sp.Atk  Sp.Def
     [NATURE_HARDY]   = {    0,      0,      0,      0,      0   },
     [NATURE_LONELY]  = {   +1,     -1,      0,      0,      0   },
@@ -3975,7 +3975,7 @@ bool8 ExecuteTableBasedItemEffect(struct Pokemon *mon, u16 item, u8 partyIndex, 
 
 #define UPDATE_FRIENDSHIP_FROM_ITEM()                                                                   \
 {                                                                                                       \
-    if (retVal == 0 && friendshipChange == 0)                                                           \
+    if ((retVal == 0 || friendshipOnly) && friendshipChange == 0)                                       \
     {                                                                                                   \
         friendshipChange = itemEffect[idx];                                                             \
         friendship = GetMonData(mon, MON_DATA_FRIENDSHIP, NULL);                                        \
@@ -3995,7 +3995,24 @@ bool8 ExecuteTableBasedItemEffect(struct Pokemon *mon, u16 item, u8 partyIndex, 
         if (friendship > MAX_FRIENDSHIP)                                                                \
             friendship = MAX_FRIENDSHIP;                                                                \
         SetMonData(mon, MON_DATA_FRIENDSHIP, &friendship);                                              \
+        retVal = FALSE;                                                                                 \
     }                                                                                                   \
+}
+
+// For the EV-lowering berries (ITEM6_SUBTRACT_EV), as in Emerald.
+// Returns FALSE if the Pokémon has no EVs in that stat to lose.
+static bool8 SubtractMonEVFromItem(struct Pokemon *mon, u8 evDataId, s8 evChange)
+{
+    s32 ev = GetMonData(mon, evDataId, NULL);
+
+    if (ev == 0)
+        return FALSE;
+    ev += evChange;
+    if (ev < 0)
+        ev = 0;
+    SetMonData(mon, evDataId, &ev);
+    CalculateMonStats(mon);
+    return TRUE;
 }
 
 bool8 PokemonUseItemEffects(struct Pokemon *mon, u16 item, u8 partyIndex, u8 moveIndex, bool8 usedByAI)
@@ -4004,6 +4021,7 @@ bool8 PokemonUseItemEffects(struct Pokemon *mon, u16 item, u8 partyIndex, u8 mov
     s32 friendship;
     s32 cmdIndex;
     bool8 retVal = TRUE;
+    bool8 friendshipOnly = FALSE;
     const u8 *itemEffect;
     u8 idx = ITEM_EFFECT_ARG_START;
     u32 i;
@@ -4229,6 +4247,15 @@ bool8 PokemonUseItemEffects(struct Pokemon *mon, u16 item, u8 partyIndex, u8 mov
                     {
                     case 0: // ITEM4_EV_HP
                     case 1: // ITEM4_EV_ATK
+                        if ((s8)itemEffect[idx] < 0)
+                        {
+                            if (SubtractMonEVFromItem(mon, sGetMonDataEVConstants[i], itemEffect[idx]))
+                                retVal = FALSE;
+                            else
+                                friendshipOnly = TRUE; // No EVs to lose, but friendship still changes
+                            idx++;
+                            break;
+                        }
                         evCount = GetMonEVCount(mon);
 
                         // Has EV increase limit already been reached?
@@ -4436,8 +4463,17 @@ bool8 PokemonUseItemEffects(struct Pokemon *mon, u16 item, u8 partyIndex, u8 mov
                     case 1: // ITEM5_EV_SPEED
                     case 2: // ITEM5_EV_SPDEF
                     case 3: // ITEM5_EV_SPATK
+                        if ((s8)itemEffect[idx] < 0)
+                        {
+                            if (SubtractMonEVFromItem(mon, sGetMonDataEVConstants[i + 2], itemEffect[idx]))
+                                retVal = FALSE;
+                            else
+                                friendshipOnly = TRUE; // No EVs to lose, but friendship still changes
+                            idx++;
+                            break;
+                        }
                         evCount = GetMonEVCount(mon);
-                        
+
                         // Has EV increase limit already been reached?
                         if (evCount >= MAX_TOTAL_EVS)
                             return TRUE;
@@ -5017,6 +5053,52 @@ u8 GetNature(struct Pokemon *mon)
     return GetMonData(mon, MON_DATA_PERSONALITY, NULL) % NUM_NATURES;
 }
 
+// Collects the given bit of each IV in the order HP, Atk, Def, Speed, Sp.Atk, Sp.Def,
+// as Cmd_hiddenpowercalc does.
+static u8 GetHiddenPowerIVBits(struct Pokemon *mon, u8 bit)
+{
+    u8 bits = 0;
+    u8 i;
+
+    for (i = 0; i < NUM_STATS; i++)
+        bits |= ((GetMonData(mon, MON_DATA_HP_IV + i, NULL) >> bit) & 1) << i;
+    return bits;
+}
+
+// Same type as Cmd_hiddenpowercalc gives in battle
+u8 GetMonHiddenPowerType(struct Pokemon *mon)
+{
+    // Skips TYPE_NORMAL and TYPE_MYSTERY
+    u8 type = ((NUMBER_OF_MON_TYPES - 3) * GetHiddenPowerIVBits(mon, 0)) / 63 + 1;
+
+    if (type >= TYPE_MYSTERY)
+        type++;
+    return type;
+}
+
+// Same base power as Cmd_hiddenpowercalc gives in battle (30-70)
+u8 GetMonHiddenPowerPower(struct Pokemon *mon)
+{
+    return (40 * GetHiddenPowerIVBits(mon, 1)) / 63 + 30;
+}
+
+// Same base power as Cmd_friendshiptodamagecalculation gives Return/Frustration in battle.
+// A result of 0 means no override in CalculateBaseDamage, so the move's table power is used.
+u8 GetMonFriendshipMovePower(struct Pokemon *mon, u16 move)
+{
+    u8 friendship = GetMonData(mon, MON_DATA_FRIENDSHIP, NULL);
+    u8 power;
+
+    if (gBattleMoves[move].effect == EFFECT_RETURN)
+        power = 10 * friendship / 25;
+    else // EFFECT_FRUSTRATION
+        power = 10 * (255 - friendship) / 25;
+
+    if (power == 0)
+        power = gBattleMoves[move].power;
+    return power;
+}
+
 static u8 GetNatureFromPersonality(u32 personality)
 {
     return personality % NUM_NATURES;
@@ -5419,7 +5501,7 @@ static u16 ModifyStatByNature(u8 nature, u16 stat, u8 statIndex)
     if (statIndex <= STAT_HP || statIndex > NUM_NATURE_STATS)
         return stat;
 
-    switch (sNatureStatTable[nature][statIndex - 1])
+    switch (gNatureStatTable[nature][statIndex - 1])
     {
     case 1:
         retVal = stat * 110;
@@ -5738,43 +5820,67 @@ u32 CanMonLearnTMHM(struct Pokemon *mon, u8 tm)
     }
 }
 
+static u16 GetPreEvolution(u16 species)
+{
+    u16 i;
+    u8 j;
+
+    for (i = 1; i < NUM_SPECIES; i++)
+    {
+        for (j = 0; j < EVOS_PER_MON; j++)
+        {
+            if (gEvolutionTable[i][j].targetSpecies == species)
+                return i;
+        }
+    }
+    return SPECIES_NONE;
+}
+
+// Level-up moves of species and all its pre-evolutions that the mon doesn't already know.
+// Pre-evolution moves count up to MAX_LEVEL_DIFF_PRE_EV levels below the mon's level.
+static u8 GetRelearnableLevelUpMoves(u16 species, u8 level, const u16 *learnedMoves, u16 *moves)
+{
+    u8 numMoves = 0;
+    u8 preEvoLevel = (level > MAX_LEVEL_DIFF_PRE_EV) ? (level - MAX_LEVEL_DIFF_PRE_EV) : 1;
+    int i, j, k;
+
+    while (species != SPECIES_NONE)
+    {
+        for (i = 0; i < MAX_LEVEL_UP_MOVES && gLevelUpLearnsets[species][i] != LEVEL_UP_END; i++)
+        {
+            u16 move = gLevelUpLearnsets[species][i] & LEVEL_UP_MOVE_ID;
+
+            if ((gLevelUpLearnsets[species][i] & LEVEL_UP_MOVE_LV) > (level << 9))
+                continue;
+
+            for (j = 0; j < MAX_MON_MOVES && learnedMoves[j] != move; j++)
+                ;
+            if (j != MAX_MON_MOVES)
+                continue;
+
+            for (k = 0; k < numMoves && moves[k] != move; k++)
+                ;
+            if (k == numMoves && numMoves < MAX_RELEARNER_MOVES)
+                moves[numMoves++] = move;
+        }
+        species = GetPreEvolution(species);
+        level = preEvoLevel;
+    }
+
+    return numMoves;
+}
+
 u8 GetMoveRelearnerMoves(struct Pokemon *mon, u16 *moves)
 {
     u16 learnedMoves[MAX_MON_MOVES];
-    u8 numMoves = 0;
     u16 species = GetMonData(mon, MON_DATA_SPECIES, NULL);
     u8 level = GetMonData(mon, MON_DATA_LEVEL, NULL);
-    int i, j, k;
+    int i;
 
     for (i = 0; i < MAX_MON_MOVES; i++)
         learnedMoves[i] = GetMonData(mon, MON_DATA_MOVE1 + i, NULL);
 
-    for (i = 0; i < MAX_LEVEL_UP_MOVES; i++)
-    {
-        u16 moveLevel;
-
-        if (gLevelUpLearnsets[species][i] == LEVEL_UP_END)
-            break;
-
-        moveLevel = gLevelUpLearnsets[species][i] & LEVEL_UP_MOVE_LV;
-
-        if (moveLevel <= (level << 9))
-        {
-            for (j = 0; j < MAX_MON_MOVES && learnedMoves[j] != (gLevelUpLearnsets[species][i] & LEVEL_UP_MOVE_ID); j++)
-                ;
-
-            if (j == MAX_MON_MOVES)
-            {
-                for (k = 0; k < numMoves && moves[k] != (gLevelUpLearnsets[species][i] & LEVEL_UP_MOVE_ID); k++)
-                    ;
-
-                if (k == numMoves)
-                    moves[numMoves++] = gLevelUpLearnsets[species][i] & LEVEL_UP_MOVE_ID;
-            }
-        }
-    }
-
-    return numMoves;
+    return GetRelearnableLevelUpMoves(species, level, learnedMoves, moves);
 }
 
 u8 GetLevelUpMovesBySpecies(u16 species, u16 *moves)
@@ -5791,11 +5897,10 @@ u8 GetLevelUpMovesBySpecies(u16 species, u16 *moves)
 u8 GetNumberOfRelearnableMoves(struct Pokemon *mon)
 {
     u16 learnedMoves[MAX_MON_MOVES];
-    u16 moves[MAX_LEVEL_UP_MOVES];
-    u8 numMoves = 0;
+    u16 moves[MAX_RELEARNER_MOVES];
     u16 species = GetMonData(mon, MON_DATA_SPECIES_OR_EGG, NULL);
     u8 level = GetMonData(mon, MON_DATA_LEVEL, NULL);
-    int i, j, k;
+    int i;
 
     if (species == SPECIES_EGG)
         return 0;
@@ -5803,32 +5908,7 @@ u8 GetNumberOfRelearnableMoves(struct Pokemon *mon)
     for (i = 0; i < MAX_MON_MOVES; i++)
         learnedMoves[i] = GetMonData(mon, MON_DATA_MOVE1 + i, NULL);
 
-    for (i = 0; i < MAX_LEVEL_UP_MOVES; i++)
-    {
-        u16 moveLevel;
-
-        if (gLevelUpLearnsets[species][i] == LEVEL_UP_END)
-            break;
-
-        moveLevel = gLevelUpLearnsets[species][i] & LEVEL_UP_MOVE_LV;
-
-        if (moveLevel <= (level << 9))
-        {
-            for (j = 0; j < MAX_MON_MOVES && learnedMoves[j] != (gLevelUpLearnsets[species][i] & LEVEL_UP_MOVE_ID); j++)
-                ;
-
-            if (j == MAX_MON_MOVES)
-            {
-                for (k = 0; k < numMoves && moves[k] != (gLevelUpLearnsets[species][i] & LEVEL_UP_MOVE_ID); k++)
-                    ;
-
-                if (k == numMoves)
-                    moves[numMoves++] = gLevelUpLearnsets[species][i] & LEVEL_UP_MOVE_ID;
-            }
-        }
-    }
-
-    return numMoves;
+    return GetRelearnableLevelUpMoves(species, level, learnedMoves, moves);
 }
 
 u16 SpeciesToPokedexNum(u16 species)

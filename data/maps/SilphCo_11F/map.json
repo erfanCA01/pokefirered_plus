@@ -124,6 +124,20 @@
       "elevation": 0,
       "dest_map": "MAP_SILPH_CO_ELEVATOR",
       "dest_warp_id": "0"
+    },
+    {
+      "x": 14,
+      "y": 4,
+      "elevation": 3,
+      "dest_map": "MAP_SILPH_CO_11F",
+      "dest_warp_id": "4"
+    },
+    {
+      "x": 12,
+      "y": 8,
+      "elevation": 3,
+      "dest_map": "MAP_SILPH_CO_11F",
+      "dest_warp_id": "3"
     }
   ],
   "coord_events": [

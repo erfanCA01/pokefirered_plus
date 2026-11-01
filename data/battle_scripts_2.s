@@ -75,6 +75,9 @@ BattleScript_SuccessBallThrow::
 	incrementgamestat GAME_STAT_POKEMON_CAPTURES
 BattleScript_SafariNoIncGameStat::
 	printstring STRINGID_GOTCHAPKMNCAUGHT
+	@ Catch EXP (Gen 6+). getexp gives none in the Safari Zone, as in vanilla.
+	setbyte sGIVEEXP_STATE, 0
+	getexp BS_TARGET
 	trysetcaughtmondexflags BattleScript_CaughtPokemonSkipNewDex
 	printstring STRINGID_PKMNDATAADDEDTODEX
 	waitstate

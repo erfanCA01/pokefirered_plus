@@ -27,6 +27,21 @@ CeladonCity_Gym_Text_ErikaPostBattle::
     .string "I would never collect POKéMON if\n"
     .string "they were unattractive.$"
 
+CeladonCity_Gym_Text_ErikaRematchIntro::
+    .string "Oh, welcome back...\p"
+    .string "My flowers and I have grown since\n"
+    .string "we last met.\p"
+    .string "Please, allow me to show you.{PLAY_BGM}{MUS_ENCOUNTER_GYM_LEADER}$"
+
+CeladonCity_Gym_Text_ErikaRematchDefeat::
+    .string "Oh my...\n"
+    .string "You are as wonderful as ever.$"
+
+CeladonCity_Gym_Text_ErikaRematchPostBattle::
+    .string "Thank you for the lovely battle.\p"
+    .string "I shall keep nurturing my\n"
+    .string "POKéMON with care.$"
+
 CeladonCity_Gym_Text_ExplainRainbowBadgeTakeThis::
     .string "The RAINBOWBADGE will make\n"
     .string "POKéMON up to Lv. 50 obey.\p"

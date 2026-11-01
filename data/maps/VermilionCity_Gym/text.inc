@@ -15,6 +15,23 @@ VermilionCity_Gym_Text_LtSurgePostBattle::
     .string "But, it's useless against GROUND-\n"
     .string "type POKéMON!$"
 
+VermilionCity_Gym_Text_LtSurgeRematchIntro::
+    .string "Hey, kid! You beat the LEAGUE,\n"
+    .string "huh? Not bad!\p"
+    .string "But my electric POKéMON have been\n"
+    .string "charging up since then!\p"
+    .string "Let's see you handle a full-power\n"
+    .string "surge!{PLAY_BGM}{MUS_ENCOUNTER_GYM_LEADER}$"
+
+VermilionCity_Gym_Text_LtSurgeRematchDefeat::
+    .string "Whoa!\n"
+    .string "You're the real deal, kid!$"
+
+VermilionCity_Gym_Text_LtSurgeRematchPostBattle::
+    .string "Great battle, kid!\p"
+    .string "You've got what it takes to be\n"
+    .string "the CHAMPION, no doubt!$"
+
 VermilionCity_Gym_Text_ExplainThunderBadgeTakeThis::
     .string "The THUNDERBADGE cranks up your\n"
     .string "POKéMON's SPEED!\p"

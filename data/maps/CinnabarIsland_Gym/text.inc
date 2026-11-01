@@ -34,6 +34,22 @@ CinnabarIsland_Gym_Text_BlainePostBattle::
     .string "VULPIX or CHARMELEON would be\n"
     .string "ideal for that move.$"
 
+CinnabarIsland_Gym_Text_BlaineRematchIntro::
+    .string "Hah!\n"
+    .string "The CHAMPION came to get burned!\p"
+    .string "My fiery POKéMON burn hotter than\n"
+    .string "ever before!\p"
+    .string "You better have BURN HEAL!{PLAY_BGM}{MUS_ENCOUNTER_GYM_LEADER}$"
+
+CinnabarIsland_Gym_Text_BlaineRematchDefeat::
+    .string "Gwah!\n"
+    .string "I have burned out!$"
+
+CinnabarIsland_Gym_Text_BlaineRematchPostBattle::
+    .string "That battle fired me up!\p"
+    .string "I'll have to think up an even\n"
+    .string "hotter quiz for you!$"
+
 CinnabarIsland_Gym_Text_MakeSpaceForThis::
     .string "Make space for this, child!$"
 

@@ -4,7 +4,15 @@ SilphCo_11F_MapScripts::
 
 SilphCo_11F_OnLoad::
 	call_if_unset FLAG_SILPH_11F_DOOR, EventScript_Close11FDoor
+	call_if_set FLAG_HIDE_SAFFRON_ROCKETS, SilphCo_11F_EventScript_SetWarpPads
 	end
+
+@ Warp pads between the elevator and the boardroom, powered once TEAM ROCKET is gone.
+@ Until then the tiles are plain floor, so warps 3 and 4 can't be used.
+SilphCo_11F_EventScript_SetWarpPads::
+	setmetatile 14, 4, METATILE_SilphCo_WarpPad, FALSE
+	setmetatile 12, 8, METATILE_SilphCo_WarpPad, FALSE
+	return
 
 SilphCo_11F_EventScript_President::
 	lock
@@ -40,7 +48,34 @@ SilphCo_11F_EventScript_AlreadyGotMasterBall::
 	end
 
 SilphCo_11F_EventScript_Secretary::
-	msgbox SilphCo_11F_Text_ThanksForRescuingUs, MSGBOX_NPC
+	lock
+	faceplayer
+	msgbox SilphCo_11F_Text_ThanksForRescuingUs
+	goto_if_unset FLAG_HIDE_SAFFRON_ROCKETS, SilphCo_11F_EventScript_SecretaryEnd
+	goto_if_questlog EventScript_ReleaseEnd
+	msgbox SilphCo_11F_Text_UseTmReplicator, MSGBOX_YESNO
+	goto_if_eq VAR_RESULT, NO, SilphCo_11F_EventScript_DeclineReplicator
+	setvar VAR_0x8004, SPECIAL_SHOP_TM_REPLICATOR
+	specialvar VAR_RESULT, BuildSpecialShopItems
+	goto_if_eq VAR_RESULT, 0, SilphCo_11F_EventScript_NoTmData
+	special CreateSpecialShop
+	waitstate
+	msgbox SilphCo_11F_Text_AlwaysAtYourService
+	release
+	end
+
+SilphCo_11F_EventScript_DeclineReplicator::
+	msgbox SilphCo_11F_Text_UseItAnytime
+	release
+	end
+
+SilphCo_11F_EventScript_NoTmData::
+	msgbox SilphCo_11F_Text_NoTmDataYet
+	release
+	end
+
+SilphCo_11F_EventScript_SecretaryEnd::
+	release
 	end
 
 SilphCo_11F_EventScript_GiovanniTriggerLeft::
@@ -72,6 +107,8 @@ SilphCo_11F_EventScript_BattleGiovanni::
 	removeobject LOCALID_SILPH_CO_GIOVANNI
 	removeobject LOCALID_SILPH_CO_11F_GRUNT1
 	removeobject LOCALID_SILPH_CO_11F_GRUNT2
+	call SilphCo_11F_EventScript_SetWarpPads
+	special DrawWholeMapView
 	fadescreen FADE_FROM_BLACK
 	setvar VAR_MAP_SCENE_SILPH_CO_11F, 1
 	setflag FLAG_HIDE_SAFFRON_ROCKETS

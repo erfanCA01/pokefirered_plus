@@ -21,6 +21,11 @@ Text_SeismicTossTaught::
     .string "I hope you won't toss in the towel.\n"
     .string "Keep it up.$"
 
+Text_SeismicTossTeachAgain::
+    .string "Oh, and if another POKéMON is\n"
+    .string "ready to study hard…\p"
+    .string "Should I teach it SEISMIC TOSS?$"
+
 PewterCity_Museum_1F_Text_WhatsSpecialAboutMoonStone::
     .string "MOON STONE, huh?\p"
     .string "What's so special about it?\n"

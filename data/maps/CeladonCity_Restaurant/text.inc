@@ -35,3 +35,31 @@ CeladonCity_Restaurant_Text_ThoughtIdWinItBack::
     .string "I always thought I was going to\n"
     .string "win it back…$"
 
+CeladonCity_Restaurant_Text_WannaSeeWhatIveGot::
+    .string "…Psst! Hey, kid! Over here!\p"
+    .string "You've got the EARTHBADGE, huh?\n"
+    .string "Then you can keep a secret.\p"
+    .string "I'm going straight, really!\n"
+    .string "But a guy still needs his COINS.\p"
+    .string "I get my hands on rare TMs and\n"
+    .string "HOENN BERRIES. No questions asked.\p"
+    .string "I only deal in COINS, though.\n"
+    .string "Wanna see what I've got?$"
+
+CeladonCity_Restaurant_Text_WhatllItBe::
+    .string "Heh, what'll it be?$"
+
+CeladonCity_Restaurant_Text_NoTmsForYou::
+    .string "Hmm… I only move TMs that you've\n"
+    .string "seen around already.\p"
+    .string "Come back when you've found some\n"
+    .string "rare ones.$"
+
+CeladonCity_Restaurant_Text_YouNeverSawMe::
+    .string "Pleasure doing business.\n"
+    .string "Remember, you never saw me!$"
+
+CeladonCity_Restaurant_Text_SuitYourself::
+    .string "Suit yourself.\n"
+    .string "Remember, you never saw me!$"
+
