@@ -3,6 +3,7 @@
 
 #include "global.h"
 #include "task.h"
+#include "menu.h"
 #include "constants/item_menu.h"
 
 // Exported type declarations
@@ -22,6 +23,11 @@ struct BagStruct
 extern struct BagStruct gBagMenuState;
 
 extern u16 gSpecialVar_ItemId;
+
+// Sort menu labels, shared with the Player PC
+extern const struct MenuAction gBagSortMenuActions[];
+extern const struct MenuAction gBagSortOrderMenuActions[][3];
+extern const u8 *const gBagSortNames[];
 
 // Exported ROM declarations
 void CB2_SetUpReshowBattleScreenAfterMenu(void);

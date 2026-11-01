@@ -215,7 +215,7 @@ static const struct MenuAction sItemMenuContextActions[] = {
     [ITEMMENUACTION_SORT] = {gOtherText_Sort, {.void_u8 = Task_ItemMenuAction_Sort}}
 };
 
-static const struct MenuAction sBagSortMenuActions[] = {
+const struct MenuAction gBagSortMenuActions[] = {
     [BAG_SORT_BY_TYPE]   = {gOtherText_SortType},
     [BAG_SORT_BY_NAME]   = {gText_Name},
     [BAG_SORT_BY_AMOUNT] = {gOtherText_SortAmount},
@@ -229,7 +229,7 @@ static const u8 sBagSortMenuItems[] = {
     BAG_SORT_CANCEL
 };
 
-static const struct MenuAction sBagSortOrderMenuActions[][3] = {
+const struct MenuAction gBagSortOrderMenuActions[][3] = {
     [BAG_SORT_BY_TYPE] = {
         [BAG_SORT_ORDER_NORMAL]  = {gOtherText_SortNormal},
         [BAG_SORT_ORDER_REVERSE] = {gOtherText_SortReverse},
@@ -253,7 +253,7 @@ static const u8 sBagSortOrderMenuItems[] = {
     BAG_SORT_ORDER_CANCEL
 };
 
-static const u8 *const sBagSortNames[] = {
+const u8 *const gBagSortNames[] = {
     [BAG_SORT_BY_TYPE]   = gText_SortName_Type,
     [BAG_SORT_BY_NAME]   = gText_SortName_Name,
     [BAG_SORT_BY_AMOUNT] = gText_SortName_Amount
@@ -1850,7 +1850,7 @@ static void ShowBagSubMenu(const struct MenuAction *actions, const u8 *items, u8
 
 static void ShowBagSortTypeMenu(u8 taskId)
 {
-    ShowBagSubMenu(sBagSortMenuActions, sBagSortMenuItems, ARRAY_COUNT(sBagSortMenuItems), gText_SortItemsByWhat);
+    ShowBagSubMenu(gBagSortMenuActions,sBagSortMenuItems, ARRAY_COUNT(sBagSortMenuItems), gText_SortItemsByWhat);
     gTasks[taskId].func = Task_SortMenuHandleInput;
 }
 
@@ -1887,7 +1887,7 @@ static void Task_SortMenuHandleInput(u8 taskId)
 
     PlaySE(SE_SELECT);
     tSortType = sBagSortMenuItems[input];
-    ShowBagSubMenu(sBagSortOrderMenuActions[tSortType], sBagSortOrderMenuItems, ARRAY_COUNT(sBagSortOrderMenuItems),
+    ShowBagSubMenu(gBagSortOrderMenuActions[tSortType], sBagSortOrderMenuItems, ARRAY_COUNT(sBagSortOrderMenuItems),
                     tSortType == BAG_SORT_BY_AMOUNT ? gText_SortMostOrLeastFirst : gText_SortInWhichOrder);
     gTasks[taskId].func = Task_SortOrderMenuHandleInput;
 }
@@ -1923,7 +1923,7 @@ static void Task_SortOrderMenuHandleInput(u8 taskId)
     PutWindowTilemap(1);
     ScheduleBgCopyTilemapToVram(0);
 
-    StringCopy(gStringVar1, sBagSortNames[tSortType]);
+    StringCopy(gStringVar1, gBagSortNames[tSortType]);
     StringExpandPlaceholders(gStringVar4, gText_ItemsSortedByStrVar1);
     DisplayItemMessageInBag(taskId, FONT_NORMAL, gStringVar4, Task_WaitAButtonAndCloseContextMenu);
 }

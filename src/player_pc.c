@@ -32,6 +32,7 @@
 #define tItemPcParam    data[6]
 #define tWindowId       data[10]
 #define tListMenuTaskId data[11]
+#define tSortType       data[12]
 
 static EWRAM_DATA const u8 *sItemOrder = NULL;
 static EWRAM_DATA u8 sTopMenuItemCount = 0;
@@ -50,6 +51,9 @@ static void Task_TopMenu_ItemStorageSubmenu_HandleInput(u8 taskId);
 static void Task_PlayerPcDepositItem(u8 taskId);
 static void Task_DepositItem_WaitFadeAndGoToBag(u8 taskId);
 static void CB2_ReturnFromDepositMenu(void);
+static void Task_PlayerPcSortItems(u8 taskId);
+static void Task_SortTypeMenuHandleInput(u8 taskId);
+static void Task_SortOrderMenuHandleInput(u8 taskId);
 static void Task_PlayerPcWithdrawItem(u8 taskId);
 static void CB2_ReturnFromWithdrawMenu(void);
 static void Task_WithdrawItemBeginFade(u8 taskId);
@@ -79,6 +83,7 @@ static void Task_PlayerPcExitMailSubmenu(u8 taskId);
 static const u8 *const sItemStorageActionDescriptionPtrs[] = {
     gText_TakeOutItemsFromThePC,
     gText_StoreItemsInThePC,
+    gText_SortItemsInThePC,
     gText_GoBackToThePreviousMenu
 };
 
@@ -94,8 +99,12 @@ static const u8 sItemOrder_PlayerPC[] = { 0, 1, 2 };
 static const struct MenuAction sMenuActions_ItemPc[] = {
     {gText_WithdrawItem2, Task_PlayerPcWithdrawItem},
     {gText_DepositItem2, Task_PlayerPcDepositItem},
+    {gText_SortItems, Task_PlayerPcSortItems},
     {gFameCheckerText_Cancel, Task_PlayerPcCancel}
 };
+
+#define ITEM_PC_SORT_CURSOR_POS 2
+#define ITEM_PC_CANCEL_POS      (ARRAY_COUNT(sMenuActions_ItemPc) - 1)
 
 static const struct ItemSlot gNewGamePCItems[] = {
     { ITEM_POTION, 1 },
@@ -130,6 +139,16 @@ static const struct WindowTemplate sWindowTemplate_TopMenu_4Items = {
 };
 
 static const struct WindowTemplate sWindowTemplate_ItemStorageSubmenu = {
+    .bg = 0,
+    .tilemapLeft = 1,
+    .tilemapTop = 1,
+    .width = 14,
+    .height = 8,
+    .paletteNum = 15,
+    .baseBlock = 0x008
+};
+
+static const struct WindowTemplate sWindowTemplate_SortOrderMenu = {
     .bg = 0,
     .tilemapLeft = 1,
     .tilemapTop = 1,
@@ -272,8 +291,8 @@ static void Task_CreateItemStorageSubmenu(u8 taskId, u8 cursorPos)
         SetHelpContext(HELPCONTEXT_PLAYERS_PC_ITEMS);
     tWindowId = AddWindow(&sWindowTemplate_ItemStorageSubmenu);
     SetStdWindowBorderStyle(tWindowId, FALSE);
-    PrintTextArray(tWindowId, FONT_NORMAL, GetMenuCursorDimensionByFont(FONT_NORMAL, 0), 2, 16, 3, sMenuActions_ItemPc);
-    Menu_InitCursor(tWindowId, FONT_NORMAL, 0, 2, 16, 3, cursorPos);
+    PrintTextArray(tWindowId, FONT_NORMAL, GetMenuCursorDimensionByFont(FONT_NORMAL, 0), 2, 16, ARRAY_COUNT(sMenuActions_ItemPc), sMenuActions_ItemPc);
+    Menu_InitCursor(tWindowId, FONT_NORMAL, 0, 2, 16, ARRAY_COUNT(sMenuActions_ItemPc), cursorPos);
     ScheduleBgCopyTilemapToVram(0);
     PrintStringOnWindow0WithDialogueFrame(sItemStorageActionDescriptionPtrs[cursorPos]);
 }
@@ -297,7 +316,7 @@ static void Task_TopMenu_ItemStorageSubmenu_HandleInput(u8 taskId)
     }
     else if (JOY_REPT(DPAD_DOWN))
     {
-        if (Menu_GetCursorPos() != 2)
+        if (Menu_GetCursorPos() != ITEM_PC_CANCEL_POS)
         {
             PlaySE(SE_SELECT);
             Menu_MoveCursor(+1);
@@ -312,7 +331,7 @@ static void Task_TopMenu_ItemStorageSubmenu_HandleInput(u8 taskId)
     else if (JOY_NEW(B_BUTTON))
     {
         PlaySE(SE_SELECT);
-        sMenuActions_ItemPc[2].func.void_u8(taskId);
+        sMenuActions_ItemPc[ITEM_PC_CANCEL_POS].func.void_u8(taskId);
     }
 }
 
@@ -347,6 +366,99 @@ static void CB2_ReturnFromDepositMenu(void)
     taskId = CreateTask(Task_ReturnToItemStorageSubmenu, 0);
     Task_CreateItemStorageSubmenu(taskId, 1);
     FadeInFromBlack();
+}
+
+static void RemoveItemStorageWindow(u8 taskId)
+{
+    s16 *data = gTasks[taskId].data;
+    ClearStdWindowAndFrameToTransparent(tWindowId, FALSE);
+    ClearWindowTilemap(tWindowId);
+    RemoveWindow(tWindowId);
+    ScheduleBgCopyTilemapToVram(0);
+}
+
+static void Task_ReturnToItemStorageSortOption(u8 taskId)
+{
+    Task_CreateItemStorageSubmenu(taskId, ITEM_PC_SORT_CURSOR_POS);
+    gTasks[taskId].func = Task_TopMenu_ItemStorageSubmenu_HandleInput;
+}
+
+static void ShowItemSortMenu(u8 taskId, const struct WindowTemplate *template, const struct MenuAction *actions, u8 count, const u8 *prompt)
+{
+    s16 *data = gTasks[taskId].data;
+    tWindowId = AddWindow(template);
+    SetStdWindowBorderStyle(tWindowId, FALSE);
+    PrintTextArray(tWindowId, FONT_NORMAL, GetMenuCursorDimensionByFont(FONT_NORMAL, 0), 2, 16, count, actions);
+    Menu_InitCursor(tWindowId, FONT_NORMAL, 0, 2, 16, count, 0);
+    ScheduleBgCopyTilemapToVram(0);
+    PrintStringOnWindow0WithDialogueFrame(prompt);
+}
+
+static void ShowItemSortTypeMenu(u8 taskId)
+{
+    ShowItemSortMenu(taskId, &sWindowTemplate_ItemStorageSubmenu, gBagSortMenuActions, 4, gText_SortItemsByWhat);
+    gTasks[taskId].func = Task_SortTypeMenuHandleInput;
+}
+
+static void Task_PlayerPcSortItems(u8 taskId)
+{
+    RemoveItemStorageWindow(taskId);
+    if (CountItemsInPC() < 2)
+    {
+        DisplayItemMessageOnField(taskId, FONT_NORMAL, gText_ThereIsNothingToSortPC, Task_ReturnToItemStorageSortOption);
+        return;
+    }
+    ShowItemSortTypeMenu(taskId);
+}
+
+static void Task_SortTypeMenuHandleInput(u8 taskId)
+{
+    s16 *data = gTasks[taskId].data;
+    s8 input = Menu_ProcessInputNoWrapAround();
+
+    switch (input)
+    {
+    case MENU_NOTHING_CHOSEN:
+        return;
+    case MENU_B_PRESSED:
+    case BAG_SORT_CANCEL:
+        PlaySE(SE_SELECT);
+        RemoveItemStorageWindow(taskId);
+        Task_ReturnToItemStorageSortOption(taskId);
+        return;
+    }
+
+    PlaySE(SE_SELECT);
+    tSortType = input;
+    RemoveItemStorageWindow(taskId);
+    ShowItemSortMenu(taskId, &sWindowTemplate_SortOrderMenu, gBagSortOrderMenuActions[tSortType], 3,
+                     tSortType == BAG_SORT_BY_AMOUNT ? gText_SortMostOrLeastFirst : gText_SortInWhichOrder);
+    gTasks[taskId].func = Task_SortOrderMenuHandleInput;
+}
+
+static void Task_SortOrderMenuHandleInput(u8 taskId)
+{
+    s16 *data = gTasks[taskId].data;
+    s8 input = Menu_ProcessInputNoWrapAround();
+
+    switch (input)
+    {
+    case MENU_NOTHING_CHOSEN:
+        return;
+    case MENU_B_PRESSED:
+    case BAG_SORT_ORDER_CANCEL:
+        PlaySE(SE_SELECT);
+        RemoveItemStorageWindow(taskId);
+        ShowItemSortTypeMenu(taskId);
+        return;
+    }
+
+    PlaySE(SE_SELECT);
+    SortPCItems(tSortType, input == BAG_SORT_ORDER_REVERSE);
+    RemoveItemStorageWindow(taskId);
+    StringCopy(gStringVar1, gBagSortNames[tSortType]);
+    StringExpandPlaceholders(gStringVar4, gText_ItemsSortedByStrVar1PC);
+    DisplayItemMessageOnField(taskId, FONT_NORMAL, gStringVar4, Task_ReturnToItemStorageSortOption);
 }
 
 static void Task_PlayerPcWithdrawItem(u8 taskId)

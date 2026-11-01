@@ -631,10 +631,8 @@ static u16 GetItemTypeSortRank(u16 itemId)
 }
 
 // Empty slots always go last. Ties fall back to item ID so the result is stable.
-static bool8 BagSlotsOutOfOrder(struct ItemSlot * a, struct ItemSlot * b, u8 sortType, bool8 reverse)
+static bool8 ItemsOutOfOrder(u16 itemIdA, u16 quantityA, u16 itemIdB, u16 quantityB, u8 sortType, bool8 reverse)
 {
-    u16 quantityA = GetBagItemQuantity(&a->quantity);
-    u16 quantityB = GetBagItemQuantity(&b->quantity);
     s32 cmp = 0;
 
     if (quantityA == 0)
@@ -645,17 +643,17 @@ static bool8 BagSlotsOutOfOrder(struct ItemSlot * a, struct ItemSlot * b, u8 sor
     switch (sortType)
     {
     case BAG_SORT_BY_TYPE:
-        cmp = GetItemTypeSortRank(a->itemId) - GetItemTypeSortRank(b->itemId);
+        cmp = GetItemTypeSortRank(itemIdA) - GetItemTypeSortRank(itemIdB);
         break;
     case BAG_SORT_BY_NAME:
-        cmp = StringCompare(ItemId_GetName(a->itemId), ItemId_GetName(b->itemId));
+        cmp = StringCompare(ItemId_GetName(itemIdA), ItemId_GetName(itemIdB));
         break;
     case BAG_SORT_BY_AMOUNT:
         cmp = quantityB - quantityA;
         break;
     }
     if (cmp == 0)
-        cmp = a->itemId - b->itemId;
+        cmp = itemIdA - itemIdB;
 
     if (reverse)
         return cmp < 0;
@@ -671,8 +669,32 @@ void SortBagPocket(struct BagPocket * pocket, u8 sortType, bool8 reverse)
     {
         for (j = i + 1; j < pocket->capacity; j++)
         {
-            if (BagSlotsOutOfOrder(&pocket->itemSlots[i], &pocket->itemSlots[j], sortType, reverse))
+            if (ItemsOutOfOrder(pocket->itemSlots[i].itemId, GetBagItemQuantity(&pocket->itemSlots[i].quantity),
+                                pocket->itemSlots[j].itemId, GetBagItemQuantity(&pocket->itemSlots[j].quantity),
+                                sortType, reverse))
                 SwapItemSlots(&pocket->itemSlots[i], &pocket->itemSlots[j]);
+        }
+    }
+}
+
+void SortPCItems(u8 sortType, bool8 reverse)
+{
+    u16 i, j;
+    struct ItemSlot tmp;
+    struct ItemSlot *slots = gSaveBlock1Ptr->pcItems;
+
+    for (i = 0; i < PC_ITEMS_COUNT; i++)
+    {
+        for (j = i + 1; j < PC_ITEMS_COUNT; j++)
+        {
+            if (ItemsOutOfOrder(slots[i].itemId, GetPcItemQuantity(&slots[i].quantity),
+                                slots[j].itemId, GetPcItemQuantity(&slots[j].quantity),
+                                sortType, reverse))
+            {
+                tmp = slots[i];
+                slots[i] = slots[j];
+                slots[j] = tmp;
+            }
         }
     }
 }
