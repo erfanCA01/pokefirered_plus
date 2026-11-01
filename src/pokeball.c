@@ -19,7 +19,7 @@ static void Task_DoPokeballSendOutAnim(u8 taskId);
 static void StartPlayerMonSlideIn(u8 battlerId);
 static void SpriteCB_PlayerMonSendOut_1(struct Sprite *sprite);
 static void SpriteCB_PlayerMonSendOut_2(struct Sprite *sprite);
-static void SpriteCB_OpponentMonSendOut(struct Sprite *sprite);
+static void SpriteCB_OpponentMonSendOut_1(struct Sprite *sprite);
 static void SpriteCB_BallThrow(struct Sprite *sprite);
 static void SpriteCB_BallThrow_ReachMon(struct Sprite *sprite);
 static void SpriteCB_BallThrow_StartShrinkMon(struct Sprite *sprite);
@@ -414,11 +414,11 @@ static void Task_DoPokeballSendOutAnim(u8 taskId)
         gSprites[ballSpriteId].callback = SpriteCB_PlayerMonSendOut_1;
         break;
     case POKEBALL_OPPONENT_SENDOUT:
-        gSprites[ballSpriteId].x = GetBattlerSpriteCoord(battlerId, BATTLER_COORD_X);
-        gSprites[ballSpriteId].y = GetBattlerSpriteCoord(battlerId, BATTLER_COORD_Y) + 24;
         gBattlerTarget = battlerId;
-        gSprites[ballSpriteId].data[0] = 0;
-        gSprites[ballSpriteId].callback = SpriteCB_OpponentMonSendOut;
+        gSprites[ballSpriteId].x = GetBattlerSpriteCoord(battlerId, BATTLER_COORD_X) + 24;
+        gSprites[ballSpriteId].y = GetBattlerSpriteCoord(battlerId, BATTLER_COORD_Y) - 16;
+        gSprites[ballSpriteId].callback = SpriteCB_OpponentMonSendOut_1;
+        PlaySE(SE_BALL_THROW);
         break;
     default:
         gBattlerTarget = GetBattlerAtPosition(B_POSITION_OPPONENT_LEFT);
@@ -1059,7 +1059,8 @@ static void SpriteCB_PlayerMonSendOut_2(struct Sprite *sprite)
             sprite->data[0] = 0;
 
             if (IsDoubleBattle() && gBattleSpritesDataPtr->animationData->introAnimActive
-             && sprite->sBattler == GetBattlerAtPosition(B_POSITION_PLAYER_RIGHT))
+             && (sprite->sBattler == GetBattlerAtPosition(B_POSITION_PLAYER_RIGHT)
+              || sprite->sBattler == GetBattlerAtPosition(B_POSITION_OPPONENT_RIGHT)))
                 sprite->callback = SpriteCB_ReleaseMon2FromBall;
             else
                 sprite->callback = SpriteCB_ReleaseMonFromBall;
@@ -1078,18 +1079,18 @@ static void SpriteCB_ReleaseMon2FromBall(struct Sprite *sprite)
     }
 }
 
-static void SpriteCB_OpponentMonSendOut(struct Sprite *sprite)
+// The opponent's ball is thrown in an arc that ends where the old
+// "drop in place" ball used to sit, then SpriteCB_PlayerMonSendOut_2
+// (shared with the player) releases the mon.
+static void SpriteCB_OpponentMonSendOut_1(struct Sprite *sprite)
 {
-    sprite->data[0]++;
-    if (sprite->data[0] > 15)
-    {
-        sprite->data[0] = 0;
-        if (IsDoubleBattle() && gBattleSpritesDataPtr->animationData->introAnimActive
-         && sprite->sBattler == GetBattlerAtPosition(B_POSITION_OPPONENT_RIGHT))
-            sprite->callback = SpriteCB_ReleaseMon2FromBall;
-        else
-            sprite->callback = SpriteCB_ReleaseMonFromBall;
-    }
+    sprite->data[0] = 25;
+    sprite->data[2] = GetBattlerSpriteCoord(sprite->sBattler, BATTLER_COORD_X);
+    sprite->data[4] = GetBattlerSpriteCoord(sprite->sBattler, BATTLER_COORD_Y) + 24;
+    sprite->data[5] = -30;
+    sprite->oam.affineParam = sprite->sBattler;
+    InitAnimArcTranslation(sprite);
+    sprite->callback = SpriteCB_PlayerMonSendOut_2;
 }
 
 #undef sBattler
