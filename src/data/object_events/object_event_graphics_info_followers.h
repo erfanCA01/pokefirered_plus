@@ -467,7 +467,7 @@ const void* const gFollowerPalettes[][2] =
     [SPECIES_NONE] = {gMonPalette_CircledQuestionMark, gMonShinyPalette_CircledQuestionMark},
     // followers-expanded-id: for these 79 species, FireRed's native shiny battle palette
     // (gMonShinyPaletteTable, used as-is everywhere else including battles) differs from the
-    // shiny colors Emerald's followers-expanded-id ships (arrant's own shiny color corrections
+    // shiny colors Emerald's followers-expanded-id ships (aarant's own shiny color corrections
     // for Gen 3). Override just the OW follower's shiny palette; normal stays NULL (falls
     // through to the default gMonPaletteTable, which already matches between games).
     // See src/data/graphics/follower_shiny_palette_overrides.h for the asset declarations.
