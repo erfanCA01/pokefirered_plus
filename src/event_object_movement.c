@@ -113,6 +113,7 @@ static void ResetObjectEventFldEffData(struct ObjectEvent *);
 static u8 TryLoadObjectPalette(const struct SpritePalette *spritePalette);
 static u8 FindObjectEventPaletteIndexByTag(u16);
 static u8 LoadDynamicFollowerPalette(u16 species, u8 form, bool32 shiny);
+static u8 LoadDynamicFollowerPaletteData(u16 species, u8 form, bool32 shiny);
 static bool8 ObjectEventDoesElevationMatch(struct ObjectEvent *, u8);
 static bool8 IsElevationMismatchAt(u8 elevation, s16 x, s16 y);
 static bool8 AreElevationsCompatible(u8 a, u8 b);
@@ -1949,17 +1950,48 @@ u8 CreateObjectGraphicsSprite(u16 graphicsId, SpriteCallback callback, s16 x, s1
 {
     struct SpriteTemplate spriteTemplate;
     const struct SubspriteTable *subspriteTables;
+    const struct ObjectEventGraphicsInfo *graphicsInfo = GetObjectEventGraphicsInfo(graphicsId);
     u8 spriteId;
 
     CopyObjectGraphicsInfoToSpriteTemplate(graphicsId, callback, &spriteTemplate, &subspriteTables);
-    if (spriteTemplate.paletteTag != TAG_NONE)
+    // followers-expanded-id: species graphics (the follower, e.g. in the shop's map view)
+    // have no fixed palette tag; load the species palette (shininess from the follower
+    // object, like Emerald) and use its real tag.
+    if (spriteTemplate.paletteTag == OBJ_EVENT_PAL_TAG_DYNAMIC)
+    {
+        struct ObjectEvent *follower = GetFollowerObject();
+        u8 paletteNum = LoadDynamicFollowerPaletteData((graphicsId & OBJ_EVENT_GFX_SPECIES_MASK) - OBJ_EVENT_GFX_MON_BASE,
+                                                       graphicsId >> OBJ_EVENT_GFX_SPECIES_BITS,
+                                                       follower != NULL ? follower->shiny : FALSE);
+        spriteTemplate.paletteTag = paletteNum < 16 ? GetSpritePaletteTagByPaletteNum(paletteNum) : TAG_NONE;
+    }
+    else if (spriteTemplate.paletteTag != TAG_NONE)
+    {
         LoadObjectEventPalette(spriteTemplate.paletteTag);
+    }
+#if OW_GFX_COMPRESS
+    // followers-expanded-id: compressed graphics must be decompressed into a shared
+    // sheet first; the raw images pointer is LZ data (garbage tiles if copied as is).
+    if (graphicsInfo->compressed)
+        spriteTemplate.tileTag = LoadSheetGraphicsInfo(graphicsInfo, graphicsId, NULL);
+#endif
 
     spriteId = CreateSprite(&spriteTemplate, x, y, subpriority);
-    if (spriteId != MAX_SPRITES && subspriteTables != NULL)
+    if (spriteId != MAX_SPRITES)
     {
-        SetSubspriteTables(&gSprites[spriteId], subspriteTables);
-        gSprites[spriteId].subspriteMode = SUBSPRITES_IGNORE_PRIORITY;
+        struct Sprite *sprite = &gSprites[spriteId];
+        if (OW_GFX_COMPRESS && sprite->usingSheet)
+        {
+            // Same as TrySetupObjectEventSprite: the first tileNum was computed before
+            // sheetSpan existed, and these sprites are static.
+            sprite->sheetSpan = GetSpanPerImage(sprite->oam.shape, sprite->oam.size);
+            SetSpriteSheetFrameTileNum(sprite);
+        }
+        if (subspriteTables != NULL)
+        {
+            SetSubspriteTables(sprite, subspriteTables);
+            sprite->subspriteMode = SUBSPRITES_IGNORE_PRIORITY;
+        }
     }
     return spriteId;
 }
@@ -2553,7 +2585,12 @@ static u8 FindObjectEventPaletteIndexByTag(u16 tag)
 // palette table (gMonPaletteTable/gMonShinyPaletteTable), or from gFollowerPalettes
 // if that species has a dedicated override entry. Tag is speciesId (+SPECIES_SHINY_TAG
 // if shiny) so repeat spawns of the same species/shininess reuse the same palette slot.
-static u8 LoadDynamicFollowerPalette(u16 species, u8 form, bool32 shiny)
+//
+// This part only finds or loads the palette data; LoadDynamicFollowerPalette adds the
+// field tint/weather on top. Menu screens that draw object graphics outside the field
+// (CreateObjectGraphicsSprite, e.g. the shop's map view) use this part alone, the same
+// way vanilla NPC palettes there are a plain LoadSpritePalette.
+static u8 LoadDynamicFollowerPaletteData(u16 species, u8 form, bool32 shiny)
 {
     u32 paletteNum;
     struct SpritePalette spritePalette = {.tag = shiny ? (species + SPECIES_SHINY_TAG) : species};
@@ -2571,7 +2608,17 @@ static u8 LoadDynamicFollowerPalette(u16 species, u8 form, bool32 shiny)
         spritePalette.data = (void *)gDecompressionBuffer;
     }
 
-    paletteNum = LoadSpritePaletteEvictingReflections(&spritePalette);
+    return LoadSpritePaletteEvictingReflections(&spritePalette);
+}
+
+static u8 LoadDynamicFollowerPalette(u16 species, u8 form, bool32 shiny)
+{
+    u32 paletteNum;
+
+    if ((paletteNum = IndexOfSpritePaletteTag(shiny ? (species + SPECIES_SHINY_TAG) : species)) < 16)
+        return paletteNum;
+
+    paletteNum = LoadDynamicFollowerPaletteData(species, form, shiny);
     // Deviation from Emerald: ApplyGlobalFieldPaletteTint is required here, like in every other
     // sprite-palette load path in this file. Under QL_TINT_BACKUP_GRAYSCALE (the end of the
     // Quest Log recap) it backs up this slot's color into quest_log.c's sPalettesBackup and

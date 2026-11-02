@@ -26,6 +26,7 @@
 #include "quest_log.h"
 #include "script.h"
 #include "constants/songs.h"
+#include "constants/event_objects.h"
 #include "constants/items.h"
 #include "constants/game_stat.h"
 #include "constants/field_weather.h"
@@ -794,6 +795,11 @@ static void BuyMenuCollectObjectEventData(void)
         for (x = 0; x < 7; x++)
         {
             u8 eventObjId = GetObjectEventIdByPosition(facingX - 3 + x, facingY - 2 + y, elevation);
+            // followers-expanded-id: skip species objects other than the follower (as Emerald),
+            // and the follower itself while it is in its ball (invisible on the player's tile).
+            if (eventObjId != OBJECT_EVENTS_COUNT && IS_OW_MON_OBJ(&gObjectEvents[eventObjId])
+             && (gObjectEvents[eventObjId].localId != OBJ_EVENT_ID_FOLLOWER || gObjectEvents[eventObjId].invisible))
+                eventObjId = OBJECT_EVENTS_COUNT;
             if (eventObjId != OBJECT_EVENTS_COUNT)
             {
                 sViewportObjectEvents[num][OBJECT_EVENT_ID] = eventObjId;
