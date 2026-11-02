@@ -412,6 +412,7 @@ static void Task_DoPokeballSendOutAnim(u8 taskId)
         gSprites[ballSpriteId].x = x;
         gSprites[ballSpriteId].y = y;
         gSprites[ballSpriteId].callback = SpriteCB_PlayerMonSendOut_1;
+        PlaySE(SE_BALL_THROW);
         break;
     case POKEBALL_OPPONENT_SENDOUT:
         gBattlerTarget = battlerId;
