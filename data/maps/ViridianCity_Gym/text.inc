@@ -27,10 +27,36 @@ ViridianCity_Gym_Text_GiovanniPostBattle::
     .string "Let us meet again someday!\n"
     .string "Farewell!$"
 
+ViridianCity_Gym_Text_GiovanniRematchOffer::
+    .string "So, we meet again, CHAMPION.\p"
+    .string "As I said, I have dedicated my\n"
+    .string "life to training once more.\p"
+    .string "Perhaps you can test what I have\n"
+    .string "learned. Will you battle me?$"
+
+ViridianCity_Gym_Text_GiovanniRematchNotReady::
+    .string "So, we meet again, as I said\n"
+    .string "we would. And now you are the\l"
+    .string "CHAMPION…\p"
+    .string "My training is not yet complete.\n"
+    .string "I will not battle you half-ready.\p"
+    .string "Until then, learn what others say\n"
+    .string "about me with your FAME CHECKER…\l"
+    .string "If you dare.$"
+
+ViridianCity_Gym_Text_GiovanniRematchAlreadyWon::
+    .string "My training continues.\p"
+    .string "Prove yourself at the LEAGUE\n"
+    .string "again, and I will face you\l"
+    .string "once more.$"
+
+ViridianCity_Gym_Text_GiovanniRematchDeclined::
+    .string "Hmph. Then leave.$"
+
 ViridianCity_Gym_Text_GiovanniRematchIntro::
-    .string "So, we meet again.\p"
-    .string "Far from TEAM ROCKET, I have\n"
-    .string "dedicated myself to training.\p"
+    .string "Good.\p"
+    .string "Far from TEAM ROCKET, my POKéMON\n"
+    .string "and I have grown stronger.\p"
     .string "Now, face the full power of the\n"
     .string "EARTH!{PLAY_BGM}{MUS_ENCOUNTER_ROCKET}$"
 

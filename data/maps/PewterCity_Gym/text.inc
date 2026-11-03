@@ -62,7 +62,39 @@ PewterCity_Gym_Text_BrockPostBattle::
     .string "Go to the GYM in CERULEAN and test\n"
     .string "your abilities.$"
 
+PewterCity_Gym_Text_BrockRematchOffer::
+    .string "There you are, CHAMPION!\p"
+    .string "Since our last battle, I've been\n"
+    .string "helping dig for fossils under\l"
+    .string "MT. MOON.\p"
+    .string "All that rock has made my POKéMON\n"
+    .string "even tougher.\p"
+    .string "Want to test your abilities\n"
+    .string "against us again?$"
+
+PewterCity_Gym_Text_BrockRematchNotReady::
+    .string "I heard you became the CHAMPION!\n"
+    .string "I knew you were gifted.\p"
+    .string "I'd like to test your abilities\n"
+    .string "again, but my POKéMON aren't\l"
+    .string "ready yet.\p"
+    .string "While we train, why not ask around\n"
+    .string "about me with your FAME CHECKER?$"
+
+PewterCity_Gym_Text_BrockRematchAlreadyWon::
+    .string "Heh… Heheh… Hahahaha!\p"
+    .string "Sorry! I'm still laughing about\n"
+    .string "our battle. Once I start, I just\l"
+    .string "can't stop!\p"
+    .string "Win at the POKéMON LEAGUE again,\n"
+    .string "and we'll be ready for you!$"
+
+PewterCity_Gym_Text_BrockRematchDeclined::
+    .string "I see. A rock can wait forever.\n"
+    .string "So can I.$"
+
 PewterCity_Gym_Text_BrockRematchIntro::
+    .string "That's what I like to hear!\p"
     .string "My rock-hard willpower has only\n"
     .string "grown harder since then!\p"
     .string "Show me how far you've come,\n"

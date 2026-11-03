@@ -12,10 +12,27 @@ SaffronCity_Gym_EventScript_Sabrina::
 
 SaffronCity_Gym_EventScript_SabrinaRematch::
 	setvar VAR_0x8004, FAMECHECKER_SABRINA
-	setvar VAR_0x8005, TRAINER_LEADER_SABRINA_REMATCH
-	call EventScript_TryGymLeaderRematch
-	goto_if_eq VAR_RESULT, FALSE, EventScript_ReleaseEnd
+	specialvar VAR_RESULT, HasUnlockedAllFlavorTextsForSpecialVar
+	goto_if_eq VAR_RESULT, FALSE, SaffronCity_Gym_EventScript_SabrinaRematchNotReady
+	goto_if_defeated TRAINER_LEADER_SABRINA_REMATCH, SaffronCity_Gym_EventScript_SabrinaRematchAlreadyWon
+	msgbox SaffronCity_Gym_Text_SabrinaRematchOffer, MSGBOX_YESNO
+	goto_if_eq VAR_RESULT, NO, SaffronCity_Gym_EventScript_SabrinaRematchDeclined
 	trainerbattle_single TRAINER_LEADER_SABRINA_REMATCH, SaffronCity_Gym_Text_SabrinaRematchIntro, SaffronCity_Gym_Text_SabrinaRematchDefeat, SaffronCity_Gym_EventScript_DefeatedSabrinaRematch, NO_MUSIC
+	release
+	end
+
+SaffronCity_Gym_EventScript_SabrinaRematchNotReady::
+	msgbox SaffronCity_Gym_Text_SabrinaRematchNotReady
+	release
+	end
+
+SaffronCity_Gym_EventScript_SabrinaRematchAlreadyWon::
+	msgbox SaffronCity_Gym_Text_SabrinaRematchAlreadyWon
+	release
+	end
+
+SaffronCity_Gym_EventScript_SabrinaRematchDeclined::
+	msgbox SaffronCity_Gym_Text_SabrinaRematchDeclined
 	release
 	end
 

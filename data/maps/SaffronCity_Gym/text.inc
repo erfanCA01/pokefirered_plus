@@ -21,9 +21,34 @@ SaffronCity_Gym_Text_SabrinaPostBattle::
     .string "Everyone has psychic power.\n"
     .string "People just don't realize it.$"
 
+SaffronCity_Gym_Text_SabrinaRematchOffer::
+    .string "You came, just as I knew you\n"
+    .string "would.\p"
+    .string "I dislike battling… But for the\n"
+    .string "CHAMPION, I'll make an exception.\p"
+    .string "Shall I show you my powers once\n"
+    .string "more?$"
+
+SaffronCity_Gym_Text_SabrinaRematchNotReady::
+    .string "I foresaw your victory at the\n"
+    .string "POKéMON LEAGUE.\p"
+    .string "But the outcome of our next battle\n"
+    .string "is still clouded.\p"
+    .string "Until it clears, let your FAME\n"
+    .string "CHECKER show you who I am.$"
+
+SaffronCity_Gym_Text_SabrinaRematchAlreadyWon::
+    .string "I see it clearly now…\n"
+    .string "You will return to the LEAGUE.\p"
+    .string "Come back after that.\n"
+    .string "I will be waiting.$"
+
+SaffronCity_Gym_Text_SabrinaRematchDeclined::
+    .string "…I knew you would say that.$"
+
 SaffronCity_Gym_Text_SabrinaRematchIntro::
-    .string "I foresaw your return...\p"
-    .string "But the outcome of this battle\n"
+    .string "Very well…\p"
+    .string "The outcome of this battle\n"
     .string "is hidden even from me.\p"
     .string "Let my psychic power decide it!{PLAY_BGM}{MUS_ENCOUNTER_GYM_LEADER}$"
 

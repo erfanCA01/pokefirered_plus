@@ -56,10 +56,27 @@ CinnabarIsland_Gym_EventScript_Blaine::
 
 CinnabarIsland_Gym_EventScript_BlaineRematch::
 	setvar VAR_0x8004, FAMECHECKER_BLAINE
-	setvar VAR_0x8005, TRAINER_LEADER_BLAINE_REMATCH
-	call EventScript_TryGymLeaderRematch
-	goto_if_eq VAR_RESULT, FALSE, EventScript_ReleaseEnd
+	specialvar VAR_RESULT, HasUnlockedAllFlavorTextsForSpecialVar
+	goto_if_eq VAR_RESULT, FALSE, CinnabarIsland_Gym_EventScript_BlaineRematchNotReady
+	goto_if_defeated TRAINER_LEADER_BLAINE_REMATCH, CinnabarIsland_Gym_EventScript_BlaineRematchAlreadyWon
+	msgbox CinnabarIsland_Gym_Text_BlaineRematchOffer, MSGBOX_YESNO
+	goto_if_eq VAR_RESULT, NO, CinnabarIsland_Gym_EventScript_BlaineRematchDeclined
 	trainerbattle_single TRAINER_LEADER_BLAINE_REMATCH, CinnabarIsland_Gym_Text_BlaineRematchIntro, CinnabarIsland_Gym_Text_BlaineRematchDefeat, CinnabarIsland_Gym_EventScript_DefeatedBlaineRematch, NO_MUSIC
+	release
+	end
+
+CinnabarIsland_Gym_EventScript_BlaineRematchNotReady::
+	msgbox CinnabarIsland_Gym_Text_BlaineRematchNotReady
+	release
+	end
+
+CinnabarIsland_Gym_EventScript_BlaineRematchAlreadyWon::
+	msgbox CinnabarIsland_Gym_Text_BlaineRematchAlreadyWon
+	release
+	end
+
+CinnabarIsland_Gym_EventScript_BlaineRematchDeclined::
+	msgbox CinnabarIsland_Gym_Text_BlaineRematchDeclined
 	release
 	end
 

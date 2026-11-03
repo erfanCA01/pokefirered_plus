@@ -27,10 +27,27 @@ ViridianCity_Gym_EventScript_Giovanni::
 
 ViridianCity_Gym_EventScript_GiovanniRematch::
 	setvar VAR_0x8004, FAMECHECKER_GIOVANNI
-	setvar VAR_0x8005, TRAINER_LEADER_GIOVANNI_REMATCH
-	call EventScript_TryGymLeaderRematch
-	goto_if_eq VAR_RESULT, FALSE, EventScript_ReleaseEnd
+	specialvar VAR_RESULT, HasUnlockedAllFlavorTextsForSpecialVar
+	goto_if_eq VAR_RESULT, FALSE, ViridianCity_Gym_EventScript_GiovanniRematchNotReady
+	goto_if_defeated TRAINER_LEADER_GIOVANNI_REMATCH, ViridianCity_Gym_EventScript_GiovanniRematchAlreadyWon
+	msgbox ViridianCity_Gym_Text_GiovanniRematchOffer, MSGBOX_YESNO
+	goto_if_eq VAR_RESULT, NO, ViridianCity_Gym_EventScript_GiovanniRematchDeclined
 	trainerbattle_single TRAINER_LEADER_GIOVANNI_REMATCH, ViridianCity_Gym_Text_GiovanniRematchIntro, ViridianCity_Gym_Text_GiovanniRematchDefeat, ViridianCity_Gym_EventScript_DefeatedGiovanniRematch, NO_MUSIC
+	release
+	end
+
+ViridianCity_Gym_EventScript_GiovanniRematchNotReady::
+	msgbox ViridianCity_Gym_Text_GiovanniRematchNotReady
+	release
+	end
+
+ViridianCity_Gym_EventScript_GiovanniRematchAlreadyWon::
+	msgbox ViridianCity_Gym_Text_GiovanniRematchAlreadyWon
+	release
+	end
+
+ViridianCity_Gym_EventScript_GiovanniRematchDeclined::
+	msgbox ViridianCity_Gym_Text_GiovanniRematchDeclined
 	release
 	end
 

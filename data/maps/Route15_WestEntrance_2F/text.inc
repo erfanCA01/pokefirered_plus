@@ -21,9 +21,10 @@ Route15_WestEntrance_2F_Text_ReceivedItemFromAide::
     .string "from the AIDE.$"
 
 Route15_WestEntrance_2F_Text_ExplainExpShare::
-    .string "EXP. SHARE is an item to be held\n"
-    .string "by a POKéMON.\p"
-    .string "The POKéMON will receive a share\n"
+    .string "You can turn the EXP. SHARE on\n"
+    .string "or off by using it from your BAG.\p"
+    .string "While it's on, every POKéMON in\n"
+    .string "your party will receive a share\l"
     .string "of the EXP. Points without having\l"
     .string "to battle.$"
 

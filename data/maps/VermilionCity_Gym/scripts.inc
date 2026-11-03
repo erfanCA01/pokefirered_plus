@@ -214,10 +214,27 @@ VermilionCity_Gym_EventScript_LtSurge::
 
 VermilionCity_Gym_EventScript_LtSurgeRematch::
 	setvar VAR_0x8004, FAMECHECKER_LTSURGE
-	setvar VAR_0x8005, TRAINER_LEADER_LT_SURGE_REMATCH
-	call EventScript_TryGymLeaderRematch
-	goto_if_eq VAR_RESULT, FALSE, EventScript_ReleaseEnd
+	specialvar VAR_RESULT, HasUnlockedAllFlavorTextsForSpecialVar
+	goto_if_eq VAR_RESULT, FALSE, VermilionCity_Gym_EventScript_LtSurgeRematchNotReady
+	goto_if_defeated TRAINER_LEADER_LT_SURGE_REMATCH, VermilionCity_Gym_EventScript_LtSurgeRematchAlreadyWon
+	msgbox VermilionCity_Gym_Text_LtSurgeRematchOffer, MSGBOX_YESNO
+	goto_if_eq VAR_RESULT, NO, VermilionCity_Gym_EventScript_LtSurgeRematchDeclined
 	trainerbattle_single TRAINER_LEADER_LT_SURGE_REMATCH, VermilionCity_Gym_Text_LtSurgeRematchIntro, VermilionCity_Gym_Text_LtSurgeRematchDefeat, VermilionCity_Gym_EventScript_DefeatedLtSurgeRematch, NO_MUSIC
+	release
+	end
+
+VermilionCity_Gym_EventScript_LtSurgeRematchNotReady::
+	msgbox VermilionCity_Gym_Text_LtSurgeRematchNotReady
+	release
+	end
+
+VermilionCity_Gym_EventScript_LtSurgeRematchAlreadyWon::
+	msgbox VermilionCity_Gym_Text_LtSurgeRematchAlreadyWon
+	release
+	end
+
+VermilionCity_Gym_EventScript_LtSurgeRematchDeclined::
+	msgbox VermilionCity_Gym_Text_LtSurgeRematchDeclined
 	release
 	end
 

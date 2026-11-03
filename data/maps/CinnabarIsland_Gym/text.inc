@@ -34,9 +34,36 @@ CinnabarIsland_Gym_Text_BlainePostBattle::
     .string "VULPIX or CHARMELEON would be\n"
     .string "ideal for that move.$"
 
+CinnabarIsland_Gym_Text_BlaineRematchOffer::
+    .string "Hah! Welcome back, CHAMPION!\p"
+    .string "Here's a quiz for you!\p"
+    .string "Will you take on BLAINE and his\n"
+    .string "fiery POKéMON once more?$"
+
+CinnabarIsland_Gym_Text_BlaineRematchNotReady::
+    .string "Hah! So you're the CHAMPION now!\p"
+    .string "My POKéMON aren't fired up\n"
+    .string "enough for a rematch yet!\p"
+    .string "Quiz time while you wait!\n"
+    .string "How well do you know BLAINE?\p"
+    .string "Check your FAME CHECKER for\n"
+    .string "the answers!$"
+
+CinnabarIsland_Gym_Text_BlaineRematchAlreadyWon::
+    .string "Quiet! I'm thinking up that\n"
+    .string "hotter quiz right now!\p"
+    .string "I only take off my shades for\n"
+    .string "this, you know!\p"
+    .string "Win at the LEAGUE again, and I'll\n"
+    .string "have it ready for you!$"
+
+CinnabarIsland_Gym_Text_BlaineRematchDeclined::
+    .string "Hah! Wrong answer!\n"
+    .string "Come back when you're fired up!$"
+
 CinnabarIsland_Gym_Text_BlaineRematchIntro::
-    .string "Hah!\n"
-    .string "The CHAMPION came to get burned!\p"
+    .string "Hah! Correct answer!\n"
+    .string "You came to get burned!\p"
     .string "My fiery POKéMON burn hotter than\n"
     .string "ever before!\p"
     .string "You better have BURN HEAL!{PLAY_BGM}{MUS_ENCOUNTER_GYM_LEADER}$"

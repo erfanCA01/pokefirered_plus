@@ -12,10 +12,27 @@ PewterCity_Gym_EventScript_Brock::
 
 PewterCity_Gym_EventScript_BrockRematch::
 	setvar VAR_0x8004, FAMECHECKER_BROCK
-	setvar VAR_0x8005, TRAINER_LEADER_BROCK_REMATCH
-	call EventScript_TryGymLeaderRematch
-	goto_if_eq VAR_RESULT, FALSE, EventScript_ReleaseEnd
+	specialvar VAR_RESULT, HasUnlockedAllFlavorTextsForSpecialVar
+	goto_if_eq VAR_RESULT, FALSE, PewterCity_Gym_EventScript_BrockRematchNotReady
+	goto_if_defeated TRAINER_LEADER_BROCK_REMATCH, PewterCity_Gym_EventScript_BrockRematchAlreadyWon
+	msgbox PewterCity_Gym_Text_BrockRematchOffer, MSGBOX_YESNO
+	goto_if_eq VAR_RESULT, NO, PewterCity_Gym_EventScript_BrockRematchDeclined
 	trainerbattle_single TRAINER_LEADER_BROCK_REMATCH, PewterCity_Gym_Text_BrockRematchIntro, PewterCity_Gym_Text_BrockRematchDefeat, PewterCity_Gym_EventScript_DefeatedBrockRematch, NO_MUSIC
+	release
+	end
+
+PewterCity_Gym_EventScript_BrockRematchNotReady::
+	msgbox PewterCity_Gym_Text_BrockRematchNotReady
+	release
+	end
+
+PewterCity_Gym_EventScript_BrockRematchAlreadyWon::
+	msgbox PewterCity_Gym_Text_BrockRematchAlreadyWon
+	release
+	end
+
+PewterCity_Gym_EventScript_BrockRematchDeclined::
+	msgbox PewterCity_Gym_Text_BrockRematchDeclined
 	release
 	end
 

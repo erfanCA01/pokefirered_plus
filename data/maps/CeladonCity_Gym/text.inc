@@ -27,8 +27,36 @@ CeladonCity_Gym_Text_ErikaPostBattle::
     .string "I would never collect POKéMON if\n"
     .string "they were unattractive.$"
 
+CeladonCity_Gym_Text_ErikaRematchOffer::
+    .string "Oh… I must have dozed off in\n"
+    .string "the warm sunshine…\p"
+    .string "My, if it isn't the CHAMPION.\p"
+    .string "Would you care for a battle with\n"
+    .string "my GRASS-type POKéMON?$"
+
+CeladonCity_Gym_Text_ErikaRematchNotReady::
+    .string "Oh… Welcome back.\p"
+    .string "I heard you became the CHAMPION.\n"
+    .string "I must say I'm impressed.\p"
+    .string "My POKéMON are still budding.\n"
+    .string "They need more time to bloom.\p"
+    .string "In the meantime, perhaps your\n"
+    .string "FAME CHECKER can tell you more\l"
+    .string "about me.$"
+
+CeladonCity_Gym_Text_ErikaRematchAlreadyWon::
+    .string "Zzz…\p"
+    .string "Oh! Pardon me. I was resting\n"
+    .string "after our battle.\p"
+    .string "Please return after another\n"
+    .string "victory at the POKéMON LEAGUE.$"
+
+CeladonCity_Gym_Text_ErikaRematchDeclined::
+    .string "Very well…\n"
+    .string "I shall return to my flowers.$"
+
 CeladonCity_Gym_Text_ErikaRematchIntro::
-    .string "Oh, welcome back...\p"
+    .string "Oh, how wonderful…\p"
     .string "My flowers and I have grown since\n"
     .string "we last met.\p"
     .string "Please, allow me to show you.{PLAY_BGM}{MUS_ENCOUNTER_GYM_LEADER}$"

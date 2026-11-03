@@ -1225,7 +1225,7 @@
 // FLAG_UNUSED_0x4A7 repurposed by followers-expanded-id: when set, no follower
 // Pokemon will be spawned (see UpdateFollowingPokemon in event_object_movement.c).
 #define FLAG_TEMP_HIDE_FOLLOWER         0x4A7
-#define FLAG_UNUSED_0x4A8               0x4A8 // Unused Flag
+#define FLAG_EXP_SHARE_ON               0x4A8 // qol: Exp. Share party mode (vanilla never touches it)
 #define FLAG_UNUSED_0x4A9               0x4A9 // Unused Flag
 #define FLAG_UNUSED_0x4AA               0x4AA // Unused Flag
 #define FLAG_UNUSED_0x4AB               0x4AB // Unused Flag
