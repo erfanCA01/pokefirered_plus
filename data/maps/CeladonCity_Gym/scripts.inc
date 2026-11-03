@@ -13,10 +13,27 @@ CeladonCity_Gym_EventScript_Erika::
 
 CeladonCity_Gym_EventScript_ErikaRematch::
 	setvar VAR_0x8004, FAMECHECKER_ERIKA
-	setvar VAR_0x8005, TRAINER_LEADER_ERIKA_REMATCH
-	call EventScript_TryGymLeaderRematch
-	goto_if_eq VAR_RESULT, FALSE, EventScript_ReleaseEnd
+	specialvar VAR_RESULT, HasUnlockedAllFlavorTextsForSpecialVar
+	goto_if_eq VAR_RESULT, FALSE, CeladonCity_Gym_EventScript_ErikaRematchNotReady
+	goto_if_defeated TRAINER_LEADER_ERIKA_REMATCH, CeladonCity_Gym_EventScript_ErikaRematchAlreadyWon
+	msgbox CeladonCity_Gym_Text_ErikaRematchOffer, MSGBOX_YESNO
+	goto_if_eq VAR_RESULT, NO, CeladonCity_Gym_EventScript_ErikaRematchDeclined
 	trainerbattle_single TRAINER_LEADER_ERIKA_REMATCH, CeladonCity_Gym_Text_ErikaRematchIntro, CeladonCity_Gym_Text_ErikaRematchDefeat, CeladonCity_Gym_EventScript_DefeatedErikaRematch, NO_MUSIC
+	release
+	end
+
+CeladonCity_Gym_EventScript_ErikaRematchNotReady::
+	msgbox CeladonCity_Gym_Text_ErikaRematchNotReady
+	release
+	end
+
+CeladonCity_Gym_EventScript_ErikaRematchAlreadyWon::
+	msgbox CeladonCity_Gym_Text_ErikaRematchAlreadyWon
+	release
+	end
+
+CeladonCity_Gym_EventScript_ErikaRematchDeclined::
+	msgbox CeladonCity_Gym_Text_ErikaRematchDeclined
 	release
 	end
 

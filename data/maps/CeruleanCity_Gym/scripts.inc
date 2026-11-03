@@ -12,10 +12,27 @@ CeruleanCity_Gym_EventScript_Misty::
 
 CeruleanCity_Gym_EventScript_MistyRematch::
 	setvar VAR_0x8004, FAMECHECKER_MISTY
-	setvar VAR_0x8005, TRAINER_LEADER_MISTY_REMATCH
-	call EventScript_TryGymLeaderRematch
-	goto_if_eq VAR_RESULT, FALSE, EventScript_ReleaseEnd
+	specialvar VAR_RESULT, HasUnlockedAllFlavorTextsForSpecialVar
+	goto_if_eq VAR_RESULT, FALSE, CeruleanCity_Gym_EventScript_MistyRematchNotReady
+	goto_if_defeated TRAINER_LEADER_MISTY_REMATCH, CeruleanCity_Gym_EventScript_MistyRematchAlreadyWon
+	msgbox CeruleanCity_Gym_Text_MistyRematchOffer, MSGBOX_YESNO
+	goto_if_eq VAR_RESULT, NO, CeruleanCity_Gym_EventScript_MistyRematchDeclined
 	trainerbattle_single TRAINER_LEADER_MISTY_REMATCH, CeruleanCity_Gym_Text_MistyRematchIntro, CeruleanCity_Gym_Text_MistyRematchDefeat, CeruleanCity_Gym_EventScript_DefeatedMistyRematch, NO_MUSIC
+	release
+	end
+
+CeruleanCity_Gym_EventScript_MistyRematchNotReady::
+	msgbox CeruleanCity_Gym_Text_MistyRematchNotReady
+	release
+	end
+
+CeruleanCity_Gym_EventScript_MistyRematchAlreadyWon::
+	msgbox CeruleanCity_Gym_Text_MistyRematchAlreadyWon
+	release
+	end
+
+CeruleanCity_Gym_EventScript_MistyRematchDeclined::
+	msgbox CeruleanCity_Gym_Text_MistyRematchDeclined
 	release
 	end
 

@@ -15,11 +15,35 @@ VermilionCity_Gym_Text_LtSurgePostBattle::
     .string "But, it's useless against GROUND-\n"
     .string "type POKéMON!$"
 
+VermilionCity_Gym_Text_LtSurgeRematchOffer::
+    .string "Ten-hut! Look who's back!\p"
+    .string "I tell you, kid, electric POKéMON\n"
+    .string "saved me during the war.\p"
+    .string "They never back down from a fight.\n"
+    .string "Ready for a rematch, kid?$"
+
+VermilionCity_Gym_Text_LtSurgeRematchNotReady::
+    .string "Hey, kid! So you're the CHAMPION\n"
+    .string "now, huh? Not bad!\p"
+    .string "My troops aren't battle-ready\n"
+    .string "yet. Still drilling 'em!\p"
+    .string "While you wait, do some recon on\n"
+    .string "me with that FAME CHECKER!$"
+
+VermilionCity_Gym_Text_LtSurgeRematchAlreadyWon::
+    .string "At ease, kid!\n"
+    .string "You won fair and square.\p"
+    .string "Win the LEAGUE again, and my\n"
+    .string "troops will be back on duty!$"
+
+VermilionCity_Gym_Text_LtSurgeRematchDeclined::
+    .string "Pulling back, kid? Smart move.\n"
+    .string "A cautious soldier lives longer!$"
+
 VermilionCity_Gym_Text_LtSurgeRematchIntro::
-    .string "Hey, kid! You beat the LEAGUE,\n"
-    .string "huh? Not bad!\p"
-    .string "But my electric POKéMON have been\n"
-    .string "charging up since then!\p"
+    .string "That's the spirit, kid!\p"
+    .string "My electric POKéMON have been\n"
+    .string "charging up since our last fight!\p"
     .string "Let's see you handle a full-power\n"
     .string "surge!{PLAY_BGM}{MUS_ENCOUNTER_GYM_LEADER}$"
 

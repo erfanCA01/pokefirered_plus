@@ -12,10 +12,27 @@ FuchsiaCity_Gym_EventScript_Koga::
 
 FuchsiaCity_Gym_EventScript_KogaRematch::
 	setvar VAR_0x8004, FAMECHECKER_KOGA
-	setvar VAR_0x8005, TRAINER_LEADER_KOGA_REMATCH
-	call EventScript_TryGymLeaderRematch
-	goto_if_eq VAR_RESULT, FALSE, EventScript_ReleaseEnd
+	specialvar VAR_RESULT, HasUnlockedAllFlavorTextsForSpecialVar
+	goto_if_eq VAR_RESULT, FALSE, FuchsiaCity_Gym_EventScript_KogaRematchNotReady
+	goto_if_defeated TRAINER_LEADER_KOGA_REMATCH, FuchsiaCity_Gym_EventScript_KogaRematchAlreadyWon
+	msgbox FuchsiaCity_Gym_Text_KogaRematchOffer, MSGBOX_YESNO
+	goto_if_eq VAR_RESULT, NO, FuchsiaCity_Gym_EventScript_KogaRematchDeclined
 	trainerbattle_single TRAINER_LEADER_KOGA_REMATCH, FuchsiaCity_Gym_Text_KogaRematchIntro, FuchsiaCity_Gym_Text_KogaRematchDefeat, FuchsiaCity_Gym_EventScript_DefeatedKogaRematch, NO_MUSIC
+	release
+	end
+
+FuchsiaCity_Gym_EventScript_KogaRematchNotReady::
+	msgbox FuchsiaCity_Gym_Text_KogaRematchNotReady
+	release
+	end
+
+FuchsiaCity_Gym_EventScript_KogaRematchAlreadyWon::
+	msgbox FuchsiaCity_Gym_Text_KogaRematchAlreadyWon
+	release
+	end
+
+FuchsiaCity_Gym_EventScript_KogaRematchDeclined::
+	msgbox FuchsiaCity_Gym_Text_KogaRematchDeclined
 	release
 	end
 

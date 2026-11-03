@@ -24,9 +24,35 @@ FuchsiaCity_Gym_Text_KogaPostBattle::
     .string "battle wears on!\p"
     .string "It will surely terrorize foes!$"
 
+FuchsiaCity_Gym_Text_KogaRematchOffer::
+    .string "So, you have slipped past my\n"
+    .string "invisible walls once more.\p"
+    .string "A ninja's training never ends.\n"
+    .string "I have not rested since we met.\p"
+    .string "Will you test yourself against\n"
+    .string "me again?$"
+
+FuchsiaCity_Gym_Text_KogaRematchNotReady::
+    .string "Hmm… The new CHAMPION.\p"
+    .string "A ninja strikes only when fully\n"
+    .string "prepared. I am not, yet.\p"
+    .string "Until then, study your foe.\n"
+    .string "Your FAME CHECKER may reveal\l"
+    .string "my secrets.$"
+
+FuchsiaCity_Gym_Text_KogaRematchAlreadyWon::
+    .string "Fwahahaha! A fine battle!\n"
+    .string "My daughter must hear of it.\p"
+    .string "Conquer the LEAGUE again, and I\n"
+    .string "shall await you once more.$"
+
+FuchsiaCity_Gym_Text_KogaRematchDeclined::
+    .string "Wise to retreat.\n"
+    .string "Return when you are prepared.$"
+
 FuchsiaCity_Gym_Text_KogaRematchIntro::
     .string "Fwahahaha!\n"
-    .string "So, the CHAMPION returns!\p"
+    .string "Very well!\p"
     .string "My ninja techniques have been\n"
     .string "honed even further!\p"
     .string "Despair at the true art of\n"

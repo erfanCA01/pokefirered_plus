@@ -11,11 +11,37 @@ CeruleanCity_Gym_Text_ExplainTM03::
     .string "TM03 teaches WATER PULSE.\p"
     .string "Use it on an aquatic POKéMON!$"
 
+CeruleanCity_Gym_Text_MistyRematchOffer::
+    .string "Hey, CHAMPION! Did you battle\n"
+    .string "LORELEI at the LEAGUE?\p"
+    .string "She's my idol! I've been training\n"
+    .string "to battle just like her!\p"
+    .string "So? Are you ready for a rematch\n"
+    .string "with the Tomboyish Mermaid?$"
+
+CeruleanCity_Gym_Text_MistyRematchNotReady::
+    .string "I heard you beat the LEAGUE!\n"
+    .string "Don't get cocky, though!\p"
+    .string "I'm still training out at the\n"
+    .string "CERULEAN CAPE.\p"
+    .string "Until I'm ready, find out what\n"
+    .string "people say about me with your\l"
+    .string "FAME CHECKER!$"
+
+CeruleanCity_Gym_Text_MistyRematchAlreadyWon::
+    .string "Don't think this is over!\n"
+    .string "I'm already back to training!\p"
+    .string "Beat the ELITE FOUR again, then\n"
+    .string "come back for another splash!$"
+
+CeruleanCity_Gym_Text_MistyRematchDeclined::
+    .string "What? Afraid of getting wet?\n"
+    .string "Come back when you're ready!$"
+
 CeruleanCity_Gym_Text_MistyRematchIntro::
-    .string "I've been training with WATER-type\n"
-    .string "POKéMON from all over!\p"
-    .string "This time, my all-out offensive\n"
-    .string "will wash you away!{PLAY_BGM}{MUS_ENCOUNTER_GYM_LEADER}$"
+    .string "Great! No holding back this time!\p"
+    .string "My all-out offensive with WATER-\n"
+    .string "type POKéMON will wash you away!{PLAY_BGM}{MUS_ENCOUNTER_GYM_LEADER}$"
 
 CeruleanCity_Gym_Text_MistyRematchDefeat::
     .string "Wow!\n"
