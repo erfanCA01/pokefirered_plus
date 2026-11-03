@@ -85,7 +85,7 @@ match. QoL data only uses bytes that vanilla saves and loads but never reads or 
 | Data | Save location | Vanilla meaning | Code | Reset on New Game |
 |---|---|---|---|---|
 | `registeredItemL`, `registeredItemR` (Register to L / R) | SaveBlock1 `0x0632` and `0x0634`, 2 bytes each | first 4 bytes of `unused_632[6]`, never referenced | `include/global.h` (field split), `src/item_menu.c`, `src/item.c`, `src/new_game.c` | `ClearSav1()` and `src/new_game.c` |
-| `FLAG_EXP_SHARE_ON` (Exp. Share on / off) | flag `0x4A7`: SaveBlock1 `0x0F74`, bit 7 | `FLAG_UNUSED_0x4A7`, an unused hidden-item flag | `include/constants/flags.h`, `src/item_use.c`, `src/battle_script_commands.c` | `ClearSav1()` |
+| `FLAG_EXP_SHARE_ON` (Exp. Share on / off) | flag `0x4A8`: SaveBlock1 `0x0F74`, bit 7 | `FLAG_UNUSED_0x4A7`, an unused hidden-item flag | `include/constants/flags.h`, `src/item_use.c`, `src/battle_script_commands.c` | `ClearSav1()` |
 | Gym leader rematch won (Brock, Misty, Lt. Surge) | trainer flags `0x51B`-`0x51D`: SaveBlock1 `0x0F83`, bits 3-5 | trainer flags of unused Ruby/Sapphire leader slots 27-29 | `include/constants/opponents.h`, `src/data/trainers.h`, the gym scripts | `ClearSav1()`. Also cleared on every Hall of Fame entry by `EventScript_ResetGymLeaderRematches` (`data/scripts/gym_leader_rematch.inc`) |
 | Gym leader rematch won (Erika, Koga, Sabrina, Blaine, Giovanni) | trainer flags `0x552`-`0x556`: SaveBlock1 `0x0F8A`, bits 2-6 | trainer flags of unused Ruby/Sapphire leader slots 82-86 | same | same |
 
