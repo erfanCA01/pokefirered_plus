@@ -572,7 +572,8 @@ static void MoveWindowByMenuTypeAndCursorPos(u8 menuType, u8 cursorPos)
         case 2: // MYSTERY GIFT
             win0vTop = 0x80 << 8;
             win0vBot = 0xA0;
-            break;        case 3: // (no fourth entry)
+            break;
+        case 3: // (no fourth entry)
             win0vTop = 0xA0 << 8;
             win0vBot = 0xC0;
             break;
