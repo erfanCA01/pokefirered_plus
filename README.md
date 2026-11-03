@@ -22,7 +22,7 @@ byte-for-byte, then changed so that saves stay compatible with the unmodified ga
   - E-READER uses the scanned cards and tells you how many floors there are ("up to Floor N") after you pick it.
     With no card scanned, she says no e-Reader trainers are available and returns to the menu.
 - **E-READER row on the Time Board**, with its own best time.
-- The card `.raw` files are not part of this repository. A localized set is included in the RestorationProject download
+- The card `.raw` files are not part of this repository. A localized set is included in the RestorationProject [download](https://projectpokemon.org/home/files/file/5889-pok%C3%A9mon-firered-leafgreen-english-e-reader-restoration-patch/) 
   (`Card Files` folder). In mGBA, link two GBA instances, load an English e-Reader on one side, then scan the cards.
 
 ## Compatibility
