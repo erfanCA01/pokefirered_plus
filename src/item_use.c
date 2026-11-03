@@ -913,6 +913,25 @@ void ItemUseInBattle_EnigmaBerry(u8 taskId)
     }
 }
 
+void FieldUseFunc_ExpShare(u8 taskId)
+{
+    const u8 *str;
+
+    if (FlagGet(FLAG_EXP_SHARE_ON))
+    {
+        FlagClear(FLAG_EXP_SHARE_ON);
+        PlaySE(SE_PC_OFF);
+        str = gText_ExpShareTurnedOff;
+    }
+    else
+    {
+        FlagSet(FLAG_EXP_SHARE_ON);
+        PlaySE(SE_EXP_MAX);
+        str = gText_ExpShareTurnedOn;
+    }
+    DisplayItemMessageInCurrentContext(taskId, gTasks[taskId].data[3], FONT_NORMAL, str);
+}
+
 void FieldUseFunc_OakStopsYou(u8 taskId)
 {
     if (GetPocketByItemId(gSpecialVar_ItemId) == POCKET_BERRY_POUCH)
